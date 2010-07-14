@@ -2,7 +2,7 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
-ifneq ($(TEGRA_ROOT),)
+ifneq ($(TEGRA_ROOT),vendor/nvidia/proprietary_src)
 include $(TEGRA_ROOT)/Android.mk
 else
 file := $(HOST_OUT_EXECUTABLES)/nvflash$(HOST_EXECUTABLE_SUFFIX)
