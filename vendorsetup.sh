@@ -24,7 +24,7 @@ function ksetup()
     local ARCHITECTURE=$(get_build_var TARGET_ARCH)
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local KOUT="$T/$INTERMEDIATES/KERNEL"
-    local CROSS="CROSS_COMPILE=$T/prebuilt/linux-x86/toolchain/arm-eabi-4.4.0/bin/arm-eabi-"
+    local CROSS="CROSS_COMPILE=$T/prebuilt/linux-x86/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
     local KARCH="ARCH=$ARCHITECTURE"
 
     echo "mkdir -p $KOUT"
@@ -55,7 +55,7 @@ function kconfig()
     local ARCHITECTURE=$(get_build_var TARGET_ARCH)
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local KOUT="O=$T/$INTERMEDIATES/KERNEL"
-    local CROSS="CROSS_COMPILE=$T/prebuilt/linux-x86/toolchain/arm-eabi-4.4.0/bin/arm-eabi-"
+    local CROSS="CROSS_COMPILE=$T/prebuilt/linux-x86/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
     local KARCH="ARCH=$ARCHITECTURE"
 
     echo "make -C $SRC $KARCH $CROSS $KOUT menuconfig"
@@ -85,7 +85,7 @@ function krebuild()
     local ARCHITECTURE=$(get_build_var TARGET_ARCH)
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local KOUT="O=$T/$INTERMEDIATES/KERNEL"
-    local CROSS="CROSS_COMPILE=$T/prebuilt/linux-x86/toolchain/arm-eabi-4.4.0/bin/arm-eabi-"
+    local CROSS="CROSS_COMPILE=$T/prebuilt/linux-x86/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
     local KARCH="ARCH=$ARCHITECTURE"
 
     echo "make -C $SRC $* $KARCH $CROSS $KOUT"
