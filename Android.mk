@@ -2,9 +2,7 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
-ifneq ($(TEGRA_ROOT),vendor/nvidia/proprietary_src)
-include $(TEGRA_ROOT)/Android.mk
-else
+ifeq ($(HAVE_NVIDIA_PROP_SRC),false)
 file := $(HOST_OUT_EXECUTABLES)/nvflash$(HOST_EXECUTABLE_SUFFIX)
 ALL_PREBUILT += $(file)
 $(file) : $(LOCAL_PATH)/$(notdir $(file)) | $(ACP)
