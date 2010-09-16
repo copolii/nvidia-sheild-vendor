@@ -11,6 +11,11 @@ include $(CLEAR_VARS)
 LOCAL_C_INCLUDES += $(TEGRA_ROOT)/include
 LOCAL_C_INCLUDES += $(TEGRA_ROOT)/drivers/hwinc
 
+ifneq (,$(findstring core-private,$(LOCAL_PATH)))
+LOCAL_C_INCLUDES += $(TEGRA_ROOT)/../core-private/include
+LOCAL_C_INCLUDES += $(TEGRA_ROOT)/../core-private/drivers/hwinc
+endif
+
 ifeq ($(TARGET_BUILD_TYPE),debug)
 LOCAL_CFLAGS += -DNV_DEBUG=1
 # TODO: fix source that relies on these
