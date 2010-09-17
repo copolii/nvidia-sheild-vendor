@@ -110,6 +110,8 @@ function nvflash()
         ODMDATA="0x300d8011"
     elif [ "$DEV" == "stingray" ] ; then
         ODMDATA="0x800c8105"
+    elif [ "$DEV" == "ventana" ] ; then
+        ODMDATA="0x300c0011"
     fi
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
