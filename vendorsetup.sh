@@ -117,7 +117,7 @@ function nvflash()
     local OUTDIR=$(get_build_var PRODUCT_OUT)
     local HOSTOUT=$(get_build_var HOST_OUT)
 
-    local FLASH_CMD="$T/$HOSTOUT/bin/nvflash"
+    local FLASH_CMD="$T/$HOSTOUT/bin/$DEV/nvflash"
     FLASH_CMD="$FLASH_CMD --bct flash.bct --setbct"
     if [ "$ODMDATA" != "" ] ; then
         FLASH_CMD="$FLASH_CMD --odmdata $ODMDATA"
@@ -132,6 +132,7 @@ function nvflash()
 function fastboot()
 {
     T=$(gettop)
+
     if [ ! "$T" ]; then
         echo "Couldn't local the top of the tree. Try setting TOP." >&2
         return
