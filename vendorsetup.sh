@@ -90,6 +90,34 @@ function krebuild()
 
     echo "make -C $SRC $* $KARCH $CROSS $KOUT"
     (cd $T && make -C $SRC $* $KARCH $CROSS $KOUT)
+
+    echo "Building boot.img"
+
+    local OUTDIR=$(get_build_var PRODUCT_OUT)
+    local HOST_OUTDIR=$(get_build_var HOST_OUT)
+    local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/arm/boot/zImage
+    local RAMDISK=$T/$OUTDIR/ramdisk.img
+    local MKBOOTIMG=$T/$HOST_OUTDIR/bin/mkbootimg
+
+    if [ ! "$ZIMAGE" ]; then
+        echo "Couldn't find $ZIMAGE. Your KERNEL is not build." >&2
+        return
+    fi
+    if [ ! "$RAMDISK" ]; then
+        echo "Couldn't find $RAMDISK. Your ANDROID system is not build." >&2
+        return
+    fi
+    if [ ! "$MKBOOTIMG" ]; then
+        echo "Couldn't find $MKBOOTIMG. Your ANDROID system is not build." >&2
+        return
+    fi
+
+    CMD="--kernel $ZIMAGE --ramdisk $RAMDISK -o $T/$OUTDIR/boot.img"
+
+    echo "$MKBOOTIMG $CMD"
+    ($MKBOOTIMG $CMD)
+
+    echo "boot.img is ready"
 }
 
 function nvflash()
