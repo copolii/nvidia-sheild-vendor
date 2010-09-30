@@ -3,9 +3,9 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 ifeq ($(HAVE_NVIDIA_PROP_SRC),false)
-file := $(HOST_OUT_EXECUTABLES)/nvflash$(HOST_EXECUTABLE_SUFFIX)
+file := $(HOST_OUT_EXECUTABLES)/$(TARGET_DEVICE)/nvflash$(HOST_EXECUTABLE_SUFFIX)
 ALL_PREBUILT += $(file)
-$(file) : $(LOCAL_PATH)/$(notdir $(file)) | $(ACP)
+$(file) : $(LOCAL_PATH)/$(TARGET_DEVICE)/$(notdir $(file)) | $(ACP)
 	$(transform-prebuilt-to-target)
 
 PRODUCT_COPY_FILES += $(LOCAL_PATH)/$(TARGET_DEVICE)/bootloader.bin:bootloader.bin
