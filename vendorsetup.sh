@@ -130,17 +130,13 @@ function nvflash()
     fi
 
     local DEV=$(get_build_var TARGET_PRODUCT)
-    
+    if [ -f $T/vendor/nvidia/build/$DEV/$DEV.sh ]; then
+	. $T/vendor/nvidia/build/$DEV/$DEV.sh
+    fi
     local VERBOSE=
     local ODMDATA=""
 
-    if [ "$DEV" == "harmony" ] ; then
-        ODMDATA="0x300d8011"
-    elif [ "$DEV" == "stingray" ] ; then
-        ODMDATA="0x800c8105"
-    elif [ "$DEV" == "ventana" ] ; then
-        ODMDATA="0x300c0011"
-    fi
+    ODMDATA=$NVFLASH_ODM_DATA
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
     local HOSTOUT=$(get_build_var HOST_OUT)
@@ -172,12 +168,12 @@ function fastboot()
     local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/arm/boot/zImage
     local RAMDISK=$T/$OUTDIR/ramdisk.img
     local FASTBOOT=$T/$HOST_OUTDIR/bin/fastboot
-
-    local VID="0x955"
     local DEV=$(get_build_var TARGET_PRODUCT)
-    if [ "$DEV" == "stingray" ] ; then
-        VID="0x22b8"
+    if [ -f $T/vendor/nvidia/build/$DEV/$DEV.sh ]; then
+	. $T/vendor/nvidia/build/$DEV/$DEV.sh
     fi
+    local VID=""
+    VID=$FASTBOOT_VID
 
     if [ ! "$FASTBOOT" ]; then
         echo "Couldn't find $FASTBOOT." >&2
