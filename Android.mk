@@ -6,3 +6,5 @@ PRODUCT_COPY_FILES += $(LOCAL_PATH)/$(TARGET_DEVICE)/nvflash:../../../host/linux
 PRODUCT_COPY_FILES += $(LOCAL_PATH)/$(TARGET_DEVICE)/bootloader.bin:bootloader.bin
 PRODUCT_COPY_FILES += $(LOCAL_PATH)/$(TARGET_DEVICE)/flash.cfg:flash.cfg
 PRODUCT_COPY_FILES += $(LOCAL_PATH)/$(TARGET_DEVICE)/flash.bct:flash.bct
+
+-include $(wildcard $(LOCAL_PATH)/$(TARGET_DEVICE)/Android.mk)
