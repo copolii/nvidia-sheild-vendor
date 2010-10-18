@@ -1,3 +1,16 @@
+function _gethosttype()
+{
+    H=`uname`
+    if [ "$H" == Linux ]; then
+        HOSTTYPE="linux-x86"
+    fi
+
+    if [ "$H" == Darwin ]; then
+        HOSTTYPE="darwin-x86"
+        export HOST_EXTRACFLAGS="-I$TOP/vendor/nvidia/proprietary_src/core-private/include"
+    fi
+}
+
 function ksetup()
 {
     T=$(gettop)
@@ -20,11 +33,13 @@ function ksetup()
         echo "$SRC not found."
         return
     fi
+    _gethosttype
+
     local TOOLS=$(get_build_var TARGET_TOOLS_PREFIX)
     local ARCHITECTURE=$(get_build_var TARGET_ARCH)
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local KOUT="$T/$INTERMEDIATES/KERNEL"
-    local CROSS="CROSS_COMPILE=$T/prebuilt/linux-x86/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
+    local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
     local KARCH="ARCH=$ARCHITECTURE"
 
     echo "mkdir -p $KOUT"
@@ -51,11 +66,13 @@ function kconfig()
         return
     fi
 
+    _gethosttype
+
     local TOOLS=$(get_build_var TARGET_TOOLS_PREFIX)
     local ARCHITECTURE=$(get_build_var TARGET_ARCH)
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local KOUT="O=$T/$INTERMEDIATES/KERNEL"
-    local CROSS="CROSS_COMPILE=$T/prebuilt/linux-x86/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
+    local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
     local KARCH="ARCH=$ARCHITECTURE"
 
     echo "make -C $SRC $KARCH $CROSS $KOUT menuconfig"
@@ -81,11 +98,13 @@ function krebuild()
         return
     fi
 
+    _gethosttype
+
     local TOOLS=$(get_build_var TARGET_TOOLS_PREFIX)
     local ARCHITECTURE=$(get_build_var TARGET_ARCH)
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local KOUT="O=$T/$INTERMEDIATES/KERNEL"
-    local CROSS="CROSS_COMPILE=$T/prebuilt/linux-x86/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
+    local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
     local KARCH="ARCH=$ARCHITECTURE"
 
     echo "make -C $SRC $* $KARCH $CROSS $KOUT"

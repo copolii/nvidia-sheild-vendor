@@ -25,15 +25,16 @@ NVIDIA_PACKAGE             := $(NVIDIA_BUILD_ROOT)/package.mk
 
 # tools
 
-NVIDIA_CGC		   := $(TEGRA_ROOT)/../cg/Cg/linux/cgc
-NVIDIA_AR20ASM		   := $(TEGRA_ROOT)/../cg/Cg/linux/ar20asm
+NVIDIA_CGC		   := $(TEGRA_ROOT)/../cg/Cg/$(HOST_OS)/cgc
+NVIDIA_AR20ASM		   := $(TEGRA_ROOT)/../cg/Cg/$(HOST_OS)/ar20asm
+
 NVIDIA_HEXIFY	           := $(NVIDIA_BUILD_ROOT)/hexify.py
 NVIDIA_GETEXPORTS          := $(NVIDIA_BUILD_ROOT)/getexports.py
 NVIDIA_SHADERFIX	   := $(HOST_OUT_EXECUTABLES)/shaderfix
 ifneq ($(TEGRA_ROOT),hardware/tegra)
 NVIDIA_NVIDL		   := $(HOST_OUT_EXECUTABLES)/nvidl
 else
-NVIDIA_NVIDL		   := hardware/tegra/prebuilt/host/linux-x86/bin/nvidl
+NVIDIA_NVIDL		   := hardware/tegra/prebuilt/host/$(HOST_OS)-x86/bin/nvidl
 endif
 
 # global vars
