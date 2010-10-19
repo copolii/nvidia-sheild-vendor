@@ -90,6 +90,34 @@ function krebuild()
 
     echo "make -C $SRC $* $KARCH $CROSS $KOUT"
     (cd $T && make -C $SRC $* $KARCH $CROSS $KOUT)
+
+    echo "Building boot.img"
+
+    local OUTDIR=$(get_build_var PRODUCT_OUT)
+    local HOST_OUTDIR=$(get_build_var HOST_OUT)
+    local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/arm/boot/zImage
+    local RAMDISK=$T/$OUTDIR/ramdisk.img
+    local MKBOOTIMG=$T/$HOST_OUTDIR/bin/mkbootimg
+
+    if [ ! "$ZIMAGE" ]; then
+        echo "Couldn't find $ZIMAGE. Your KERNEL is not build." >&2
+        return
+    fi
+    if [ ! "$RAMDISK" ]; then
+        echo "Couldn't find $RAMDISK. Your ANDROID system is not build." >&2
+        return
+    fi
+    if [ ! "$MKBOOTIMG" ]; then
+        echo "Couldn't find $MKBOOTIMG. Your ANDROID system is not build." >&2
+        return
+    fi
+
+    CMD="--kernel $ZIMAGE --ramdisk $RAMDISK -o $T/$OUTDIR/boot.img"
+
+    echo "$MKBOOTIMG $CMD"
+    ($MKBOOTIMG $CMD)
+
+    echo "boot.img is ready"
 }
 
 function nvflash()
@@ -102,18 +130,18 @@ function nvflash()
     fi
 
     local DEV=$(get_build_var TARGET_PRODUCT)
-    
+    if [ -f $T/vendor/nvidia/build/$DEV/$DEV.sh ]; then
+	. $T/vendor/nvidia/build/$DEV/$DEV.sh
+    fi
     local VERBOSE=
     local ODMDATA=""
 
-    if [ "$DEV" == "harmony" ] ; then
-        ODMDATA="0x300d8011"
-    fi
+    ODMDATA=$NVFLASH_ODM_DATA
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
     local HOSTOUT=$(get_build_var HOST_OUT)
 
-    local FLASH_CMD="$T/$HOSTOUT/bin/nvflash"
+    local FLASH_CMD="$T/$HOSTOUT/bin/$DEV/nvflash"
     FLASH_CMD="$FLASH_CMD --bct flash.bct --setbct"
     if [ "$ODMDATA" != "" ] ; then
         FLASH_CMD="$FLASH_CMD --odmdata $ODMDATA"
@@ -128,6 +156,7 @@ function nvflash()
 function fastboot()
 {
     T=$(gettop)
+
     if [ ! "$T" ]; then
         echo "Couldn't local the top of the tree. Try setting TOP." >&2
         return
@@ -139,9 +168,12 @@ function fastboot()
     local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/arm/boot/zImage
     local RAMDISK=$T/$OUTDIR/ramdisk.img
     local FASTBOOT=$T/$HOST_OUTDIR/bin/fastboot
-
-    local VID="0x955"
     local DEV=$(get_build_var TARGET_PRODUCT)
+    if [ -f $T/vendor/nvidia/build/$DEV/$DEV.sh ]; then
+	. $T/vendor/nvidia/build/$DEV/$DEV.sh
+    fi
+    local VID=""
+    VID=$FASTBOOT_VID
 
     if [ ! "$FASTBOOT" ]; then
         echo "Couldn't find $FASTBOOT." >&2

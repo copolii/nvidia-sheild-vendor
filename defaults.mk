@@ -16,6 +16,10 @@ LOCAL_C_INCLUDES += $(TEGRA_ROOT)/../core-private/include
 LOCAL_C_INCLUDES += $(TEGRA_ROOT)/../core-private/drivers/hwinc
 endif
 
+ifneq (,$(findstring tests,$(LOCAL_PATH)))
+LOCAL_C_INCLUDES += $(TEGRA_ROOT)/../core-private/include
+endif
+
 ifeq ($(TARGET_BUILD_TYPE),debug)
 LOCAL_CFLAGS += -DNV_DEBUG=1
 # TODO: fix source that relies on these
@@ -29,7 +33,7 @@ LOCAL_CFLAGS += -DNV_BUILD_STUBS=1
 
 LOCAL_PRELINK_MODULE := false
 
-LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_TAGS := user
 
 # clear nvidia local variables to defaults
 NVIDIA_CLEARED := true
