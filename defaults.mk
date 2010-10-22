@@ -33,7 +33,7 @@ LOCAL_CFLAGS += -DNV_BUILD_STUBS=1
 
 LOCAL_PRELINK_MODULE := false
 
-LOCAL_MODULE_TAGS := user
+LOCAL_MODULE_TAGS := optional
 
 # clear nvidia local variables to defaults
 NVIDIA_CLEARED := true
