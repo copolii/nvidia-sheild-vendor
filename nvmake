@@ -1,0 +1,131 @@
+#!/bin/bash
+
+NCPUS=$(cat /proc/cpuinfo | grep processor | wc -l)
+
+NV_PARALLEL_BUILD=-j$NCPUS
+#Uncomment the line below to force single-threaded builds
+#NV_PARALLEL_BUILD=
+
+_makesetup()
+{
+cd $TOP
+source build/envsetup.sh
+setpaths
+lunch ${1}-eng || _err
+}
+
+_makekernel()
+{
+ksetup ${1}_defconfig
+exit krebuild $NV_PARALLEL_BUILD
+}
+
+_createbootimg()
+{
+directory="$TOP/out/target/product/$1"
+if [ -d $directory ]; then
+    cd $directory
+    $TOP/out/host/linux-x86/bin/mkbootimg --kernel obj/KERNEL/arch/arm/boot/zImage --ramdisk ramdisk.img --output boot.img
+fi
+}
+
+_err()
+{
+rc=$?
+echo "##############################################################################################"
+echo "******************************   nvmake error \$?=$rc  ***************************************"
+echo "##############################################################################################"
+if [ $rc = 0 ]; then
+    exit 2
+else
+    exit $rc
+fi
+}
+
+_showusage()
+{
+echo "nvmake supported targets:"
+echo "    nvmake --help          --> usage info"
+echo "    nvmake ventana clean  --> clean build"
+echo "    nvmake ventana kernel --> build kernel"
+echo "    nvmake ventana dev    --> make all, no clean"
+echo "    nvmake ventana flash  --> flash the board"
+echo "    nvmake ventana nvflash  --> Use nvflash to flash board"
+}
+
+# input validation
+if [ $# != 2 ]
+then
+  _showusage
+  exit
+fi
+
+TOP=`pwd`
+echo "TOP is `echo $TOP`"
+export TEGRA_ROOT=$TOP/vendor/nvidia/proprietary_src/core
+echo "TEGRA_ROOT is `echo $TEGRA_ROOT`"
+# process make clean first
+if [ $2 == "clean" ]
+then
+  _makesetup $1
+  make clean
+fi
+
+# kernel build
+if [ $2 == "kernel" ]
+then
+  _makesetup $1
+  if [ $1 == 'ventana' ]  
+  then
+    ksetup tegra_defconfig
+  else
+    ksetup ${1}_defconfig
+  fi
+  krebuild $NV_PARALLEL_BUILD || _err
+
+  _createbootimg ${1}
+fi
+
+# full build - no clean
+if [ $2 == "dev" ]
+then
+  _makesetup $1
+
+  make $NV_PARALLEL_BUILD || _err
+  if [ $1 == 'ventana' ] 
+  then
+    ksetup tegra_defconfig
+  else
+    ksetup ${1}_defconfig	
+  fi
+  krebuild $NV_PARALLEL_BUILD || _err
+
+  _createbootimg ${1}
+fi
+
+# Flash
+if [ $2 == "flash" ]
+then
+	_makesetup $1
+	_createbootimg ${1}
+	directory="$TOP/out/target/product/$1"
+	if [ -d $directory ]; then
+    		cd $directory
+    		#fastboot erase userdata
+    		fastboot erase cache
+    		fastboot erase system
+		fastboot flash system system.img
+		fastboot flash boot boot.img
+		if [ -f $directory/recovery.img ]; then
+			fastboot flash recovery recovery.img		
+		fi
+		fastboot reboot
+	fi
+fi
+
+# nvflash
+if [ $2 == "nvflash" ]
+then
+  _makesetup $1
+  nvflash
+fi
