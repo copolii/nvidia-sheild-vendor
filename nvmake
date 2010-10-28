@@ -29,6 +29,27 @@ if [ -d $directory ]; then
 fi
 }
 
+_copybootfiles()
+{
+# NVIDIA only boot files.
+directory="$TEGRA_ROOT/../core-private/boot/$1"
+if [ -d $directory ]; then
+    nvflash_dst="$TOP/out/host/linux-x86/bin/$1"
+    if [ ! -d $nvflash_dst ]; then
+        mkdir -p $nvflash_dst
+    fi
+    cp $directory/nvflash $nvflash_dst
+
+    other_dst="$TOP/out/target/product/$1"
+    if [ ! -d $other_dst ]; then
+        mkdir -p $other_dst
+    fi
+    cp $directory/bootloader.bin $other_dst
+    cp $directory/flash.cfg $other_dst
+    cp $directory/flash.bct $other_dst
+fi
+}
+
 _err()
 {
 rc=$?
@@ -90,6 +111,7 @@ fi
 if [ $2 == "dev" ]
 then
   _makesetup $1
+  _copybootfiles $1
 
   make $NV_PARALLEL_BUILD || _err
   if [ $1 == 'ventana' ] 
