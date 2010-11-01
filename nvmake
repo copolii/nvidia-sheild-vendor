@@ -109,17 +109,22 @@ then
 	_makesetup $1
 	_createbootimg ${1}
 	directory="$TOP/out/target/product/$1"
-	if [ -d $directory ]; then
-    		cd $directory
-    		#fastboot erase userdata
-    		fastboot erase cache
-    		fastboot erase system
-		fastboot flash system system.img
-		fastboot flash boot boot.img
-		if [ -f $directory/recovery.img ]; then
-			fastboot flash recovery recovery.img		
+	if [ -f $TOP/out/host/linux-x86/bin/fastboot ]; then
+		if [ -d $directory ]; then
+			cd $directory
+			sudo $TOP/out/host/linux-x86/bin/fastboot erase userdata
+			sudo $TOP/out/host/linux-x86/bin/fastboot erase cache
+			sudo $TOP/out/host/linux-x86/bin/fastboot erase system
+			if [ -f $directory/moto_boot.bin ]; then
+				sudo $TOP/out/host/linux-x86/bin/fastboot flash motoboot moto_boot.bin
+			fi
+			sudo $TOP/out/host/linux-x86/bin/fastboot flash system system.img
+			sudo $TOP/out/host/linux-x86/bin/fastboot flash boot boot.img
+			if [ -f $directory/recovery.img ]; then
+				sudo $TOP/out/host/linux-x86/bin/fastboot flash recovery recovery.img		
+			fi
+			sudo $TOP/out/host/linux-x86/bin/fastboot reboot
 		fi
-		fastboot reboot
 	fi
 fi
 
