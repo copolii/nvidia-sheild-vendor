@@ -67,11 +67,11 @@ _showusage()
 {
 echo "nvmake supported targets:"
 echo "    nvmake --help          --> usage info"
-echo "    nvmake ventana clean  --> clean build"
-echo "    nvmake ventana kernel --> build kernel"
-echo "    nvmake ventana dev    --> make all, no clean"
-echo "    nvmake ventana flash  --> flash the board"
-echo "    nvmake ventana nvflash  --> Use nvflash to flash board"
+echo "    nvmake <product> clean  --> clean build"
+echo "    nvmake <product> kernel --> build kernel"
+echo "    nvmake <product> dev    --> make all, no clean"
+echo "    nvmake <product> flash  --> flash the board"
+echo "    nvmake <product> nvflash  --> Use nvflash to flash board"
 }
 
 # input validation
@@ -112,6 +112,13 @@ if [ $2 == "dev" ]
 then
   _makesetup $1
   _copybootfiles $1
+
+  # Bug 744213 fix requires avp to be built first
+  directory="$TEGRA_ROOT/../core-private"
+  if [ -d $directory ]; then
+    echo "Running 'make avp'"
+    make avp || _err
+  fi
 
   make $NV_PARALLEL_BUILD || _err
   if [ $1 == 'ventana' ] 
