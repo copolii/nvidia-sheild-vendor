@@ -116,6 +116,16 @@ then
   _makesetup $1
   _copybootfiles $1
 
+  if [ $1 == 'ventana' ]
+  then
+    ksetup tegra_defconfig
+  else
+    ksetup ${1}_defconfig
+  fi
+  krebuild $NV_PARALLEL_BUILD || _err
+
+  touch $TOP/device/nvidia/ventana/init.ventana.rc
+
   # Bug 744213 fix requires avp to be built first
   directory="$TEGRA_ROOT/../core-private"
   if [ -d $directory ]; then
@@ -124,13 +134,6 @@ then
   fi
 
   make $NV_PARALLEL_BUILD || _err
-  if [ $1 == 'ventana' ] 
-  then
-    ksetup tegra_defconfig
-  else
-    ksetup ${1}_defconfig	
-  fi
-  krebuild $NV_PARALLEL_BUILD || _err
 
   _createbootimg ${1}
 fi
