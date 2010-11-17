@@ -81,6 +81,7 @@ function krebuild()
         return
     fi
 
+    local OUTDIR=$(get_build_var PRODUCT_OUT)
     local TOOLS=$(get_build_var TARGET_TOOLS_PREFIX)
     local ARCHITECTURE=$(get_build_var TARGET_ARCH)
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
@@ -91,9 +92,16 @@ function krebuild()
     echo "make -C $SRC $* $KARCH $CROSS $KOUT"
     (cd $T && make -C $SRC $* $KARCH $CROSS $KOUT)
 
+    if [ -d "$T/$OUTDIR/modules" ] ; then
+        rm -r $T/$OUTDIR/modules
+    fi
+
+    (mkdir -p $T/$OUTDIR/modules \
+        cd $T && make modules_install -C $SRC $KARCH $CROSS $KOUT INSTALL_MOD_PATH=$T/$OUTDIR/modules \
+        && mkdir -p $T/$OUTDIR/system/lib/modules && cp -f `find $T/$OUTDIR/modules -name *.ko` $T/$OUTDIR/system/lib/modules)
+
     echo "Building boot.img"
 
-    local OUTDIR=$(get_build_var PRODUCT_OUT)
     local HOST_OUTDIR=$(get_build_var HOST_OUT)
     local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/arm/boot/zImage
     local RAMDISK=$T/$OUTDIR/ramdisk.img
