@@ -52,12 +52,23 @@ $(3): $(2) $(NVIDIA_NVIDL) $(LOCAL_ADDITIONAL_DEPENDENCIES)
 	$(hide) $(NVIDIA_NVIDL) $$(PRIVATE_IDLFLAGS) -o $$@ $$<
 endef
 
-define transform-shader-to-cghex
-@echo "Generating shader binary $@ from $<"
+define transform-shader-to-cgbin
+@echo "Compiling shader $@ from $<"
 @mkdir -p $(@D)
 $(hide) cat $< | $(NVIDIA_CGC) -quiet $(PRIVATE_CGOPTS) -o $(basename $@).cgbin
+endef
+
+define transform-cgbin-to-cghex
+@echo "Generating shader binary $@ from $<"
+@mkdir -p $(@D)
 $(hide) $(NVIDIA_SHADERFIX) -o $(basename $@).ar20bin $(basename $@).cgbin
 $(hide) $(NVIDIA_HEXIFY) $(basename $@).ar20bin $@
+endef
+
+define transform-cgbin-to-h
+@echo "Generating non-shaderfixed binary $@ from $<"
+@mkdir -p $(@D)
+$(hide) $(NVIDIA_HEXIFY) $(basename $@).cgbin $@
 endef
 
 define transform-shader-to-string
@@ -74,24 +85,42 @@ endef
 
 define shader-rule
 # shaders and shader source to output
+SHADERS_COMPILE_$(1) := $(addprefix $(intermediates)/shaders/, \
+	$(patsubst %.$(1),%.cgbin,$(filter %.$(1),$(2))))
+GEN_SHADERS_COMPILE_$(1) := $(addprefix $(intermediates)/shaders/, \
+	$(patsubst %.$(1),%.cgbin,$(filter %.$(1),$(3))))
 SHADERS_$(1) := $(addprefix $(intermediates)/shaders/, \
 	$(patsubst %.$(1),%.cghex,$(filter %.$(1),$(2))))
 GEN_SHADERS_$(1) := $(addprefix $(intermediates)/shaders/, \
 	$(patsubst %.$(1),%.cghex,$(filter %.$(1),$(3))))
+SHADERS_NOFIX_$(1) := $(addprefix $(intermediates)/shaders/, \
+	$(patsubst %.$(1),%.h,$(filter %.$(1),$(2))))
+GEN_SHADERS_NOFIX_$(1) := $(addprefix $(intermediates)/shaders/, \
+	$(patsubst %.$(1),%.h,$(filter %.$(1),$(3))))
 SHADERSRC_$(1) := $(addprefix $(intermediates)/shaders/, \
 	$(patsubst %.$(1),%.$(1)h,$(filter %.$(1),$(2))))
 GEN_SHADERSRC_$(1) := $(addprefix $(intermediates)/shaders/, \
 	$(patsubst %.$(1),%.$(1)h,$(filter %.$(1),$(3))))
 
 # create lists to "output"
+ALL_SHADERS_COMPILE_$(1) := $$(SHADERS_COMPILE_$(1)) $$(GEN_SHADERS_COMPILE_$(1))
 ALL_SHADERS_$(1) := $$(SHADERS_$(1)) $$(GEN_SHADERS_$(1))
+ALL_SHADERS_NOFIX_$(1) := $$(SHADERS_NOFIX_$(1)) $$(GEN_SHADERS_NOFIX_$(1))
 ALL_SHADERSRC_$(1) := $$(SHADERSRC_$(1)) $$(GEN_SHADERSRC_$(1))
 
 # rules for building the shaders and shader source
-$$(SHADERS_$(1)): $(intermediates)/shaders/%.cghex : $(LOCAL_PATH)/%.$(1)
-	$$(transform-shader-to-cghex)
-$$(GEN_SHADERS_$(1)): $(intermediates)/shaders/%.cghex : $(intermediates)/%.$(1)
-	$$(transform-shader-to-cghex)
+$$(SHADERS_COMPILE_$(1)): $(intermediates)/shaders/%.cgbin : $(LOCAL_PATH)/%.$(1)
+	$$(transform-shader-to-cgbin)
+$$(GEN_SHADERS_COMPILE_$(1)): $(intermediates)/shaders/%.cgbin : $(intermediates)/%.$(1)
+	$$(transform-shader-to-cgbin)
+$$(SHADERS_$(1)): $(intermediates)/shaders/%.cghex : $(intermediates)/shaders/%.cgbin
+	$$(transform-cgbin-to-cghex)
+$$(GEN_SHADERS_$(1)): $(intermediates)/shaders/%.cghex : $(intermediates)/shaders/%.cgbin
+	$$(transform-cgbin-to-cghex)
+$$(SHADERS_NOFIX_$(1)): $(intermediates)/shaders/%.h : $(intermediates)/shaders/%.cgbin
+	$$(transform-cgbin-to-h)
+$$(GEN_SHADERS_NOFIX_$(1)): $(intermediates)/shaders/%.h : $(intermediates)/shaders/%.cgbin
+	$$(transform-cgbinr-to-h)
 $$(SHADERSRC_$(1)): $(intermediates)/shaders/%.$(1)h : $(LOCAL_PATH)/%.$(1)
 	$$(transform-shader-to-string)
 $$(GEN_SHADERSRC_$(1)): $(intermediates)/shaders/%.$(1)h : $(intermediates)/%.$(1)

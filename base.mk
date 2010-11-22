@@ -51,11 +51,13 @@ $(foreach shadertype,glslv glslf cgv cgf,\
 		$(LOCAL_NVIDIA_SHADERS),\
 		$(LOCAL_NVIDIA_GEN_SHADERS))))
 
-$(ALL_SHADERS_glslv): PRIVATE_CGOPTS := -profile ar20vp -ogles
-$(ALL_SHADERS_glslf): PRIVATE_CGOPTS := -profile ar20fp -ogles
-$(ALL_SHADERS_cgv): PRIVATE_CGOPTS := -profile ar20vp
-$(ALL_SHADERS_cgf): PRIVATE_CGOPTS := -profile ar20fp
-$(ALL_SHADERS_glslv) $(ALL_SHADERS_glslf) $(ALL_SHADERS_cgv) $(ALL_SHADERS_cgf): $(NVIDIA_CGC) $(NVIDIA_SHADERFIX)
+$(ALL_SHADERS_COMPILE_glslv): PRIVATE_CGOPTS := -profile ar20vp -ogles
+$(ALL_SHADERS_COMPILE_glslf): PRIVATE_CGOPTS := -profile ar20fp -ogles
+$(ALL_SHADERS_COMPILE_cgv): PRIVATE_CGOPTS := -profile ar20vp
+$(ALL_SHADERS_COMPILE_cgf): PRIVATE_CGOPTS := -profile ar20fp
+
+$(ALL_SHADERS_COMPILE_glslv) $(ALL_SHADERS_COMPILE_glslf) $(ALL_SHADERS_COMPILE_cgv) $(ALL_SHADERS_COMPILE_cgf): $(NVIDIA_CGC)
+$(ALL_SHADERS_glslv) $(ALL_SHADERS_glslf) $(ALL_SHADERS_cgv) $(ALL_SHADERS_cgf): $(NVIDIA_SHADERFIX)
 
 # Ar20 assembly to header (.h)
 
@@ -69,6 +71,7 @@ $(GEN_AR20FRG): $(NVIDIA_AR20ASM)
 
 ALL_GENERATED_FILES := $(foreach shadertype,glslv glslf cgv cgf,\
 		           $(ALL_SHADERS_$(shadertype)) \
+		           $(ALL_SHADERS_NOFIX_$(shadertype)) \
 			   $(ALL_SHADERSRC_$(shadertype))) $(GEN_AR20FRG)
 
 LOCAL_GENERATED_SOURCES += $(ALL_GENERATED_FILES)
