@@ -29,6 +29,15 @@ if [ -d $directory ]; then
 fi
 }
 
+_createprebuiltbootimg()
+{
+directory="$TOP/out/target/product/$1"
+if [ -d $directory ]; then
+    cd $directory
+    $TOP/out/host/linux-x86/bin/mkbootimg --kernel $PREBUILT_KERNEL --ramdisk ramdisk.img --output boot.img
+fi
+}
+
 _copybootfiles()
 {
 # NVIDIA only boot files.
@@ -66,12 +75,14 @@ fi
 _showusage()
 {
 echo "nvmake supported targets:"
-echo "    nvmake --help          --> usage info"
-echo "    nvmake <product> clean  --> clean build"
-echo "    nvmake <product> kernel --> build kernel"
-echo "    nvmake <product> dev    --> make all, no clean"
-echo "    nvmake <product> flash  --> flash the board"
-echo "    nvmake <product> nvflash  --> Use nvflash to flash board"
+echo "    nvmake --help                 --> usage info"
+echo "    nvmake <product> clean        --> clean build"
+echo "    nvmake <product> kernel       --> build kernel"
+echo "    nvmake <product> dev          --> make all, no clean"
+echo "    nvmake <product> dev-prebuilt --> make all, no clean, use prebuilt"
+echo "           kernel.  Must set PREBUILT_KERNEL to prebuilt location"
+echo "    nvmake <product> flash        --> flash the board"
+echo "    nvmake <product> nvflash      --> Use nvflash to flash board"
 }
 
 # input validation
@@ -136,6 +147,28 @@ then
   make $NV_PARALLEL_BUILD || _err
 
   _createbootimg ${1}
+fi
+
+# full build - no clean
+if [ $2 == "dev-prebuilt" ]
+then
+  if [ "a$PREBUILT_KERNEL" == "a" ]; then
+    echo "PREBUILT_KERNEL must be set when using dev-prebuilt"
+    _err
+  fi
+  _makesetup $1
+  _copybootfiles $1
+
+  # Bug 744213 fix requires avp to be built first
+  directory="$TEGRA_ROOT/../core-private"
+  if [ -d $directory ]; then
+    echo "Running 'make avp'"
+    make avp || _err
+  fi
+
+  make $NV_PARALLEL_BUILD || _err
+
+  _createprebuiltbootimg ${1}
 fi
 
 # Flash
