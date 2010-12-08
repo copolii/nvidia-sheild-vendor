@@ -149,7 +149,13 @@ function nvflash()
     local OUTDIR=$(get_build_var PRODUCT_OUT)
     local HOSTOUT=$(get_build_var HOST_OUT)
 
-    local FLASH_CMD="$T/$HOSTOUT/bin/$DEV/nvflash"
+    if [ -e "$T/$HOSTOUT/bin/$DEV/nvflash" ]
+    then
+        local FLASH_CMD="$T/$HOSTOUT/bin/$DEV/nvflash"
+    else
+        local FLASH_CMD="$T/$HOSTOUT/obj/EXECUTABLES/nvflash_intermediates/nvflash"
+    fi
+
     FLASH_CMD="$FLASH_CMD --bct flash.bct --setbct"
     if [ "$ODMDATA" != "" ] ; then
         FLASH_CMD="$FLASH_CMD --odmdata $ODMDATA"
