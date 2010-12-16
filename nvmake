@@ -6,12 +6,24 @@ NV_PARALLEL_BUILD=-j$NCPUS
 #Uncomment the line below to force single-threaded builds
 #NV_PARALLEL_BUILD=
 
+SHOW_COMMANDS=
+#Uncomment the line below to show build command lines
+#SHOW_COMMANDS=showcommands
+
 _makesetup()
 {
 cd $TOP
 source build/envsetup.sh
 setpaths
+# Keep the stupid lunch() function from overriding the selected TARGET_BUILD_TYPE
+local SAVED_TARGET_BUILD_TYPE
+SAVED_TARGET_BUILD_TYPE=$TARGET_BUILD_TYPE
 lunch ${1}-eng || _err
+if [ "$SAVED_TARGET_BUILD_TYPE" != "" ]
+then
+  export TARGET_BUILD_TYPE=$SAVED_TARGET_BUILD_TYPE
+fi
+echo "Building with TARGET_BUILD_TYPE=$TARGET_BUILD_TYPE"
 }
 
 _makekernel()
@@ -22,10 +34,19 @@ exit krebuild $NV_PARALLEL_BUILD
 
 _createbootimg()
 {
-directory="$TOP/out/target/product/$1"
+if [ $TARGET_BUILD_TYPE == "debug" ]
+then
+    directory="$TOP/out/debug/target/product/$1"
+else
+    directory="$TOP/out/target/product/$1"
+fi
 if [ -d $directory ]; then
+    echo "Creating boot image ....."
     cd $directory
     $TOP/out/host/linux-x86/bin/mkbootimg --kernel obj/KERNEL/arch/arm/boot/zImage --ramdisk ramdisk.img --output boot.img
+else
+    echo "ERROR: Output $directory does not exist !!!"
+    exit 2
 fi
 }
 
@@ -40,7 +61,12 @@ if [ -d $directory ]; then
     fi
     cp $directory/nvflash $nvflash_dst
 
-    other_dst="$TOP/out/target/product/$1"
+    if [ $TARGET_BUILD_TYPE == "debug" ]
+    then
+        other_dst="$TOP/out/debug/target/product/$1"
+    else
+        other_dst="$TOP/out/target/product/$1"
+    fi
     if [ ! -d $other_dst ]; then
         mkdir -p $other_dst
     fi
@@ -88,6 +114,21 @@ then
     export TEGRA_ROOT=$TOP/vendor/nvidia/proprietary_src/core
     echo "TEGRA_ROOT is `echo $TEGRA_ROOT`"
 fi
+
+if [ "$TARGET_BUILD_TYPE" == "" ]
+then
+    echo "TARGET_BUILD_TYPE must be set in the environment"
+    exit 2
+fi
+
+if [ $TARGET_BUILD_TYPE == "debug" ]
+then
+    directory="$TOP/out/debug/target/product/$1"
+else
+    directory="$TOP/out/target/product/$1"
+fi
+echo "Output directory is $directory"
+
 # process make clean first
 if [ $2 == "clean" ]
 then
@@ -99,11 +140,11 @@ fi
 if [ $2 == "kernel" ]
 then
   _makesetup $1
-  if [ $1 == 'ventana' ]  
+  if [ $1 == 'ventana' ]
   then
     ksetup tegra_defconfig
   else
-    ksetup ${1}_defconfig
+    ksetup tegra_${1}_android_defconfig
   fi
   krebuild $NV_PARALLEL_BUILD || _err
 
@@ -120,20 +161,23 @@ then
   then
     ksetup tegra_defconfig
   else
-    ksetup ${1}_defconfig
+    ksetup tegra_${1}_android_defconfig
   fi
   krebuild $NV_PARALLEL_BUILD || _err
 
-  touch $TOP/device/nvidia/ventana/init.ventana.rc
+  if [ $1 == 'ventana' ]
+  then
+    touch $TOP/device/nvidia/ventana/init.ventana.rc
+  fi
 
   # Bug 744213 fix requires avp to be built first
   directory="$TEGRA_ROOT/../core-private"
   if [ -d $directory ]; then
-    echo "Running 'make avp'"
-    make avp || _err
+    echo "Running 'make $SHOW_COMMANDS avp'"
+    make $SHOW_COMMANDS avp || _err
   fi
 
-  make $NV_PARALLEL_BUILD || _err
+  make $SHOW_COMMANDS $NV_PARALLEL_BUILD || _err
 
   _createbootimg ${1}
 fi
@@ -143,7 +187,6 @@ if [ $2 == "flash" ]
 then
 	_makesetup $1
 	_createbootimg ${1}
-	directory="$TOP/out/target/product/$1"
 	if [ -f $TOP/out/host/linux-x86/bin/fastboot ]; then
 		if [ -d $directory ]; then
 			cd $directory
@@ -153,7 +196,7 @@ then
 			sudo $TOP/out/host/linux-x86/bin/fastboot flash system system.img
 			sudo $TOP/out/host/linux-x86/bin/fastboot flash boot boot.img
 			if [ -f $directory/recovery.img ]; then
-				sudo $TOP/out/host/linux-x86/bin/fastboot flash recovery recovery.img		
+				sudo $TOP/out/host/linux-x86/bin/fastboot flash recovery recovery.img
 			fi
 			sudo $TOP/out/host/linux-x86/bin/fastboot reboot
 		fi
