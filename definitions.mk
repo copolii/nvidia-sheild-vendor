@@ -4,7 +4,7 @@
 #
 
 ifndef TEGRA_ROOT
-TEGRA_ROOT := vendor/nvidia/proprietary_src/core
+TEGRA_ROOT := vendor/nvidia/tegra/core
 endif
 
 NVIDIA_BUILD_ROOT          := vendor/nvidia/build
