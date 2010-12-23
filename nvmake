@@ -18,8 +18,18 @@ lunch ${1}-eng || _err
 
 _makekernel()
 {
-ksetup ${1}_defconfig
-exit krebuild $NV_PARALLEL_BUILD
+  if [ $1 == 'ventana' ]
+  then
+    ksetup tegra_defconfig
+  else
+      if [ $1 == 'whistler' ]
+      then
+          ksetup tegra_whistler_android_defconfig
+      else
+          ksetup ${1}_defconfig
+      fi
+  fi
+  krebuild $NV_PARALLEL_BUILD || _err
 }
 
 _createbootimg()
@@ -112,14 +122,7 @@ fi
 if [ $2 == "kernel" ]
 then
   _makesetup $1
-  if [ $1 == 'ventana' ]  
-  then
-    ksetup tegra_defconfig
-  else
-    ksetup ${1}_defconfig
-  fi
-  krebuild $NV_PARALLEL_BUILD || _err
-
+  _makekernel $1
   _createbootimg ${1}
 fi
 
@@ -128,16 +131,9 @@ if [ $2 == "dev" ]
 then
   _makesetup $1
   _copybootfiles $1
-
-  if [ $1 == 'ventana' ]
-  then
-    ksetup tegra_defconfig
-  else
-    ksetup ${1}_defconfig
-  fi
-  krebuild $NV_PARALLEL_BUILD || _err
-
+  _makekernel $1
   touch $TOP/device/nvidia/ventana/init.ventana.rc
+  touch $TOP/device/nvidia/whistler/init.whistler.rc
 
   # Bug 744213 fix requires avp to be built first
   directory="$TEGRA_ROOT/../core-private"
@@ -185,7 +181,7 @@ then
 			sudo $TOP/out/host/linux-x86/bin/fastboot flash system system.img
 			sudo $TOP/out/host/linux-x86/bin/fastboot flash boot boot.img
 			if [ -f $directory/recovery.img ]; then
-				sudo $TOP/out/host/linux-x86/bin/fastboot flash recovery recovery.img		
+				sudo $TOP/out/host/linux-x86/bin/fastboot flash recovery recovery.img
 			fi
 			sudo $TOP/out/host/linux-x86/bin/fastboot reboot
 		else
