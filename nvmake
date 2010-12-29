@@ -144,6 +144,8 @@ then
     make avp || _err
   fi
 
+  make $NV_PARALLEL_BUILD || _err
+
   _createbootimg ${1}
 fi
 
