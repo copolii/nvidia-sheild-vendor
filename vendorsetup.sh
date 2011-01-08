@@ -161,7 +161,13 @@ function nvflash()
         FLASH_CMD="$FLASH_CMD --odmdata $ODMDATA"
     fi
     FLASH_CMD="$FLASH_CMD --configfile flash.cfg"
-    FLASH_CMD="$FLASH_CMD --create --bl bootloader.bin --go"
+
+    if [ ! "$NVFLASH_VERIFY" ]
+    then
+      FLASH_CMD="$FLASH_CMD --create --bl bootloader.bin --go"
+    else
+      FLASH_CMD="$FLASH_CMD --create --verifypart -1 --bl bootloader.bin --go"
+    fi
 
     echo $FLASH_CMD
     (cd $T/$OUTDIR && sudo $FLASH_CMD)
