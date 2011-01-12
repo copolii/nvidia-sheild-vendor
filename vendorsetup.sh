@@ -7,7 +7,7 @@ function _gethosttype()
 
     if [ "$H" == Darwin ]; then
         HOSTTYPE="darwin-x86"
-        export HOST_EXTRACFLAGS="-I$TOP/vendor/nvidia/proprietary_src/core-private/include"
+        export HOST_EXTRACFLAGS="-I$TOP/vendor/nvidia/tegra/core-private/include"
     fi
 }
 
