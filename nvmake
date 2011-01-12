@@ -94,9 +94,9 @@ fi
 
 TOP=`pwd`
 echo "TOP is `echo $TOP`"
-if [ -d $TOP/vendor/nvidia/proprietary_src/core-private ]
+if [ -d $TOP/vendor/nvidia/tegra/core-private ]
 then
-    export TEGRA_ROOT=$TOP/vendor/nvidia/proprietary_src/core
+    export TEGRA_ROOT=$TOP/vendor/nvidia/tegra/core
     echo "TEGRA_ROOT is `echo $TEGRA_ROOT`"
 fi
 # process make clean first
