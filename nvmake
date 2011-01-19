@@ -2,7 +2,9 @@
 
 NCPUS=$(cat /proc/cpuinfo | grep processor | wc -l)
 
-NV_PARALLEL_BUILD=-j$NCPUS
+if [ -z "$NV_PARALLEL_BUILD" ]; then
+    NV_PARALLEL_BUILD=-j$NCPUS
+fi
 #Uncomment the line below to force single-threaded builds
 #NV_PARALLEL_BUILD=
 
