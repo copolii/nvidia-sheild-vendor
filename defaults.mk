@@ -25,6 +25,8 @@ LOCAL_CFLAGS += -DNV_DEBUG=1
 # TODO: fix source that relies on these
 LOCAL_CFLAGS += -DDEBUG
 LOCAL_CFLAGS += -D_DEBUG
+# disable all optimizations and enable gdb debugging extensions
+LOCAL_CFLAGS += -O0 -ggdb
 else
 LOCAL_CFLAGS += -DNV_DEBUG=0
 endif
