@@ -8,7 +8,7 @@ echo "DEBUG: PRODUCT_OUT = $OUTDIR"
 export FASTBOOT_VID=0x955
 
 echo "Setting up NvFlash BCT for Cardhu with DDR3 SDRAM......"
-cp $TEGRA_ROOT/../customers/nvidia/cardhu/nvflash/cardhu_13Mhz_H5TQ1G83BFR-H9C_13Mhz_1GB_emmc_H26M42001EFR_x8.bct $TOP/$OUTDIR/flash.bct
+cp $TEGRA_ROOT/../customers/nvidia/cardhu/nvflash/cardhu_12Mhz_H5TC2G83BFR_333Mhz_1GB_emmc_SDIN5C2-16G_x8.bct $TOP/$OUTDIR/flash.bct
 cp $TEGRA_ROOT/../customers/nvidia/cardhu/nvflash/android_fastboot_emmc_full.cfg $TOP/$OUTDIR/flash.cfg
 export NVFLASH_ODM_DATA=0x40080105
 
