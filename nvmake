@@ -104,6 +104,7 @@ fi
 if [ $2 == "clean" ]
 then
   _makesetup $1
+  make avp-clean
   make clean
 fi
 
