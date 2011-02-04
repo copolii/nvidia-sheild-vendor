@@ -153,7 +153,7 @@ function nvflash()
     then
         local FLASH_CMD="$T/$HOSTOUT/bin/$DEV/nvflash"
     else
-        local FLASH_CMD="$T/$HOSTOUT/obj/EXECUTABLES/nvflash_intermediates/nvflash"
+        local FLASH_CMD="$T/$HOSTOUT/bin/nvflash"
     fi
 
     FLASH_CMD="$FLASH_CMD --bct flash.bct --setbct"
