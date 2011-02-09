@@ -107,8 +107,24 @@ nvidia-clean: clean-$(NVIDIA_TARGET_NAME)
 
 ifneq ($(findstring nvidia_tests,$(LOCAL_MODULE_TAGS)),)
 nvidia-tests: $(NVIDIA_TARGET_NAME)
+ifneq ($(filter nvidia-tests,$(MAKECMDGOALS)),)
+# If we're explicitly building nvidia-tests, install the tests.
+ALL_NVIDIA_TESTS += $(NVIDIA_TARGET_NAME)
+endif
+ifneq ($(filter nvidia-tests-automation,$(MAKECMDGOALS)),)
+# If we're explicitly building nvidia-tests-automation, redirect the tests.
+ALL_NVIDIA_TESTS += $(NVIDIA_TARGET_NAME)
+ifeq ($(LOCAL_MODULE_CLASS),EXECUTABLES)
+LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/bin
+endif
+ifeq ($(LOCAL_MODULE_CLASS),SHARED_LIBRARIES)
+LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/lib
+endif
+endif
 else
 nvidia-modules: $(NVIDIA_TARGET_NAME)
 endif
+
+nvidia-tests-automation: nvidia-tests
 
 NVIDIA_TARGET_NAME :=

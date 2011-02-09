@@ -39,6 +39,7 @@ endif
 
 # global vars
 ALL_NVIDIA_MODULES :=
+ALL_NVIDIA_TESTS :=
 ifneq ($(TEGRA_ROOT),hardware/tegra)
 NVIDIA_APICHECK := 1
 endif
