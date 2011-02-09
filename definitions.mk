@@ -25,7 +25,7 @@ NVIDIA_PACKAGE             := $(NVIDIA_BUILD_ROOT)/package.mk
 
 # tools
 
-NVIDIA_CGC		   := $(TEGRA_ROOT)/../cg/Cg/$(HOST_OS)/cgc
+NVIDIA_CGC		   := $(HOST_OUT_EXECUTABLES)/cgc
 NVIDIA_AR20ASM		   := $(TEGRA_ROOT)/../cg/Cg/$(HOST_OS)/ar20asm
 
 NVIDIA_HEXIFY	           := $(NVIDIA_BUILD_ROOT)/hexify.py
