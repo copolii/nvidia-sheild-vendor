@@ -1,5 +1,5 @@
 # NVIDIA Tegra3 "Cardhu" development system
-local OUTDIR=$(get_build_var PRODUCT_OUT)
+OUTDIR=$(get_build_var PRODUCT_OUT)
 echo "DEBUG: PRODUCT_OUT = $OUTDIR"
 
 # setup FASTBOOT VENDOR ID

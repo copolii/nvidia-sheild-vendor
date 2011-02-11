@@ -180,6 +180,7 @@ then
   make $SHOW_COMMANDS $NV_PARALLEL_BUILD || _err
 
   _createbootimg ${1}
+  . $TOP/vendor/nvidia/build/$TARGET_PRODUCT/$TARGET_PRODUCT.sh
 fi
 
 # Flash
