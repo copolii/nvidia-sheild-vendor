@@ -107,15 +107,15 @@ function krebuild()
     local RAMDISK=$T/$OUTDIR/ramdisk.img
     local MKBOOTIMG=$T/$HOST_OUTDIR/bin/mkbootimg
 
-    if [ ! "$ZIMAGE" ]; then
+    if [ ! -f "$ZIMAGE" ]; then
         echo "Couldn't find $ZIMAGE. Your KERNEL is not build." >&2
         return
     fi
-    if [ ! "$RAMDISK" ]; then
+    if [ ! -f "$RAMDISK" ]; then
         echo "Couldn't find $RAMDISK. Your ANDROID system is not build." >&2
         return
     fi
-    if [ ! "$MKBOOTIMG" ]; then
+    if [ ! -f "$MKBOOTIMG" ]; then
         echo "Couldn't find $MKBOOTIMG. Your ANDROID system is not build." >&2
         return
     fi
