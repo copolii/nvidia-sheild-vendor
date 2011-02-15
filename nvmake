@@ -1,212 +1,49 @@
 #!/bin/bash
 
-NCPUS=$(cat /proc/cpuinfo | grep processor | wc -l)
+echo "
+*** nvmake has been retired! ***
 
-NV_PARALLEL_BUILD=-j$NCPUS
-#Uncomment the line below to force single-threaded builds
-#NV_PARALLEL_BUILD=
+Please setup your environment as follows:
 
-SHOW_COMMANDS=
-#Uncomment the line below to show build command lines
-#SHOW_COMMANDS=showcommands
+export P4ROOT=<your_p4_root>
+export TOP=<your_top_dir>
+export TEGRA_ROOT=\${TOP}/vendor/nvidia/proprietary_src/core
+. build/envsetup.sh
 
-_makesetup()
-{
-cd $TOP
-source build/envsetup.sh
-setpaths
-# Keep the stupid lunch() function from overriding the selected TARGET_BUILD_TYPE
-local SAVED_TARGET_BUILD_TYPE
-SAVED_TARGET_BUILD_TYPE=$TARGET_BUILD_TYPE
-lunch ${1}-eng || _err
-if [ "$SAVED_TARGET_BUILD_TYPE" != "" ]
-then
-  export TARGET_BUILD_TYPE=$SAVED_TARGET_BUILD_TYPE
-fi
-echo "Building with TARGET_BUILD_TYPE=$TARGET_BUILD_TYPE"
-}
+Next, run \"choosecombo\" in order to select your configuration.
 
-_makekernel()
-{
-ksetup ${1}_defconfig
-exit krebuild $NV_PARALLEL_BUILD
-}
+choosecombo
 
-_createbootimg()
-{
-if [ $TARGET_BUILD_TYPE == "debug" ]
-then
-    directory="$TOP/out/debug/target/product/$1"
-else
-    directory="$TOP/out/target/product/$1"
-fi
-if [ -d $directory ]; then
-    echo "Creating boot image ....."
-    cd $directory
-    $TOP/out/host/linux-x86/bin/mkbootimg --kernel obj/KERNEL/arch/arm/boot/zImage --ramdisk ramdisk.img --output boot.img
-else
-    echo "ERROR: Output $directory does not exist !!!"
-    exit 2
-fi
-}
+Use your board name (e.g. \"cardhu\") as the product when asked.
+For use in shell scripts, you can give the choices as arguments, e.g.
 
-_copybootfiles()
-{
-# NVIDIA only boot files.
-directory="$TEGRA_ROOT/../core-private/boot/$1"
-if [ -d $directory ]; then
-    nvflash_dst="$TOP/out/host/linux-x86/bin/$1"
-    if [ ! -d $nvflash_dst ]; then
-        mkdir -p $nvflash_dst
-    fi
-    cp $directory/nvflash $nvflash_dst
+choosecombo 1 2 cardhu eng
 
-    if [ $TARGET_BUILD_TYPE == "debug" ]
-    then
-        other_dst="$TOP/out/debug/target/product/$1"
-    else
-        other_dst="$TOP/out/target/product/$1"
-    fi
-    if [ ! -d $other_dst ]; then
-        mkdir -p $other_dst
-    fi
-    cp $directory/bootloader.bin $other_dst
-    cp $directory/flash.cfg $other_dst
-    cp $directory/flash.bct $other_dst
-fi
-}
+If you prefer, you can use a buildspec.mk file instead of choosecombo.
+This is what we used to do with Froyo.  buildspec.mk is useful if
+you rarely change your build setup.  Just copy the sample from
+\$TOP/build/buildspec.mk.default to \$TOP/buildspec.mk and edit.
 
-_err()
-{
-rc=$?
-echo "##############################################################################################"
-echo "******************************   nvmake error \$?=$rc  ***************************************"
-echo "##############################################################################################"
-if [ $rc = 0 ]; then
-    exit 2
-else
-    exit $rc
-fi
-}
+To build the complete image, say
 
-_showusage()
-{
-echo "nvmake supported targets:"
-echo "    nvmake --help          --> usage info"
-echo "    nvmake <product> clean  --> clean build"
-echo "    nvmake <product> kernel --> build kernel"
-echo "    nvmake <product> dev    --> make all, no clean"
-echo "    nvmake <product> flash  --> flash the board"
-echo "    nvmake <product> nvflash  --> Use nvflash to flash board"
-}
+m dev
 
-# input validation
-if [ $# != 2 ]
-then
-  _showusage
-  exit
-fi
+or plain
 
-TOP=`pwd`
-echo "TOP is `echo $TOP`"
-if [ -d $TOP/vendor/nvidia/proprietary_src/core-private ]
-then
-    export TEGRA_ROOT=$TOP/vendor/nvidia/proprietary_src/core
-    echo "TEGRA_ROOT is `echo $TEGRA_ROOT`"
-fi
+m
 
-if [ "$TARGET_BUILD_TYPE" == "" ]
-then
-    echo "TARGET_BUILD_TYPE must be set in the environment"
-    exit 2
-fi
+To build your module only, say
 
-if [ $TARGET_BUILD_TYPE == "debug" ]
-then
-    directory="$TOP/out/debug/target/product/$1"
-else
-    directory="$TOP/out/target/product/$1"
-fi
-echo "Output directory is $directory"
+mm
 
-# process make clean first
-if [ $2 == "clean" ]
-then
-  _makesetup $1
-  make clean
-fi
+in the module directory.  For parallel builds, use convenience
+commands \"mp\" and \"mmp\".
 
-# kernel build
-if [ $2 == "kernel" ]
-then
-  _makesetup $1
-  if [ $1 == 'ventana' ]
-  then
-    ksetup tegra_defconfig
-  else
-    ksetup tegra_${1}_android_defconfig
-  fi
-  krebuild $NV_PARALLEL_BUILD || _err
+To nvflash the board, use
 
-  _createbootimg ${1}
-fi
+flash
 
-# full build - no clean
-if [ $2 == "dev" ]
-then
-  _makesetup $1
-  _copybootfiles $1
+In case of issues, please fix, or file a bug with Mobile_Build_System .
+"
 
-  if [ $1 == 'ventana' ]
-  then
-    ksetup tegra_defconfig
-  else
-    ksetup tegra_${1}_android_defconfig
-  fi
-  krebuild $NV_PARALLEL_BUILD || _err
-
-  if [ $1 == 'ventana' ]
-  then
-    touch $TOP/device/nvidia/ventana/init.ventana.rc
-  fi
-
-  # Bug 744213 fix requires avp to be built first
-  directory="$TEGRA_ROOT/../core-private"
-  if [ -d $directory ]; then
-    echo "Running 'make $SHOW_COMMANDS avp'"
-    make $SHOW_COMMANDS avp || _err
-  fi
-
-  make $SHOW_COMMANDS $NV_PARALLEL_BUILD || _err
-
-  _createbootimg ${1}
-  . $TOP/vendor/nvidia/build/$TARGET_PRODUCT/$TARGET_PRODUCT.sh
-fi
-
-# Flash
-if [ $2 == "flash" ]
-then
-	_makesetup $1
-	_createbootimg ${1}
-	if [ -f $TOP/out/host/linux-x86/bin/fastboot ]; then
-		if [ -d $directory ]; then
-			cd $directory
-			sudo $TOP/out/host/linux-x86/bin/fastboot erase userdata
-			sudo $TOP/out/host/linux-x86/bin/fastboot erase cache
-			sudo $TOP/out/host/linux-x86/bin/fastboot erase system
-			sudo $TOP/out/host/linux-x86/bin/fastboot flash system system.img
-			sudo $TOP/out/host/linux-x86/bin/fastboot flash boot boot.img
-			if [ -f $directory/recovery.img ]; then
-				sudo $TOP/out/host/linux-x86/bin/fastboot flash recovery recovery.img
-			fi
-			sudo $TOP/out/host/linux-x86/bin/fastboot reboot
-		fi
-	fi
-fi
-
-# nvflash
-if [ $2 == "nvflash" ]
-then
-  _makesetup $1
-  nvflash
-fi
+exit 1
