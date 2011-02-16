@@ -81,9 +81,8 @@ echo "    nvmake --help                 --> usage info"
 echo "    nvmake <product> clean        --> clean build"
 echo "    nvmake <product> kernel       --> build kernel"
 echo "    nvmake <product> dev          --> make all, no clean"
-echo "    nvmake <product> dev-prebuilt --> make all, no clean, use prebuilt"
-echo "           kernel.  Must set PREBUILT_KERNEL to prebuilt location"
-echo "    nvmake <product> flash        --> flash the board"
+echo "    nvmake <product> flash        --> flash the board ( only system,boot and recovery images )"
+echo "    nvmake <product> flashall     --> erase and flash the board ( delete userdata,cache + flash option )"
 echo "    nvmake <product> nvflash      --> Use nvflash to flash board"
 }
 
@@ -182,17 +181,44 @@ then
 	if [ -f $TOP/out/host/linux-x86/bin/fastboot ]; then
 		if [ -d $directory ]; then
 			cd $directory
-			sudo $TOP/out/host/linux-x86/bin/fastboot erase userdata
-			sudo $TOP/out/host/linux-x86/bin/fastboot erase cache
-			sudo $TOP/out/host/linux-x86/bin/fastboot erase system
 			sudo $TOP/out/host/linux-x86/bin/fastboot flash system system.img
 			sudo $TOP/out/host/linux-x86/bin/fastboot flash boot boot.img
 			if [ -f $directory/recovery.img ]; then
 				sudo $TOP/out/host/linux-x86/bin/fastboot flash recovery recovery.img		
 			fi
 			sudo $TOP/out/host/linux-x86/bin/fastboot reboot
+		else
+			echo "$directory not found"
 		fi
+	else
+		echo " $TOP/out/host/linux-x86/bin/fastboot not found "
 	fi
+fi
+
+# Flash
+if [ $2 == "flashall" ]
+then
+        _makesetup $1
+        _createbootimg ${1}
+        directory="$TOP/out/target/product/$1"
+        if [ -f $TOP/out/host/linux-x86/bin/fastboot ]; then
+                if [ -d $directory ]; then
+                        cd $directory
+                        sudo $TOP/out/host/linux-x86/bin/fastboot erase userdata
+                        sudo $TOP/out/host/linux-x86/bin/fastboot erase cache
+                        sudo $TOP/out/host/linux-x86/bin/fastboot erase system
+                        sudo $TOP/out/host/linux-x86/bin/fastboot flash system system.img
+                        sudo $TOP/out/host/linux-x86/bin/fastboot flash boot boot.img
+                        if [ -f $directory/recovery.img ]; then
+                                sudo $TOP/out/host/linux-x86/bin/fastboot flash recovery recovery.img
+                        fi
+                        sudo $TOP/out/host/linux-x86/bin/fastboot reboot
+                else
+                        echo "$directory not found"
+                fi
+        else
+                echo " $TOP/out/host/linux-x86/bin/fastboot not found "
+        fi
 fi
 
 # nvflash
