@@ -22,7 +22,7 @@ function ksetup()
     local SRC="$T/kernel"
     if [ $# -lt 1 ] ; then
         echo "Usage: ksetup <defconfig> <path>"
-	return
+        return
     fi
 
     if [ $# -gt 1 ] ; then
@@ -149,7 +149,17 @@ function krebuild()
     echo "boot.img is ready"
 }
 
-function nvflash()
+function mp()
+{
+    m -j$(cat /proc/cpuinfo | grep processor | wc -l) $*
+}
+
+function mmp()
+{
+    mm -j$(cat /proc/cpuinfo | grep processor | wc -l) $*
+}
+
+function _flash()
 {
     T=$(gettop)
 
@@ -158,28 +168,28 @@ function nvflash()
         return
     fi
 
-    local DEV=$(get_build_var TARGET_PRODUCT)
-    if [ -f $T/vendor/nvidia/build/$DEV/$DEV.sh ]; then
-	. $T/vendor/nvidia/build/$DEV/$DEV.sh
+    # Get NVFLASH_ODM_DATA from the product specific shell script.
+    local product=$(get_build_var TARGET_PRODUCT)
+    if [ -f $T/vendor/nvidia/build/${product}/${product}.sh ]; then
+        . $T/vendor/nvidia/build/${product}/${product}.sh
     fi
-    local VERBOSE=
-    local ODMDATA=""
-
-    ODMDATA=$NVFLASH_ODM_DATA
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
     local HOSTOUT=$(get_build_var HOST_OUT)
 
-    local FLASH_CMD="$T/$HOSTOUT/bin/$DEV/nvflash"
+    local FLASH_CMD="$T/$HOSTOUT/bin/nvflash"
     FLASH_CMD="$FLASH_CMD --bct flash.bct --setbct"
-    if [ "$ODMDATA" != "" ] ; then
-        FLASH_CMD="$FLASH_CMD --odmdata $ODMDATA"
+    if [ "${NVFLASH_ODM_DATA}" != "" ] ; then
+        FLASH_CMD="$FLASH_CMD --odmdata ${NVFLASH_ODM_DATA}"
     fi
     FLASH_CMD="$FLASH_CMD --configfile flash.cfg"
-    FLASH_CMD="$FLASH_CMD --create --bl bootloader.bin --go"
+    FLASH_CMD="$FLASH_CMD --create"
+    # TODO: can this be removed?  See commit 63c25d2ea07972.
+    [ "${NVFLASH_VERIFY}" ] && FLASH_CMD="$FLASH_CMD --verifypart -1"
+    FLASH_CMD="$FLASH_CMD --bl bootloader.bin"
+    FLASH_CMD="$FLASH_CMD --go"
 
     echo $FLASH_CMD
-    (cd $T/$OUTDIR && sudo $FLASH_CMD)
 }
 
 function fboot()
@@ -197,12 +207,14 @@ function fboot()
     local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/arm/boot/zImage
     local RAMDISK=$T/$OUTDIR/ramdisk.img
     local FASTBOOT=$T/$HOST_OUTDIR/bin/fastboot
-    local DEV=$(get_build_var TARGET_PRODUCT)
-    if [ -f $T/vendor/nvidia/build/$DEV/$DEV.sh ]; then
-       . $T/vendor/nvidia/build/$DEV/$DEV.sh
+
+    # Get Vendor ID (FASTBOOT_VID) from the product specific shell script.
+    local product=$(get_build_var TARGET_PRODUCT)
+    if [ -f $T/vendor/nvidia/build/${product}/${product}.sh ]; then
+       . $T/vendor/nvidia/build/${product}/${product}.sh
     fi
-    local VID=""
-    VID=$FASTBOOT_VID
+    local vendor_id
+    vendor_id=${FASTBOOT_VID:-"0x955"}
 
     if [ ! "$FASTBOOT" ]; then
         echo "Couldn't find $FASTBOOT." >&2
@@ -220,10 +232,49 @@ function fboot()
             echo "Couldn't find $RAMDISK. Try setting TARGET_PRODUCT." >&2
             return
         fi
-        CMD="-i $VID boot $ZIMAGE $RAMDISK"
+        CMD="-i $vendor_id boot $ZIMAGE $RAMDISK"
     fi
 
     echo "sudo $FASTBOOT $CMD"
     (sudo $FASTBOOT $CMD)
 }
 
+function flash()
+{
+    T=$(gettop)
+    if [ ! "$T" ]; then
+        echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
+        return
+    fi
+
+    local OUTDIR=$(get_build_var PRODUCT_OUT)
+    local FLASH_CMD=$(_flash | tail -1)
+
+    (cd $T/$OUTDIR && sudo $FLASH_CMD)
+}
+
+# Get ready for the rename nvflash -> flash.
+function nvflash()
+{
+    flash
+}
+
+function _nvflash_sh()
+{
+    T=$(gettop)
+    if [ ! "$T" ]; then
+        echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
+        return
+    fi
+
+    local OUTDIR=$(get_build_var PRODUCT_OUT)
+    local FLASH_CMD=$(_flash | tail -1)
+    FLASH_CMD="../../../../${FLASH_CMD#${T}/}"
+
+    local FLASH_SH="$T/$OUTDIR/nvflash.sh"
+
+    echo "#!/bin/bash" > $FLASH_SH
+    echo $FLASH_CMD >> $FLASH_SH
+
+    chmod 755 $FLASH_SH
+}
