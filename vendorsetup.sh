@@ -9,7 +9,7 @@ function ksetup()
     local SRC="$T/kernel"
     if [ $# -lt 1 ] ; then
         echo "Usage: ksetup <defconfig> <path>"
-	return
+        return
     fi
 
     if [ $# -gt 1 ] ; then
@@ -128,13 +128,22 @@ function krebuild()
     echo "boot.img is ready"
 }
 
-function _nvflash()
+function mp()
+{
+    m -j$(cat /proc/cpuinfo | grep processor | wc -l) $*
+}
+
+function mmp()
+{
+    mm -j$(cat /proc/cpuinfo | grep processor | wc -l) $*
+}
+
+function _flash()
 {
     local DEV=$(get_build_var TARGET_PRODUCT)
     if [ -f $T/vendor/nvidia/build/$DEV/$DEV.sh ]; then
-	. $T/vendor/nvidia/build/$DEV/$DEV.sh
+        . $T/vendor/nvidia/build/$DEV/$DEV.sh
     fi
-    local VERBOSE=
     local ODMDATA=""
 
     ODMDATA=$NVFLASH_ODM_DATA
@@ -165,37 +174,43 @@ function _nvflash()
     echo $FLASH_CMD
 }
 
+function flash()
+{
+    T=$(gettop)
+    if [ ! "$T" ]; then
+        echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
+        return
+    fi
+
+    local OUTDIR=$(get_build_var PRODUCT_OUT)
+    local FLASH_CMD=$(_flash | tail -1)
+    _flash
+
+    (cd $T/$OUTDIR && sudo $FLASH_CMD)
+}
+
+# Get ready for the rename nvflash -> flash.
 function nvflash()
 {
-	T=$(gettop)
-	if [ ! "$T" ]; then
-		echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
-		return
-	fi
-
-	local OUTDIR=$(get_build_var PRODUCT_OUT)
-	local FLASH_CMD=$(_nvflash | tail -1)
-	_nvflash
-
-	(cd $T/$OUTDIR && sudo $FLASH_CMD)
+    flash
 }
 
 function _nvflash_sh()
 {
-	T=$(gettop)
-	if [ ! "$T" ]; then
-		echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
-		return
-	fi
+    T=$(gettop)
+    if [ ! "$T" ]; then
+        echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
+        return
+    fi
 
-	local OUTDIR=$(get_build_var PRODUCT_OUT)
-	local FLASH_CMD=$(_nvflash | tail -1)
-	FLASH_CMD="../../../../${FLASH_CMD#${T}/}"
+    local OUTDIR=$(get_build_var PRODUCT_OUT)
+    local FLASH_CMD=$(_flash | tail -1)
+    FLASH_CMD="../../../../${FLASH_CMD#${T}/}"
 
-	local FLASH_SH="$T/$OUTDIR/nvflash.sh"
+    local FLASH_SH="$T/$OUTDIR/nvflash.sh"
 
-	echo "#!/bin/bash" > $FLASH_SH
-	echo $FLASH_CMD >> $FLASH_SH
+    echo "#!/bin/bash" > $FLASH_SH
+    echo $FLASH_CMD >> $FLASH_SH
 
-	chmod 755 $FLASH_SH
+    chmod 755 $FLASH_SH
 }
