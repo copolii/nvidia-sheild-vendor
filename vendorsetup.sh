@@ -128,15 +128,8 @@ function krebuild()
     echo "boot.img is ready"
 }
 
-function nvflash()
+function _nvflash()
 {
-    T=$(gettop)
-
-    if [ ! "$T" ]; then
-        echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
-        return
-    fi
-
     local DEV=$(get_build_var TARGET_PRODUCT)
     if [ -f $T/vendor/nvidia/build/$DEV/$DEV.sh ]; then
 	. $T/vendor/nvidia/build/$DEV/$DEV.sh
@@ -170,6 +163,39 @@ function nvflash()
     fi
 
     echo $FLASH_CMD
-    (cd $T/$OUTDIR && sudo $FLASH_CMD)
 }
 
+function nvflash()
+{
+	T=$(gettop)
+	if [ ! "$T" ]; then
+		echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
+		return
+	fi
+
+	local OUTDIR=$(get_build_var PRODUCT_OUT)
+	local FLASH_CMD=$(_nvflash | tail -1)
+	_nvflash
+
+	(cd $T/$OUTDIR && sudo $FLASH_CMD)
+}
+
+function _nvflash_sh()
+{
+	T=$(gettop)
+	if [ ! "$T" ]; then
+		echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
+		return
+	fi
+
+	local OUTDIR=$(get_build_var PRODUCT_OUT)
+	local FLASH_CMD=$(_nvflash | tail -1)
+	FLASH_CMD="../../../../${FLASH_CMD#${T}/}"
+
+	local FLASH_SH="$T/$OUTDIR/nvflash.sh"
+
+	echo "#!/bin/bash" > $FLASH_SH
+	echo $FLASH_CMD >> $FLASH_SH
+
+	chmod 755 $FLASH_SH
+}
