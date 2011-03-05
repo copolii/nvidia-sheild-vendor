@@ -1,7 +1,7 @@
 # NVIDIA Tegra3 "Aruba2" development system
 echo "DEBUG: Entering $TOP/vendor/nvidia/build/aruba2/aruba2.sh"
 
-local OUTDIR=$(get_build_var PRODUCT_OUT)
+OUTDIR=$(get_build_var PRODUCT_OUT)
 echo "DEBUG: PRODUCT_OUT = $OUTDIR"
 
 # setup FASTBOOT VENDOR ID
