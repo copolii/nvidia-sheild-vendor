@@ -25,16 +25,15 @@ NVIDIA_PACKAGE             := $(NVIDIA_BUILD_ROOT)/package.mk
 
 # tools
 
-NVIDIA_CGC		   := $(HOST_OUT_EXECUTABLES)/cgc
-NVIDIA_AR20ASM		   := $(TEGRA_ROOT)/../cg/Cg/$(HOST_OS)/ar20asm
-
-NVIDIA_HEXIFY	           := $(NVIDIA_BUILD_ROOT)/hexify.py
+NVIDIA_CGC                 := $(HOST_OUT_EXECUTABLES)/cgc
+NVIDIA_AR20ASM             := $(TEGRA_ROOT)/../cg/Cg/$(HOST_OS)/ar20asm
+NVIDIA_HEXIFY              := $(NVIDIA_BUILD_ROOT)/hexify.py
 NVIDIA_GETEXPORTS          := $(NVIDIA_BUILD_ROOT)/getexports.py
-NVIDIA_SHADERFIX	   := $(HOST_OUT_EXECUTABLES)/shaderfix
+NVIDIA_SHADERFIX           := $(HOST_OUT_EXECUTABLES)/shaderfix
 ifneq ($(TEGRA_ROOT),hardware/tegra)
-NVIDIA_NVIDL		   := $(HOST_OUT_EXECUTABLES)/nvidl
+NVIDIA_NVIDL               := $(HOST_OUT_EXECUTABLES)/nvidl
 else
-NVIDIA_NVIDL		   := hardware/tegra/prebuilt/host/$(HOST_OS)-x86/bin/nvidl
+NVIDIA_NVIDL               := hardware/tegra/prebuilt/host/$(HOST_OS)-x86/bin/nvidl
 endif
 
 # global vars
@@ -81,7 +80,7 @@ endef
 
 define transform-ar20asm-to-h
 @echo "Generating shader $@ from $<"
-$(hide) LD_LIBRARY_PATH=$(TEGRA_ROOT)/../cg/Cg/linux $(NVIDIA_AR20ASM) $< $(basename $@).ar20bin
+$(hide) LD_LIBRARY_PATH=$(TEGRA_ROOT)/../cg/Cg/$(HOST_OS) $(NVIDIA_AR20ASM) $< $(basename $@).ar20bin
 $(hide) $(NVIDIA_HEXIFY) $(basename $@).ar20bin $@
 endef
 
