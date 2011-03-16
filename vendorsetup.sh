@@ -188,3 +188,24 @@ function _nvflash_sh()
 
     chmod 755 $FLASH_SH
 }
+
+function adb-server()
+{
+    f=$(pgrep adb)
+    if [ $? -ne 0 ]; then
+        ADB=$(which adb)
+        echo "Starting adb server.."
+	sudo ${ADB} start-server
+    fi
+}
+
+function nvlog()
+{
+    T=$(gettop)
+    if [ ! "$T" ]; then
+	echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
+	return
+    fi
+    adb-server
+    adb logcat | $T/vendor/nvidia/build/asymfilt.py
+}
