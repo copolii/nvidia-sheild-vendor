@@ -46,4 +46,4 @@ flash
 In case of issues, please fix, or file a bug with Mobile_Build_System .
 "
 
-exit 1
+return 1
