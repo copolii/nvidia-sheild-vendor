@@ -9,6 +9,8 @@ endif
 
 NVIDIA_BUILD_ROOT          := vendor/nvidia/build
 
+include vendor/nvidia/build/detectversion.mk
+
 # links to build system files
 
 NVIDIA_BASE                := $(NVIDIA_BUILD_ROOT)/base.mk
