@@ -7,6 +7,11 @@ ifndef TEGRA_ROOT
 TEGRA_ROOT := vendor/nvidia/tegra/core
 endif
 
+# NV_WAR_BUG_816075
+ifndef TEGRA_TOP
+TEGRA_TOP := $(patsubst %/core,%,$(TEGRA_ROOT))
+endif
+
 NVIDIA_BUILD_ROOT          := vendor/nvidia/build
 
 include vendor/nvidia/build/detectversion.mk
@@ -28,7 +33,7 @@ NVIDIA_PACKAGE             := $(NVIDIA_BUILD_ROOT)/package.mk
 # tools
 
 NVIDIA_CGC                 := $(HOST_OUT_EXECUTABLES)/cgc
-NVIDIA_AR20ASM             := $(TEGRA_ROOT)/../cg/Cg/$(HOST_OS)/ar20asm
+NVIDIA_AR20ASM             := $(TEGRA_TOP)/cg/Cg/$(HOST_OS)/ar20asm
 NVIDIA_HEXIFY              := $(NVIDIA_BUILD_ROOT)/hexify.py
 NVIDIA_GETEXPORTS          := $(NVIDIA_BUILD_ROOT)/getexports.py
 NVIDIA_SHADERFIX           := $(HOST_OUT_EXECUTABLES)/shaderfix
@@ -82,7 +87,7 @@ endef
 
 define transform-ar20asm-to-h
 @echo "Generating shader $@ from $<"
-$(hide) LD_LIBRARY_PATH=$(TEGRA_ROOT)/../cg/Cg/$(HOST_OS) $(NVIDIA_AR20ASM) $< $(basename $@).ar20bin
+$(hide) LD_LIBRARY_PATH=$(TEGRA_TOP)/cg/Cg/$(HOST_OS) $(NVIDIA_AR20ASM) $< $(basename $@).ar20bin
 $(hide) $(NVIDIA_HEXIFY) $(basename $@).ar20bin $@
 endef
 

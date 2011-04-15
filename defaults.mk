@@ -8,16 +8,16 @@ include $(CLEAR_VARS)
 
 # Build variables common to all nvidia modules
 
-LOCAL_C_INCLUDES += $(TEGRA_ROOT)/include
-LOCAL_C_INCLUDES += $(TEGRA_ROOT)/drivers/hwinc
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/core/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/core/drivers/hwinc
 
 ifneq (,$(findstring core-private,$(LOCAL_PATH)))
-LOCAL_C_INCLUDES += $(TEGRA_ROOT)/../core-private/include
-LOCAL_C_INCLUDES += $(TEGRA_ROOT)/../core-private/drivers/hwinc
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/drivers/hwinc
 endif
 
 ifneq (,$(findstring tests,$(LOCAL_PATH)))
-LOCAL_C_INCLUDES += $(TEGRA_ROOT)/../core-private/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/include
 endif
 
 ifeq ($(TARGET_BUILD_TYPE),debug)
@@ -39,7 +39,7 @@ LOCAL_MODULE_TAGS := optional
 
 # clear nvidia local variables to defaults
 NVIDIA_CLEARED := true
-LOCAL_IDL_INCLUDES := $(TEGRA_ROOT)/include
+LOCAL_IDL_INCLUDES := $(TEGRA_TOP)/core/include
 LOCAL_IDLFLAGS :=
 LOCAL_NVIDIA_STUBS :=
 LOCAL_NVIDIA_DISPATCHERS :=
