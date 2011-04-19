@@ -118,35 +118,6 @@ function krebuild()
     (mkdir -p $T/$OUTDIR/modules \
         cd $T && make modules_install -C $SRC $KARCH $CROSS $KOUT INSTALL_MOD_PATH=$T/$OUTDIR/modules \
         && mkdir -p $T/$OUTDIR/system/lib/modules && cp -f `find $T/$OUTDIR/modules -name *.ko` $T/$OUTDIR/system/lib/modules)
-
-    echo "Building boot.img"
-
-    local HOST_OUTDIR=$(get_build_var HOST_OUT)
-    local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/arm/boot/zImage
-    local RAMDISK=$T/$OUTDIR/ramdisk.img
-    local MKBOOTIMG=$T/$HOST_OUTDIR/bin/mkbootimg
-
-    if [ ! -f "$ZIMAGE" ]; then
-        echo "Couldn't find $ZIMAGE. Your KERNEL is not build." >&2
-        return
-    fi
-    echo "cp $ZIMAGE $KERNEL"
-    (cp $ZIMAGE $KERNEL)
-    if [ ! -f "$RAMDISK" ]; then
-        echo "Couldn't find $RAMDISK. Your ANDROID system is not build." >&2
-        return
-    fi
-    if [ ! -f "$MKBOOTIMG" ]; then
-        echo "Couldn't find $MKBOOTIMG. Your ANDROID system is not build." >&2
-        return
-    fi
-
-    CMD="--kernel $ZIMAGE --ramdisk $RAMDISK -o $T/$OUTDIR/boot.img"
-
-    echo "$MKBOOTIMG $CMD"
-    ($MKBOOTIMG $CMD)
-
-    echo "boot.img is ready"
 }
 
 function mp()
@@ -253,10 +224,11 @@ function flash()
     (cd $T/$OUTDIR && sudo $FLASH_CMD)
 }
 
-# Get ready for the rename nvflash -> flash.
+# Inform user about the new name of the function.  This should be removed
+# after a transition period (around June 2011).
 function nvflash()
 {
-    flash
+    echo "Shell function \"nvflash\" is obsolete, please use \"flash\" instead." >&2
 }
 
 function _nvflash_sh()

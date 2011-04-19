@@ -1,226 +1,49 @@
 #!/bin/bash
 
-NCPUS=$(cat /proc/cpuinfo | grep processor | wc -l)
+echo "
+*** nvmake has been retired! ***
 
-if [ -z "$NV_PARALLEL_BUILD" ]; then
-    NV_PARALLEL_BUILD=-j$NCPUS
-fi
-#Uncomment the line below to force single-threaded builds
-#NV_PARALLEL_BUILD=
+Please setup your environment as follows:
 
-_makesetup()
-{
-cd $TOP
-source build/envsetup.sh
-setpaths
-lunch ${1}-eng || _err
-}
+export P4ROOT=<your_p4_root>
+export TOP=<your_top_dir>
+export TEGRA_ROOT=\${TOP}/vendor/nvidia/tegra/core
+. build/envsetup.sh
 
-_makekernel()
-{
-  if [ $1 == 'ventana' ]
-  then
-    ksetup tegra_defconfig
-  else
-      if [ $1 == 'whistler' ]
-      then
-          ksetup tegra_whistler_android_defconfig
-      else
-          ksetup ${1}_defconfig
-      fi
-  fi
-  krebuild $NV_PARALLEL_BUILD || _err
-}
+Next, run \"choosecombo\" in order to select your configuration.
 
-_createbootimg()
-{
-directory="$TOP/out/target/product/$1"
-if [ -d $directory ]; then
-    cd $directory
-    $TOP/out/host/linux-x86/bin/mkbootimg --kernel obj/KERNEL/arch/arm/boot/zImage --ramdisk ramdisk.img --output boot.img
-fi
-}
+choosecombo
 
-_createprebuiltbootimg()
-{
-directory="$TOP/out/target/product/$1"
-if [ -d $directory ]; then
-    cd $directory
-    $TOP/out/host/linux-x86/bin/mkbootimg --kernel $PREBUILT_KERNEL --ramdisk ramdisk.img --output boot.img
-fi
-}
+Use your board name (e.g. \"cardhu\") as the product when asked.
+For use in shell scripts, you can give the choices as arguments, e.g.
 
-_copybootfiles()
-{
-# NVIDIA only boot files.
-directory="$TEGRA_ROOT/../core-private/boot/$1"
-if [ -d $directory ]; then
-    nvflash_dst="$TOP/out/host/linux-x86/bin/$1"
-    if [ ! -d $nvflash_dst ]; then
-        mkdir -p $nvflash_dst
-    fi
-    cp $directory/nvflash $nvflash_dst
+choosecombo 1 2 cardhu eng
 
-    other_dst="$TOP/out/target/product/$1"
-    if [ ! -d $other_dst ]; then
-        mkdir -p $other_dst
-    fi
-    cp $directory/bootloader.bin $other_dst
-    cp $directory/flash.cfg $other_dst
-    cp $directory/flash.bct $other_dst
-fi
-}
+If you prefer, you can use a buildspec.mk file instead of choosecombo.
+This is what we used to do with Froyo.  buildspec.mk is useful if
+you rarely change your build setup.  Just copy the sample from
+\$TOP/build/buildspec.mk.default to \$TOP/buildspec.mk and edit.
 
-_err()
-{
-rc=$?
-echo "##############################################################################################"
-echo "******************************   nvmake error \$?=$rc  ***************************************"
-echo "##############################################################################################"
-if [ $rc = 0 ]; then
-    exit 2
-else
-    exit $rc
-fi
-}
+To build the complete image, say
 
-_showusage()
-{
-echo "nvmake supported targets:"
-echo "    nvmake --help                 --> usage info"
-echo "    nvmake <product> clean        --> clean build"
-echo "    nvmake <product> kernel       --> build kernel"
-echo "    nvmake <product> dev          --> make all, no clean"
-echo "    nvmake <product> flash        --> flash the board ( only system,boot and recovery images )"
-echo "    nvmake <product> flashall     --> erase and flash the board ( delete userdata,cache + flash option )"
-echo "    nvmake <product> nvflash      --> Use nvflash to flash board"
-}
+m dev
 
-# input validation
-if [ $# != 2 ]
-then
-  _showusage
-  exit
-fi
+or plain
 
-TOP=`pwd`
-echo "TOP is `echo $TOP`"
-if [ -d $TOP/vendor/nvidia/tegra/core-private ]
-then
-    export TEGRA_ROOT=$TOP/vendor/nvidia/tegra/core
-    echo "TEGRA_ROOT is `echo $TEGRA_ROOT`"
-fi
-# process make clean first
-if [ $2 == "clean" ]
-then
-  _makesetup $1
-  make avp-clean
-  make clean
-fi
+m
 
-# kernel build
-if [ $2 == "kernel" ]
-then
-  _makesetup $1
-  _makekernel $1
-  _createbootimg ${1}
-fi
+To build your module only, say
 
-# full build - no clean
-if [ $2 == "dev" ]
-then
-  _makesetup $1
-  _copybootfiles $1
-  _makekernel $1
-  touch $TOP/device/nvidia/ventana/init.ventana.rc
-  touch $TOP/device/nvidia/whistler/init.whistler.rc
+mm
 
-  # Bug 744213 fix requires avp to be built first
-  directory="$TEGRA_ROOT/../core-private"
-  if [ -d $directory ]; then
-    echo "Running 'make avp'"
-    make avp || _err
-  fi
+in the module directory.  For parallel builds, use convenience
+commands \"mp\" and \"mmp\".
 
-  make $NV_PARALLEL_BUILD || _err
+To nvflash the board, use
 
-  _createbootimg ${1}
-fi
+flash
 
-# full build - no clean
-if [ $2 == "dev-prebuilt" ]
-then
-  if [ "a$PREBUILT_KERNEL" == "a" ]; then
-    echo "PREBUILT_KERNEL must be set when using dev-prebuilt"
-    _err
-  fi
-  _makesetup $1
-  _copybootfiles $1
+In case of issues, please fix, or file a bug with Mobile_Build_System .
+"
 
-  # Bug 744213 fix requires avp to be built first
-  directory="$TEGRA_ROOT/../core-private"
-  if [ -d $directory ]; then
-    echo "Running 'make avp'"
-    make avp || _err
-  fi
-
-  make $NV_PARALLEL_BUILD || _err
-
-  _createprebuiltbootimg ${1}
-fi
-
-# Flash
-if [ $2 == "flash" ]
-then
-	_makesetup $1
-	_createbootimg ${1}
-	directory="$TOP/out/target/product/$1"
-	if [ -f $TOP/out/host/linux-x86/bin/fastboot ]; then
-		if [ -d $directory ]; then
-			cd $directory
-			sudo $TOP/out/host/linux-x86/bin/fastboot flash system system.img
-			sudo $TOP/out/host/linux-x86/bin/fastboot flash boot boot.img
-			if [ -f $directory/recovery.img ]; then
-				sudo $TOP/out/host/linux-x86/bin/fastboot flash recovery recovery.img
-			fi
-			sudo $TOP/out/host/linux-x86/bin/fastboot reboot
-		else
-			echo "$directory not found"
-		fi
-	else
-		echo " $TOP/out/host/linux-x86/bin/fastboot not found "
-	fi
-fi
-
-# Flash
-if [ $2 == "flashall" ]
-then
-        _makesetup $1
-        _createbootimg ${1}
-        directory="$TOP/out/target/product/$1"
-        if [ -f $TOP/out/host/linux-x86/bin/fastboot ]; then
-                if [ -d $directory ]; then
-                        cd $directory
-                        sudo $TOP/out/host/linux-x86/bin/fastboot erase userdata
-                        sudo $TOP/out/host/linux-x86/bin/fastboot erase cache
-                        sudo $TOP/out/host/linux-x86/bin/fastboot erase system
-                        sudo $TOP/out/host/linux-x86/bin/fastboot flash system system.img
-                        sudo $TOP/out/host/linux-x86/bin/fastboot flash boot boot.img
-                        if [ -f $directory/recovery.img ]; then
-                                sudo $TOP/out/host/linux-x86/bin/fastboot flash recovery recovery.img
-                        fi
-                        sudo $TOP/out/host/linux-x86/bin/fastboot reboot
-                else
-                        echo "$directory not found"
-                fi
-        else
-                echo " $TOP/out/host/linux-x86/bin/fastboot not found "
-        fi
-fi
-
-# nvflash
-if [ $2 == "nvflash" ]
-then
-  _makesetup $1
-  nvflash
-fi
+return 1
