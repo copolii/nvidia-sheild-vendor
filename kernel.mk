@@ -9,7 +9,7 @@ KERNEL_PATH ?= kernel
 #	grep "SUBLEVEL =" | cut -d= -f2))
 
 TARGET_KERNEL_CONFIG ?= tegra_defconfig
-ifeq (,$(filter-out aruba2 cardhu tegra_enterprise whistler,$(TARGET_PRODUCT)))
+ifeq (,$(filter-out aruba2 cardhu enterprise whistler,$(TARGET_PRODUCT)))
     TARGET_KERNEL_CONFIG := tegra_$(TARGET_PRODUCT)_android_defconfig
 endif
 
