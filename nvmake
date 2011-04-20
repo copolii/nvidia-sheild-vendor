@@ -14,10 +14,10 @@ Next, run \"choosecombo\" in order to select your configuration.
 
 choosecombo
 
-Use your board name (e.g. \"ventana\") as the product when asked.
+Use your board name (e.g. \"cardhu\") as the product when asked.
 For use in shell scripts, you can give the choices as arguments, e.g.
 
-choosecombo 1 2 ventana eng
+choosecombo 1 2 cardhu eng
 
 If you prefer, you can use a buildspec.mk file instead of choosecombo.
 This is what we used to do with Froyo.  buildspec.mk is useful if
