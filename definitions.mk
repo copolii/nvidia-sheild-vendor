@@ -37,7 +37,7 @@ NVIDIA_AR20ASM             := $(TEGRA_TOP)/cg/Cg/$(HOST_OS)/ar20asm
 NVIDIA_HEXIFY              := $(NVIDIA_BUILD_ROOT)/hexify.py
 NVIDIA_GETEXPORTS          := $(NVIDIA_BUILD_ROOT)/getexports.py
 NVIDIA_SHADERFIX           := $(HOST_OUT_EXECUTABLES)/shaderfix
-ifneq ($(TEGRA_ROOT),hardware/tegra)
+ifneq ($(TEGRA_TOP),hardware/tegra)
 NVIDIA_NVIDL               := $(HOST_OUT_EXECUTABLES)/nvidl
 else
 NVIDIA_NVIDL               := hardware/tegra/prebuilt/host/$(HOST_OS)-x86/bin/nvidl
@@ -46,7 +46,7 @@ endif
 # global vars
 ALL_NVIDIA_MODULES :=
 ALL_NVIDIA_TESTS :=
-ifneq ($(TEGRA_ROOT),hardware/tegra)
+ifneq ($(TEGRA_TOP),hardware/tegra)
 NVIDIA_APICHECK := 1
 endif
 
