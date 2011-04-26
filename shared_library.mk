@@ -1,6 +1,7 @@
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 
 include $(NVIDIA_BASE)
+include $(NVIDIA_COVERAGE)
 
 # try guessing the .export file if not given
 ifeq ($(LOCAL_NVIDIA_EXPORTS),)
