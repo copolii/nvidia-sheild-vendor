@@ -7,7 +7,7 @@ Please setup your environment as follows:
 
 export P4ROOT=<your_p4_root>
 export TOP=<your_top_dir>
-export TEGRA_ROOT=\${TOP}/vendor/nvidia/tegra/core
+export TEGRA_TOP=\${TOP}/vendor/nvidia/tegra
 . build/envsetup.sh
 
 Next, run \"choosecombo\" in order to select your configuration.
