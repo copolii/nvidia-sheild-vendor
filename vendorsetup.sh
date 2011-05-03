@@ -271,3 +271,8 @@ function nvlog()
     adb-server
     adb logcat | $T/vendor/nvidia/build/asymfilt.py
 }
+
+if [ -f $HOME/lib/android/envsetup.sh ] ; then
+    echo including $HOME/lib/android/envsetup.sh
+    .  $HOME/lib/android/envsetup.sh
+fi
