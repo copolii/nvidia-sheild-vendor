@@ -8,8 +8,11 @@ KERNEL_PATH ?= kernel
 #kernel_version := $(strip $(shell head $(KERNEL_PATH)/Makefile | \
 #	grep "SUBLEVEL =" | cut -d= -f2))
 
+# Tegra platforms that have their own defconfig file
+TEGRA_PLATFORM_DEFCONFIGS := aruba2 cardhu curacao tegra_enterprise whistler
+
 TARGET_KERNEL_CONFIG ?= tegra_defconfig
-ifeq (,$(filter-out aruba2 cardhu tegra_enterprise whistler,$(TARGET_PRODUCT)))
+ifeq (,$(filter-out $(TEGRA_PLATFORM_DEFCONFIGS),$(TARGET_PRODUCT)))
     TARGET_KERNEL_CONFIG := tegra_$(TARGET_PRODUCT)_android_defconfig
 endif
 
