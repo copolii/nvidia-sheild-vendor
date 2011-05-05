@@ -34,7 +34,7 @@ LOCAL_MODULE := $(NVIDIA_CHECK_MODULE)_apicheck
 LOCAL_MODULE_CLASS := EXECUTABLES
 intermediates := $(local-intermediates-dir)
 LOCAL_MODULE_PATH := $(intermediates)/CHECK
-LOCAL_MODULE_TAGS := never_install
+LOCAL_MODULE_TAGS := optional
 LOCAL_GENERATED_SOURCES += $(intermediates)/check.c
 LOCAL_LDFLAGS += -l$(patsubst lib%,%,$(NVIDIA_CHECK_MODULE))
 include $(BUILD_EXECUTABLE)
