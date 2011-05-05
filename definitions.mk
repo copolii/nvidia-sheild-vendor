@@ -32,6 +32,7 @@ NVIDIA_HOST_EXECUTABLE     := $(NVIDIA_BUILD_ROOT)/host_executable.mk
 NVIDIA_JAVA_LIBRARY        := $(NVIDIA_BUILD_ROOT)/java_library.mk
 NVIDIA_PACKAGE             := $(NVIDIA_BUILD_ROOT)/package.mk
 NVIDIA_COVERAGE            := $(NVIDIA_BUILD_ROOT)/coverage.mk
+NVIDIA_PREBUILT            := $(NVIDIA_BUILD_ROOT)/prebuilt.mk
 
 # tools
 
