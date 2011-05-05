@@ -121,6 +121,7 @@ ifeq ($(LOCAL_MODULE_CLASS),SHARED_LIBRARIES)
 LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/lib
 endif
 endif
+LOCAL_MODULE_TAGS := $(filter-out nvidia_tests,$(LOCAL_MODULE_TAGS)) tests
 else
 nvidia-modules: $(NVIDIA_TARGET_NAME)
 endif
