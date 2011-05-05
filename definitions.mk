@@ -21,8 +21,10 @@ include vendor/nvidia/build/detectversion.mk
 NVIDIA_BASE                := $(NVIDIA_BUILD_ROOT)/base.mk
 NVIDIA_DEFAULTS            := $(NVIDIA_BUILD_ROOT)/defaults.mk
 NVIDIA_STATIC_LIBRARY      := $(NVIDIA_BUILD_ROOT)/static_library.mk
+NVIDIA_STATIC_AVP_LIBRARY  := $(NVIDIA_BUILD_ROOT)/static_avp_library.mk
 NVIDIA_SHARED_LIBRARY      := $(NVIDIA_BUILD_ROOT)/shared_library.mk
 NVIDIA_EXECUTABLE          := $(NVIDIA_BUILD_ROOT)/executable.mk
+NVIDIA_STATIC_AVP_EXECUTABLE := $(NVIDIA_BUILD_ROOT)/static_avp_executable.mk
 NVIDIA_STATIC_AND_SHARED_LIBRARY := $(NVIDIA_BUILD_ROOT)/static_and_shared_library.mk
 NVIDIA_HOST_STATIC_LIBRARY := $(NVIDIA_BUILD_ROOT)/host_static_library.mk
 NVIDIA_HOST_SHARED_LIBRARY := $(NVIDIA_BUILD_ROOT)/host_shared_library.mk
