@@ -7,9 +7,9 @@ export FASTBOOT_VID=0x955
 
 if [ ! "$BOARD_IS_PM269" ]
 then
-	# Set ODM_DATA for 2GB SDRAM
-	export NVFLASH_ODM_DATA=0x80080105
-	echo "Setting up NvFlash BCT for Cardhu with 2GB 533MHz DDR3 SDRAM......"
+	# Set ODM_DATA for 1GB SDRAM
+	export NVFLASH_ODM_DATA=0x40080105
+	echo "Setting up NvFlash BCT for Cardhu with 1GB 533MHz DDR3 SDRAM......"
 	cp $TEGRA_ROOT/../customers/nvidia-partner/cardhu/nvflash/E1186_Hynix_2GB_H5TC2G83BFR-PBA_533MHz_110316_sdmmc4_x8.bct $TOP/$OUTDIR/flash.bct
 else
 	# Set ODM_DATA for 1GB SDRAM
