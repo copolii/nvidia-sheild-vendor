@@ -9,7 +9,7 @@ KERNEL_PATH ?= kernel
 #	grep "SUBLEVEL =" | cut -d= -f2))
 
 # Tegra platforms that have their own defconfig file
-TEGRA_PLATFORM_DEFCONFIGS := aruba2 cardhu curacao enterprise whistler
+TEGRA_PLATFORM_DEFCONFIGS := aruba2 cardhu curacao enterprise whistler bonaire
 
 TARGET_KERNEL_CONFIG ?= tegra_defconfig
 ifeq (,$(filter-out $(TEGRA_PLATFORM_DEFCONFIGS),$(TARGET_PRODUCT)))
