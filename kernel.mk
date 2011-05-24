@@ -87,3 +87,6 @@ endif
 # TODO: This may not be what we want.
 .PHONY: dev
 dev: droidcore
+ifneq ($(NO_ROOT_DEVICE),)
+	device/nvidia/common/generate_nvtest_ramdisk.sh $(TARGET_PRODUCT) $(TARGET_BUILD_TYPE)
+endif
