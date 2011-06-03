@@ -51,12 +51,3 @@ ifneq (,$(LOCAL_NVIDIA_RM_WARNING_FLAGS))
 LOCAL_CFLAGS := $(filter-out $(LOCAL_NVIDIA_RM_WARNING_FLAGS),$(LOCAL_CFLAGS))
 endif
 
-# To turn off only extra warnings as errors
-ifeq ($(LOCAL_NVIDIA_NO_EXTRA_WARNINGS_AS_ERRORS),1)
-LOCAL_CFLAGS += -Wno-error=missing-prototypes
-LOCAL_CFLAGS += -Wno-error=missing-declarations
-LOCAL_CFLAGS += -Wno-error=redundant-decls
-LOCAL_CFLAGS += -Wno-error=cast-align
-LOCAL_CFLAGS += -Wno-error=nested-externs
-LOCAL_CFLAGS += -Wno-error=strict-prototypes
-endif
