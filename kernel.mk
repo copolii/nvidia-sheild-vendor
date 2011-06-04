@@ -41,12 +41,11 @@ $(BUILT_KERNEL_TARGET): $(dotconfig) FORCE
 
 # This will add all kernel modules we build for inclusion the system
 # image - no blessing takes place.
-# FIXME: there may be no modules built.
 kmodules: $(BUILT_KERNEL_TARGET) FORCE
 	@echo "Kernel modules build"
 	+$(hide) $(kernel-make) modules
 	mkdir -p $(TARGET_OUT)/lib/modules
-	cp -v `find $(PRIVATE_TOPDIR)/$(PRIVATE_KBUILD_OUT) -name "*.ko"` $(TARGET_OUT)/lib/modules
+	find $(PRIVATE_TOPDIR)/$(PRIVATE_KBUILD_OUT) -name "*.ko" -print0 | xargs -0 -IX cp -v X $(TARGET_OUT)/lib/modules/
 
 # At this stage, BUILT_SYSTEMIMAGE in build/core/Makefile has not yet
 # been defined, so we cannot rely on it.
