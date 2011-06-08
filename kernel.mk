@@ -31,12 +31,24 @@ endif
 _kernel_intermediates := $(TARGET_OUT_INTERMEDIATES)/KERNEL
 dotconfig := $(_kernel_intermediates)/.config
 
+KERNEL_EXTRA_ARGS=
+OS=$(shell uname)
+ifeq ($(OS),Darwin)
+  # bring in our elf.h
+  KERNEL_EXTRA_ARGS=HOST_EXTRACFLAGS=-I$(TOP)/../vendor/nvidia/tegra/core-private/include\ -DKBUILD_NO_NLS
+  HOSTTYPE=darwin-x86
+endif
+
+ifeq ($(OS),Linux)
+  HOSTTYPE=linux-x86
+endif
+
 # We should rather use CROSS_COMPILE=$(PRIVATE_TOPDIR)/$(TARGET_TOOLS_PREFIX).
 define kernel-make
 $(MAKE) -C $(PRIVATE_SRC_PATH) \
     ARCH=$(TARGET_ARCH) \
-    CROSS_COMPILE=$(PRIVATE_TOPDIR)/prebuilt/linux-x86/toolchain/arm-eabi-4.4.3/bin/arm-eabi- \
-    O=$(PRIVATE_TOPDIR)/$(PRIVATE_KBUILD_OUT) \
+    CROSS_COMPILE=$(PRIVATE_TOPDIR)/prebuilt/$(HOSTTYPE)/toolchain/arm-eabi-4.4.3/bin/arm-eabi- \
+    O=$(PRIVATE_TOPDIR)/$(PRIVATE_KBUILD_OUT) $(KERNEL_EXTRA_ARGS) \
     $(if $(SHOW_COMMANDS),V=1)
 endef
 
