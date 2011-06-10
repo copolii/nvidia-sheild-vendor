@@ -16,13 +16,13 @@ function ksetup()
     T=$(gettop)
     if [ ! "$T" ]; then
         echo "Couldn't local the top of the tree. Try setting TOP." >&2
-        return
+        return 1
     fi
 
     local SRC="$T/kernel"
     if [ $# -lt 1 ] ; then
         echo "Usage: ksetup <defconfig> <path>"
-        return
+        return 1
     fi
 
     if [ $# -gt 1 ] ; then
@@ -31,7 +31,7 @@ function ksetup()
 
     if [ ! -d "$SRC" ] ; then
         echo "$SRC not found."
-        return
+        return 1
     fi
     _gethosttype
 
@@ -52,7 +52,7 @@ function kconfig()
    T=$(gettop)
     if [ ! "$T" ]; then
         echo "Couldn't local the top of the tree. Try setting TOP." >&2
-        return
+        return 1
     fi
 
     local SRC="$T/kernel"
@@ -63,7 +63,7 @@ function kconfig()
 
     if [ ! -d "$SRC" ] ; then
         echo "$SRC not found."
-        return
+        return 1
     fi
 
     _gethosttype
@@ -84,7 +84,7 @@ function krebuild()
     T=$(gettop)
     if [ ! "$T" ]; then
         echo "Couldn't local the top of the tree. Try setting TOP." >&2
-        return
+        return 1
     fi
 
     local SRC="$T/kernel"
@@ -95,7 +95,7 @@ function krebuild()
 
     if [ ! -d "$SRC" ] ; then
         echo "$SRC not found."
-        return
+        return 1
     fi
 
     _gethosttype
@@ -136,7 +136,7 @@ function _flash()
 
     if [ ! "$T" ]; then
         echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
-        return
+        return 1
     fi
 
     # Get NVFLASH_ODM_DATA from the product specific shell script.
@@ -169,7 +169,7 @@ function fboot()
 
     if [ ! "$T" ]; then
         echo "Couldn't local the top of the tree. Try setting TOP." >&2
-        return
+        return 1
     fi
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local OUTDIR=$(get_build_var PRODUCT_OUT)
@@ -189,7 +189,7 @@ function fboot()
 
     if [ ! "$FASTBOOT" ]; then
         echo "Couldn't find $FASTBOOT." >&2
-        return
+        return 1
     fi
 
     if [ $# != 0 ] ; then
@@ -197,13 +197,59 @@ function fboot()
     else
         if [ ! -f  "$ZIMAGE" ]; then
             echo "Couldn't find $ZIMAGE. Try setting TARGET_PRODUCT." >&2
-            return
+            return 1
         fi
         if [ ! -f "$RAMDISK" ]; then
             echo "Couldn't find $RAMDISK. Try setting TARGET_PRODUCT." >&2
-            return
+            return 1
         fi
         CMD="-i $vendor_id boot $ZIMAGE $RAMDISK"
+    fi
+
+    echo "sudo $FASTBOOT $CMD"
+    (sudo $FASTBOOT $CMD)
+}
+
+function fflash()
+{
+    T=$(gettop)
+
+    if [ ! "$T" ]; then
+        echo "Couldn't local the top of the tree. Try setting TOP." >&2
+        return 1
+    fi
+    local OUTDIR=$(get_build_var PRODUCT_OUT)
+    local HOST_OUTDIR=$(get_build_var HOST_OUT)
+
+    local BOOTIMAGE=$T/$OUTDIR/boot.img
+    local SYSTEMIMAGE=$T/$OUTDIR/system.img
+    local FASTBOOT=$T/$HOST_OUTDIR/bin/fastboot
+
+    # Get Vendor ID (FASTBOOT_VID) from the product specific shell script.
+    local product=$(get_build_var TARGET_PRODUCT)
+    if [ -f $T/vendor/nvidia/build/${product}/${product}.sh ]; then
+       . $T/vendor/nvidia/build/${product}/${product}.sh
+    fi
+    local vendor_id
+    vendor_id=${FASTBOOT_VID:-"0x955"}
+
+    if [ ! "$FASTBOOT" ]; then
+        echo "Couldn't find $FASTBOOT." >&2
+        return 1
+    fi
+
+    if [ $# != 0 ] ; then
+        CMD=$*
+    else
+        if [ ! -f  "$BOOTIMAGE" ]; then
+            echo "Couldn't find $BOOTIMAGE. Check your build for any error." >&2
+            return 1
+        fi
+        if [ ! -f "$SYSTEMIMAGE" ]; then
+            echo "Couldn't find $SYSTEMIMAGE. Check your build for any error." >&2
+            return 1
+        fi
+        CMD="-i $vendor_id flash system $SYSTEMIMAGE flash boot $BOOTIMAGE reboot"
     fi
 
     echo "sudo $FASTBOOT $CMD"
@@ -215,7 +261,7 @@ function flash()
     T=$(gettop)
     if [ ! "$T" ]; then
         echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
-        return
+        return 1
     fi
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
@@ -236,7 +282,7 @@ function _nvflash_sh()
     T=$(gettop)
     if [ ! "$T" ]; then
         echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
-        return
+        return 1
     fi
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
@@ -266,7 +312,7 @@ function nvlog()
     T=$(gettop)
     if [ ! "$T" ]; then
 	echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
-	return
+	return 1
     fi
     adb-server
     adb logcat | $T/vendor/nvidia/build/asymfilt.py
