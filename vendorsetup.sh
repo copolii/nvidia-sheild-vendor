@@ -272,6 +272,12 @@ function nvlog()
     adb logcat | $T/vendor/nvidia/build/asymfilt.py
 }
 
+function stayon()
+{
+    adb-server
+    adb shell "svc power stayon true && echo main >/sys/power/wake_lock"
+}
+
 if [ -f $HOME/lib/android/envsetup.sh ] ; then
     echo including $HOME/lib/android/envsetup.sh
     .  $HOME/lib/android/envsetup.sh
