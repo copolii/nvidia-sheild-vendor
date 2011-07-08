@@ -1,8 +1,8 @@
 # See build/core/raw_executable.mk for the original.
 
 LOCAL_MODULE_CLASS := EXECUTABLES
-LOCAL_MODULE_SUFFIX :=
 LOCAL_FORCE_STATIC_EXECUTABLE := true
+LOCAL_MODULE_SUFFIX := .bin
 
 include $(BUILD_SYSTEM)/binary.mk
 
