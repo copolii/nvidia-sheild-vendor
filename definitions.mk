@@ -92,6 +92,7 @@ endef
 
 define transform-ar20asm-to-h
 @echo "Generating shader $@ from $<"
+@mkdir -p $(@D)
 $(hide) LD_LIBRARY_PATH=$(TEGRA_TOP)/cg/Cg/$(HOST_OS) $(NVIDIA_AR20ASM) $< $(basename $@).ar20bin
 $(hide) $(NVIDIA_HEXIFY) $(basename $@).ar20bin $@
 endef
