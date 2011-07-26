@@ -13,7 +13,12 @@
 
 Generates a blob and copies into out/target/product/<TARGET_PRODUCT>/.
 
-Usage:  nvblob <tuple of (binary_name, parition_name, version_number)>
+Usage:
+-----
+For Un-Encrypted Binaries : nvblob <tuple of (binary_name, parition_name, version_number)>
+For Encrypted Binaries    : nvblob -e <tuple of (binary_name, partition_name, version_number)>
+
+NOTE : in case of Encrypted Binaries one of the tuples MUST be BCT.
 
 """
 
@@ -67,11 +72,22 @@ def main(argv):
     print 'PLATFORM   :', platform
     print 'PARTITION INFO   :', partition_info
 
+    isencrypted = ''
+    if (partition_info[0] == '-e'):
+        isencrypted = 1
+        partition_info = partition_info[1:]
+
     number_of_elements = len(partition_info)
 
     if ((number_of_elements % 3) != 0):
         print __doc__
         return
+
+    if (isencrypted == 1):
+        if not 'BCT' in partition_info:
+            print "--- BCT partition details not found ---"
+            print __doc__
+            return
 
     i = 0
     partition_info_list = []
@@ -82,6 +98,9 @@ def main(argv):
         i = i + 1
         version_number = partition_info[i]
         i = i + 1
+        if (isencrypted ==1):
+            #set the MSB of version number to 1
+            version_number = (int(version_number) | 0x80000000)
         partition_info_tuple = (binary_name, partition_name, version_number)
         partition_info_list.append(partition_info_tuple)
 
