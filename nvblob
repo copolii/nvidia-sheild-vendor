@@ -83,12 +83,6 @@ def main(argv):
         print __doc__
         return
 
-    if (isencrypted == 1):
-        if not 'BCT' in partition_info:
-            print "--- BCT partition details not found ---"
-            print __doc__
-            return
-
     i = 0
     partition_info_list = []
     while (i < number_of_elements):
