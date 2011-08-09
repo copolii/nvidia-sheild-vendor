@@ -8,9 +8,24 @@ KERNEL_PATH ?= kernel
 #kernel_version := $(strip $(shell head $(KERNEL_PATH)/Makefile | \
 #	grep "SUBLEVEL =" | cut -d= -f2))
 
-TARGET_KERNEL_CONFIG ?= tegra_defconfig
+ifeq ($(TARGET_TEGRA_VERSION),ap20)
+    TARGET_KERNEL_CONFIG ?= tegra_android_defconfig
+else
+ifeq ($(TARGET_TEGRA_VERSION),t30)
+    TARGET_KERNEL_CONFIG ?= tegra3_android_defconfig
+endif
+endif
+
 ifeq (,$(filter-out aruba2 cardhu enterprise whistler,$(TARGET_PRODUCT)))
-    TARGET_KERNEL_CONFIG := tegra_$(TARGET_PRODUCT)_android_defconfig
+    CONFIG_NAME := tegra_$(TARGET_PRODUCT)_android_defconfig
+    CONFIG_PATH := $(KERNEL_PATH)/arch/$(TARGET_ARCH)/configs/$(CONFIG_NAME)
+    ifeq ($(wildcard $(CONFIG_PATH)),$(CONFIG_PATH))
+        TARGET_KERNEL_CONFIG := $(CONFIG_NAME)
+    endif
+endif
+
+ifeq ($(TARGET_KERNEL_CONFIG),)
+    $(error Could not find kernel defconfig for board)
 endif
 
 _kernel_intermediates := $(TARGET_OUT_INTERMEDIATES)/KERNEL
