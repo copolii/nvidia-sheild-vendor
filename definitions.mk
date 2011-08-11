@@ -68,7 +68,7 @@ endef
 define transform-shader-to-cgbin
 @echo "Compiling shader $@ from $<"
 @mkdir -p $(@D)
-$(hide) cat $< | $(NVIDIA_CGC) -quiet $(PRIVATE_CGOPTS) -o $(basename $@).cgbin
+$(hide) cat $< | $(NVIDIA_CGC) -quiet $(PRIVATE_CGOPTS) $(LOCAL_CGOPTS) -o $(basename $@).cgbin
 endef
 
 define transform-cgbin-to-cghex
