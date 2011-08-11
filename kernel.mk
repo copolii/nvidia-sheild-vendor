@@ -47,6 +47,14 @@ kmodules: $(BUILT_KERNEL_TARGET) FORCE
 	mkdir -p $(TARGET_OUT)/lib/modules
 	find $(PRIVATE_TOPDIR)/$(PRIVATE_KBUILD_OUT) -name "*.ko" -print0 | xargs -0 -IX cp -v X $(TARGET_OUT)/lib/modules/
 
+kernel-tests: kmodules FORCE
+	@echo "Kernel space tests build"
+	@echo "Tests at $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests"
+	+$(hide) $(kernel-make) M=$(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests
+	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "*.ko" -print0 | xargs -0 -IX cp -v X $(TARGET_OUT)/lib/modules/
+	+$(hide) $(kernel-make) M=$(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests clean
+	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "modules.order" -print0 | xargs -0 -IX rm -rf X
+
 # At this stage, BUILT_SYSTEMIMAGE in build/core/Makefile has not yet
 # been defined, so we cannot rely on it.
 _systemimage_intermediates_kmodules := \
@@ -69,12 +77,12 @@ kernel-%:
 	@mkdir -p $(PRIVATE_KBUILD_OUT)
 	$(hide) $(kernel-make) $*
 
-.PHONY: kernel kernel-% kmodules
+.PHONY: kernel kernel-% kernel-tests kmodules
 
 # Set private variables for all builds. TODO: Why?
-kernel kernel-% kmodules $(dotconfig) $(BUILT_KERNEL_TARGET): PRIVATE_SRC_PATH := $(KERNEL_PATH)
-kernel kernel-% kmodules $(dotconfig) $(BUILT_KERNEL_TARGET): PRIVATE_KBUILD_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL
-kernel kernel-% kmodules $(dotconfig) $(BUILT_KERNEL_TARGET): PRIVATE_TOPDIR := $(shell pwd)
+kernel kernel-% kernel-tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET): PRIVATE_SRC_PATH := $(KERNEL_PATH)
+kernel kernel-% kernel-tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET): PRIVATE_KBUILD_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL
+kernel kernel-% kernel-tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET): PRIVATE_TOPDIR := $(shell pwd)
 
 endif
 # of ifneq ($(TARGET_NO_KERNEL),true)
