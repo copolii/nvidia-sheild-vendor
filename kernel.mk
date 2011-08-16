@@ -31,6 +31,10 @@ $(dotconfig): $(KERNEL_PATH)/arch/$(TARGET_ARCH)/configs/$(TARGET_KERNEL_CONFIG)
 	@echo "Kernel config"
 	@mkdir -p $(PRIVATE_KBUILD_OUT)
 	$(hide) $(kernel-make) $(TARGET_KERNEL_CONFIG)
+ifeq ($(SECURE_OS_BUILD),y)
+	@echo "SecureOS enabled kernel"
+	$(KERNEL_PATH)/scripts/config --file $(dotconfig) --enable TRUSTED_FOUNDATIONS
+endif
 
 # TODO: figure out a way of not forcing kernel & module builds.
 # + in front of kernel-make will enable job control (parallelization).

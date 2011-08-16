@@ -43,6 +43,14 @@ ifeq ($(PLATFORM_IS_GINGERBREAD),YES)
 LOCAL_CFLAGS += -DPLATFORM_IS_GINGERBREAD=1
 endif
 
+# Define Trusted Foundations
+ifeq ($(SECURE_OS_BUILD),y)
+LOCAL_CFLAGS += -DCONFIG_TRUSTED_FOUNDATIONS
+ifeq (,$(findstring tf.enable=y,$(ADDITIONAL_BUILD_PROPERTIES)))
+ADDITIONAL_BUILD_PROPERTIES += tf.enable=y
+endif
+endif
+
 LOCAL_PRELINK_MODULE := false
 
 LOCAL_MODULE_TAGS := optional
