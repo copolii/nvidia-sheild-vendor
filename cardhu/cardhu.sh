@@ -14,6 +14,5 @@ else
 	cp $TOP/$OUTDIR/flash_cardhu.bct $TOP/$OUTDIR/flash.bct
 fi
 
-cp $TEGRA_ROOT/../customers/nvidia-partner/cardhu/nvflash/android_fastboot_emmc_full.cfg $TOP/$OUTDIR/flash.cfg
 cp $TOP/$OUTDIR/obj/EXECUTABLES/bootloader_intermediates/bootloader.bin $TOP/$OUTDIR/bootloader.bin
 
