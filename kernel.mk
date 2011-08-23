@@ -16,7 +16,7 @@ ifeq ($(TARGET_TEGRA_VERSION),t30)
 endif
 endif
 
-ifeq (,$(filter-out aruba2 cardhu enterprise whistler,$(TARGET_PRODUCT)))
+ifeq (,$(filter-out aruba2 cardhu curacao enterprise whistler,$(TARGET_PRODUCT)))
     CONFIG_NAME := tegra_$(TARGET_PRODUCT)_android_defconfig
     CONFIG_PATH := $(KERNEL_PATH)/arch/$(TARGET_ARCH)/configs/$(CONFIG_NAME)
     ifeq ($(wildcard $(CONFIG_PATH)),$(CONFIG_PATH))
