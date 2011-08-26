@@ -9,10 +9,10 @@ LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 LOCAL_NO_DEFAULT_COMPILER_FLAGS := true
 
 LOCAL_C_INCLUDES += $(TARGET_OUT_HEADERS)
-LOCAL_C_INCLUDES += $(TEGRA_ROOT)/../../../../bionic/libc/arch-arm/include
-LOCAL_C_INCLUDES += $(TEGRA_ROOT)/../../../../bionic/libc/include
-LOCAL_C_INCLUDES += $(TEGRA_ROOT)/../../../../bionic/libc/kernel/common
-LOCAL_C_INCLUDES += $(TEGRA_ROOT)/../../../../bionic/libc/kernel/arch-arm
+LOCAL_C_INCLUDES += $(TOP)/bionic/libc/arch-arm/include
+LOCAL_C_INCLUDES += $(TOP)/bionic/libc/include
+LOCAL_C_INCLUDES += $(TOP)/bionic/libc/kernel/common
+LOCAL_C_INCLUDES += $(TOP)/bionic/libc/kernel/arch-arm
 
 
 LOCAL_AVP_CFLAGS := -march=armv4t
