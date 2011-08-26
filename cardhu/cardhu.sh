@@ -10,6 +10,9 @@ export NVFLASH_ODM_DATA=0x40080105
 if [ "$BOARD_IS_PM269" ]
 then
 	cp $TOP/$OUTDIR/flash_pm269.bct $TOP/$OUTDIR/flash.bct
+elif [ "$BOARD_IS_PM305" ]
+then
+	cp $TOP/$OUTDIR/flash_pm305.bct $TOP/$OUTDIR/flash.bct
 else
 	cp $TOP/$OUTDIR/flash_cardhu.bct $TOP/$OUTDIR/flash.bct
 fi
