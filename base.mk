@@ -115,10 +115,17 @@ ifneq ($(filter nvidia-tests-automation,$(MAKECMDGOALS)),)
 # If we're explicitly building nvidia-tests-automation, redirect the tests.
 ALL_NVIDIA_TESTS += $(NVIDIA_TARGET_NAME)
 ifeq ($(LOCAL_MODULE_CLASS),EXECUTABLES)
-LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/bin
-endif
-ifeq ($(LOCAL_MODULE_CLASS),SHARED_LIBRARIES)
-LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/lib
+  LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/bin
+else
+  ifeq ($(LOCAL_MODULE_CLASS),SHARED_LIBRARIES)
+    LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/lib
+  else
+    ifeq ($(LOCAL_MODULE_CLASS),STATIC_LIBRARIES)
+      LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/lib
+    else
+      LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests
+    endif
+  endif
 endif
 endif
 LOCAL_MODULE_TAGS := $(filter-out nvidia_tests,$(LOCAL_MODULE_TAGS)) tests
