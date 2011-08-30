@@ -35,13 +35,17 @@ NVIDIA_COVERAGE            := $(NVIDIA_BUILD_ROOT)/coverage.mk
 NVIDIA_PREBUILT            := $(NVIDIA_BUILD_ROOT)/prebuilt.mk
 NVIDIA_WARNINGS            := $(NVIDIA_BUILD_ROOT)/warnings.mk
 
+# compiler
+
+NVIDIA_AR20ASM             := $(TEGRA_TOP)/cg/Cg/$(HOST_OS)/ar20asm
+NVIDIA_CGC                 := $(HOST_OUT_EXECUTABLES)/cgc
+NVIDIA_CGC_PROFILE         := glesar20
+NVIDIA_SHADERFIX           := $(HOST_OUT_EXECUTABLES)/shaderfix
+
 # tools
 
-NVIDIA_CGC                 := $(HOST_OUT_EXECUTABLES)/cgc
-NVIDIA_AR20ASM             := $(TEGRA_TOP)/cg/Cg/$(HOST_OS)/ar20asm
-NVIDIA_HEXIFY              := $(NVIDIA_BUILD_ROOT)/hexify.py
 NVIDIA_GETEXPORTS          := $(NVIDIA_BUILD_ROOT)/getexports.py
-NVIDIA_SHADERFIX           := $(HOST_OUT_EXECUTABLES)/shaderfix
+NVIDIA_HEXIFY              := $(NVIDIA_BUILD_ROOT)/hexify.py
 ifneq ($(TEGRA_TOP),hardware/tegra)
 NVIDIA_NVIDL               := $(HOST_OUT_EXECUTABLES)/nvidl
 else
