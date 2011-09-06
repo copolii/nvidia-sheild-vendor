@@ -120,9 +120,13 @@ else
   ifeq ($(LOCAL_MODULE_CLASS),SHARED_LIBRARIES)
     LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/lib
   else
-    ifeq ($(LOCAL_MODULE_CLASS),STATIC_LIBRARIES)
-      LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/lib
+    ifneq ($(LOCAL_MODULE_PATH),)
+      ifeq ($(findstring nvidia_tests,$(LOCAL_MODULE_PATH)),)
+        # Insert nvidia_tests in the installation path.
+        LOCAL_MODULE_PATH := $(subst $(PRODUCT_OUT),$(PRODUCT_OUT)/nvidia_tests,$(LOCAL_MODULE_PATH))
+      endif
     else
+      # Specify default install location for everything else.
       LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests
     endif
   endif
