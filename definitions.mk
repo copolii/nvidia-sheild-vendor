@@ -3,13 +3,8 @@
 # Global build system definitions go here
 #
 
-ifndef TEGRA_ROOT
-TEGRA_ROOT := vendor/nvidia/tegra/core
-endif
-
-# NV_WAR_BUG_816075
 ifndef TEGRA_TOP
-TEGRA_TOP := $(patsubst %/core,%,$(TEGRA_ROOT))
+TEGRA_TOP := vendor/nvidia/tegra
 endif
 
 NVIDIA_BUILD_ROOT          := vendor/nvidia/build
