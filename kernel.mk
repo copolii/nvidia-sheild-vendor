@@ -16,7 +16,10 @@ ifeq ($(TARGET_TEGRA_VERSION),t30)
 endif
 endif
 
-ifeq (,$(filter-out aruba2 cardhu curacao enterprise whistler bonaire bonaire_sim,$(TARGET_PRODUCT)))
+# Tegra platforms that have their own defconfig file
+TEGRA_PLATFORM_DEFCONFIGS := aruba2 cardhu curacao curacao_sim enterprise whistler bonaire bonaire_sim
+
+ifeq (,$(filter-out $(TEGRA_PLATFORM_DEFCONFIGS),$(TARGET_PRODUCT)))
     CONFIG_NAME := tegra_$(TARGET_PRODUCT)_android_defconfig
     CONFIG_PATH := $(KERNEL_PATH)/arch/$(TARGET_ARCH)/configs/$(CONFIG_NAME)
     ifeq ($(wildcard $(CONFIG_PATH)),$(CONFIG_PATH))

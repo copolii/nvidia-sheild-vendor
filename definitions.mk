@@ -39,7 +39,7 @@ NVIDIA_WARNINGS            := $(NVIDIA_BUILD_ROOT)/warnings.mk
 
 NVIDIA_AR20ASM             := $(TEGRA_TOP)/cg/Cg/$(HOST_OS)/ar20asm
 NVIDIA_CGC                 := $(HOST_OUT_EXECUTABLES)/cgc
-NVIDIA_CGC_PROFILE         := glesar20
+NVIDIA_CGC_PROFILE         := glest35
 NVIDIA_SHADERFIX           := $(HOST_OUT_EXECUTABLES)/shaderfix
 
 # tools
