@@ -331,9 +331,7 @@ if [ -f $HOME/lib/android/envsetup.sh ] ; then
 fi
 
 if [ -d $TOP/vendor/nvidia/tegra/core-private ] ; then
-    export TEGRA_ROOT=$TOP/vendor/nvidia/tegra/core
     export TEGRA_TOP=$TOP/vendor/nvidia/tegra
 elif [ -d $TOP/vendor/nvidia/proprietary_src/core-private ]; then
-    export TEGRA_ROOT=$TOP/vendor/nvidia/proprietary_src/core
     export TEGRA_TOP=$TOP/vendor/nvidia/proprietary_src
 fi

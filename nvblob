@@ -113,7 +113,8 @@ def main(argv):
             return
 
     # create a binary file for creating a dump.
-    blob = open('blob', "wb")
+    unsigned_blob = ".blob"
+    blob = open(unsigned_blob, "wb")
     # write fixed header into the blob
     header_size = struct.calcsize('=16sIIIIIIIIIII')
     update_header_tuple = ("MSM-RADIO-UPDATE", 0x00010000, header_size, header_size, number_of_elements, 0, 0, 0, 0, 0, 0, 0)
@@ -165,7 +166,7 @@ def main(argv):
         return;
     out_path = os.path.join(out_path,"blob")
     try:
-        p = Run([app_path,key_path,"blob",out_path]);
+        p = Run([app_path,key_path,unsigned_blob,out_path]);
     except OSError:
         print "OSError : nvblob failed";
         return;
@@ -176,7 +177,7 @@ def main(argv):
             return;
 
     try:
-        p = Run(["rm", "blob"]);
+        p = Run(["rm", unsigned_blob]);
     except OSError:
         print "OSError : nvblob failed";
         return;
