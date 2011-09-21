@@ -3,13 +3,8 @@
 # Global build system definitions go here
 #
 
-ifndef TEGRA_ROOT
-TEGRA_ROOT := vendor/nvidia/tegra/core
-endif
-
-# NV_WAR_BUG_816075
 ifndef TEGRA_TOP
-TEGRA_TOP := $(patsubst %/core,%,$(TEGRA_ROOT))
+TEGRA_TOP := vendor/nvidia/tegra
 endif
 
 NVIDIA_BUILD_ROOT          := vendor/nvidia/build
@@ -41,6 +36,7 @@ NVIDIA_AR20ASM             := $(TEGRA_TOP)/cg/Cg/$(HOST_OS)/ar20asm
 NVIDIA_CGC                 := $(HOST_OUT_EXECUTABLES)/cgc
 NVIDIA_CGC_PROFILE         := glest35
 NVIDIA_SHADERFIX           := $(HOST_OUT_EXECUTABLES)/shaderfix
+NVIDIA_AR20SHADERLAYOUT    := $(HOST_OUT_EXECUTABLES)/ar20shaderlayout
 
 # tools
 
@@ -72,7 +68,7 @@ endef
 define transform-shader-to-cgbin
 @echo "Compiling shader $@ from $<"
 @mkdir -p $(@D)
-$(hide) cat $< | $(NVIDIA_CGC) -quiet $(PRIVATE_CGOPTS) $(LOCAL_NVIDIA_CGOPTS) -o $(basename $@).cgbin
+$(hide) cat $< | $(NVIDIA_CGC) -quiet $(PRIVATE_CGOPTS) -o $(basename $@).cgbin
 endef
 
 define transform-cgbin-to-cghex
