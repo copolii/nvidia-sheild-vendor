@@ -20,10 +20,6 @@ ifneq (,$(findstring tests,$(LOCAL_PATH)))
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/include
 endif
 
-# Temporary define to enable T35 code !!!DELETEME!!! BUG 866947
-NVUB_SUPPORTS_T35 := 1
-LOCAL_CFLAGS += -DNVUB_SUPPORTS_T35=1
-
 # Temporary define to enable T11X code
 NVUB_SUPPORTS_T114 := 1
 LOCAL_CFLAGS += -DNVUB_SUPPORTS_T114=1
