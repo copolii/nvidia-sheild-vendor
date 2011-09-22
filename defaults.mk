@@ -21,7 +21,7 @@ LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/include
 endif
 
 # Temporary define to enable T11X code
-NVUB_SUPPORTS_T114 := 1
+NVUB_SUPPORTS_T114 ?= 1
 LOCAL_CFLAGS += -DNVUB_SUPPORTS_T114=1
 
 ifeq ($(TARGET_BUILD_TYPE),debug)
