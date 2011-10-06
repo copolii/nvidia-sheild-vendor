@@ -107,9 +107,10 @@ function krebuild()
     local KOUT="O=$T/$INTERMEDIATES/KERNEL"
     local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
     local KARCH="ARCH=$ARCHITECTURE"
+    local MULTICORE="$(cat /proc/cpuinfo | grep processor | wc -l)"
 
-    echo "make -C $SRC $* $KARCH $CROSS $KOUT"
-    (cd $T && make -C $SRC $* $KARCH $CROSS $KOUT)
+    echo "make -j$MULTICORE -C $SRC $* $KARCH $CROSS $KOUT"
+    (cd $T && make -j$MULTICORE -C $SRC $* $KARCH $CROSS $KOUT)
 
     if [ -d "$T/$OUTDIR/modules" ] ; then
         rm -r $T/$OUTDIR/modules
