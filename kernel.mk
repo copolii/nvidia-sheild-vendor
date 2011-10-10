@@ -114,5 +114,9 @@ endif
 .PHONY: dev
 dev: droidcore
 ifneq ($(NO_ROOT_DEVICE),)
+  ifeq ($(TARGET_BOARD_PLATFORM_TYPE),simulation)
+	device/nvidia/common/generate_full_filesystem.sh
+  else
 	device/nvidia/common/generate_nvtest_ramdisk.sh $(TARGET_PRODUCT) $(TARGET_BUILD_TYPE)
+  endif
 endif
