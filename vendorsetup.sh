@@ -79,6 +79,43 @@ function kconfig()
     (cd $T && make -C $SRC $KARCH $CROSS $KOUT menuconfig)
 }
 
+function ksavedefconfig()
+{
+    T=$(gettop)
+    if [ ! "$T" ]; then
+        echo "Couldn't local the top of the tree. Try setting TOP." >&2
+        return 1
+    fi
+
+    local SRC="$T/kernel"
+    if [ $# -lt 1 ] ; then
+        echo "Usage: ksavedefconfig <defconfig> [kernelpath]"
+        return 1
+    fi
+
+    if [ $# -gt 1 ] ; then
+        SRC="$2"
+    fi
+
+    if [ ! -d "$SRC" ] ; then
+        echo "$SRC not found."
+        return 1
+    fi
+
+    _gethosttype
+
+    local TOOLS=$(get_build_var TARGET_TOOLS_PREFIX)
+    local ARCHITECTURE=$(get_build_var TARGET_ARCH)
+    local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
+    local KOUT="O=$T/$INTERMEDIATES/KERNEL"
+    local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
+    local KARCH="ARCH=$ARCHITECTURE"
+
+    echo "make -C $SRC $KARCH $CROSS $KOUT savedefconfig"
+    (cd $T && make -C $SRC $KARCH $CROSS $KOUT savedefconfig &&
+        cp $T/$INTERMEDIATES/KERNEL/defconfig $SRC/arch/arm/configs/$1)
+}
+
 function krebuild()
 {
     T=$(gettop)
