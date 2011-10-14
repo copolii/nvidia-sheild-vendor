@@ -373,3 +373,7 @@ if [ -d $TOP/vendor/nvidia/tegra/core-private ] ; then
 elif [ -d $TOP/vendor/nvidia/proprietary_src/core-private ]; then
     export TEGRA_TOP=$TOP/vendor/nvidia/proprietary_src
 fi
+
+if [ -f $TEGRA_TOP/tmake/scripts/setupenv.sh ]; then
+    . $TEGRA_TOP/tmake/scripts/setupenv.sh
+fi
