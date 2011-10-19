@@ -17,7 +17,7 @@ endif
 endif
 
 # Tegra platforms that have their own defconfig file
-TEGRA_PLATFORM_DEFCONFIGS := aruba2 cardhu enterprise whistler
+TEGRA_PLATFORM_DEFCONFIGS := aruba2 cardhu enterprise whistler bonaire bonaire_sim
 
 TEGRA_PLATFORM_DEFCONFIGS += curacao curacao_sim
 
