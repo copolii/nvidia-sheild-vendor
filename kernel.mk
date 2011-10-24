@@ -16,7 +16,12 @@ ifeq ($(TARGET_TEGRA_VERSION),t30)
 endif
 endif
 
-ifeq (,$(filter-out aruba2 cardhu enterprise whistler,$(TARGET_PRODUCT)))
+# Tegra platforms that have their own defconfig file
+TEGRA_PLATFORM_DEFCONFIGS := aruba2 cardhu enterprise whistler
+
+TEGRA_PLATFORM_DEFCONFIGS += curacao curacao_sim
+
+ifeq (,$(filter-out $(TEGRA_PLATFORM_DEFCONFIGS),$(TARGET_PRODUCT)))
     CONFIG_NAME := tegra_$(TARGET_PRODUCT)_android_defconfig
     CONFIG_PATH := $(KERNEL_PATH)/arch/$(TARGET_ARCH)/configs/$(CONFIG_NAME)
     ifeq ($(wildcard $(CONFIG_PATH)),$(CONFIG_PATH))
@@ -123,5 +128,9 @@ endif
 .PHONY: dev
 dev: droidcore
 ifneq ($(NO_ROOT_DEVICE),)
+  ifeq ($(TARGET_BOARD_PLATFORM_TYPE),simulation)
+	device/nvidia/common/generate_full_filesystem.sh
+  else
 	device/nvidia/common/generate_nvtest_ramdisk.sh $(TARGET_PRODUCT) $(TARGET_BUILD_TYPE)
+  endif
 endif
