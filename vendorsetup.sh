@@ -363,12 +363,21 @@ function stayon()
     adb shell "svc power stayon true && echo main >/sys/power/wake_lock"
 }
 
-if [ -f $HOME/lib/android/envsetup.sh ] ; then
+# Remove TEGRA_ROOT, no longer required and should never be used.
+
+if [ -n "$TEGRA_ROOT" ]; then
+    echo "WARNING: TEGRA_ROOT env variable is set to: $TEGRA_ROOT"
+    echo "This variable has been superseded by TEGRA_TOP."
+    echo "Removing TEGRA_ROOT from environment"
+    unset TEGRA_ROOT
+fi
+
+if [ -f $HOME/lib/android/envsetup.sh ]; then
     echo including $HOME/lib/android/envsetup.sh
     .  $HOME/lib/android/envsetup.sh
 fi
 
-if [ -d $TOP/vendor/nvidia/tegra/core-private ] ; then
+if [ -d $TOP/vendor/nvidia/tegra/core-private ]; then
     export TEGRA_TOP=$TOP/vendor/nvidia/tegra
 elif [ -d $TOP/vendor/nvidia/proprietary_src/core-private ]; then
     export TEGRA_TOP=$TOP/vendor/nvidia/proprietary_src
