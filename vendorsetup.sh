@@ -15,7 +15,7 @@ function ksetup()
 {
     T=$(gettop)
     if [ ! "$T" ]; then
-        echo "Couldn't local the top of the tree. Try setting TOP." >&2
+        echo "Couldn't locate the top of the tree. Try setting TOP." >&2
         return 1
     fi
 
@@ -51,7 +51,7 @@ function kconfig()
 {
    T=$(gettop)
     if [ ! "$T" ]; then
-        echo "Couldn't local the top of the tree. Try setting TOP." >&2
+        echo "Couldn't locate the top of the tree. Try setting TOP." >&2
         return 1
     fi
 
@@ -83,7 +83,7 @@ function ksavedefconfig()
 {
     T=$(gettop)
     if [ ! "$T" ]; then
-        echo "Couldn't local the top of the tree. Try setting TOP." >&2
+        echo "Couldn't locate the top of the tree. Try setting TOP." >&2
         return 1
     fi
 
@@ -120,7 +120,7 @@ function krebuild()
 {
     T=$(gettop)
     if [ ! "$T" ]; then
-        echo "Couldn't local the top of the tree. Try setting TOP." >&2
+        echo "Couldn't locate the top of the tree. Try setting TOP." >&2
         return 1
     fi
 
@@ -206,7 +206,7 @@ function fboot()
     T=$(gettop)
 
     if [ ! "$T" ]; then
-        echo "Couldn't local the top of the tree. Try setting TOP." >&2
+        echo "Couldn't locate the top of the tree. Try setting TOP." >&2
         return 1
     fi
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
@@ -253,7 +253,7 @@ function fflash()
     T=$(gettop)
 
     if [ ! "$T" ]; then
-        echo "Couldn't local the top of the tree. Try setting TOP." >&2
+        echo "Couldn't locate the top of the tree. Try setting TOP." >&2
         return 1
     fi
     local OUTDIR=$(get_build_var PRODUCT_OUT)
@@ -377,10 +377,19 @@ if [ -f $HOME/lib/android/envsetup.sh ]; then
     .  $HOME/lib/android/envsetup.sh
 fi
 
-if [ -d $TOP/vendor/nvidia/tegra/core-private ]; then
-    export TEGRA_TOP=$TOP/vendor/nvidia/tegra
-elif [ -d $TOP/vendor/nvidia/proprietary_src/core-private ]; then
+if [ -d $TOP/vendor/nvidia/proprietary_src ]; then
     export TEGRA_TOP=$TOP/vendor/nvidia/proprietary_src
+elif [ -d $TOP/vendor/nvidia/tegra ]; then
+    export TEGRA_TOP=$TOP/vendor/nvidia/tegra
+else
+    echo "WARNING: Unable to set TEGRA_TOP environment variable."
+    echo "Valid TEGRA_TOP directories are:"
+    echo "$TOP/vendor/nvidia/proprietary_src"
+    echo "$TOP/vendor/nvidia/tegra"
+    echo "At least one of them should exist."
+    echo "Please make sure your Android source tree is setup correctly."
+    # This script will be sourced, so use return instead of exit
+    return 1
 fi
 
 if [ -f $TEGRA_TOP/tmake/scripts/setupenv.sh ]; then
