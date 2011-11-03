@@ -12,6 +12,22 @@ function _gethosttype()
     fi
 }
 
+function _getnumcpus ()
+{
+    # if we happen to not figure it out, default to 2 CPUs
+    NUMCPUS=2
+
+    _gethosttype
+
+    if [ "$HOSTTYPE" == "linux-x86" ]; then
+        NUMCPUS=`cat /proc/cpuinfo | grep processor | wc -l`
+    fi
+
+    if [ "$HOSTTYPE" == "darwin-x86" ]; then
+        NUMCPUS=`sysctl -n hw.activecpu`
+    fi
+}
+
 function ksetup()
 {
     T=$(gettop)
@@ -137,6 +153,7 @@ function krebuild()
     fi
 
     _gethosttype
+    _getnumcpus
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
     local TOOLS=$(get_build_var TARGET_TOOLS_PREFIX)
@@ -145,10 +162,9 @@ function krebuild()
     local KOUT="O=$T/$INTERMEDIATES/KERNEL"
     local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
     local KARCH="ARCH=$ARCHITECTURE"
-    local MULTICORE="$(cat /proc/cpuinfo | grep processor | wc -l)"
 
-    echo "make -j$MULTICORE -C $SRC $* $KARCH $CROSS $KOUT"
-    (cd $T && make -j$MULTICORE -C $SRC $* $KARCH $CROSS $KOUT)
+    echo "make -j$NUMCPUS -C $SRC $* $KARCH $CROSS $KOUT"
+    (cd $T && make -j$NUMCPUS -C $SRC $* $KARCH $CROSS $KOUT)
 
     if [ -d "$T/$OUTDIR/modules" ] ; then
         rm -r $T/$OUTDIR/modules
@@ -161,12 +177,14 @@ function krebuild()
 
 function mp()
 {
-    m -j$(cat /proc/cpuinfo | grep processor | wc -l) $*
+    _getnumcpus
+    m -j$NUMCPUS $*
 }
 
 function mmp()
 {
-    mm -j$(cat /proc/cpuinfo | grep processor | wc -l) $*
+    _getnumcpus
+    mm -j$NUMCPUS $*
 }
 
 function _flash()
