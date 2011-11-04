@@ -17,9 +17,11 @@ endif
 endif
 
 # Tegra platforms that have their own defconfig file
-TEGRA_PLATFORM_DEFCONFIGS := aruba2 cardhu enterprise whistler bonaire bonaire_sim
+TEGRA_PLATFORM_DEFCONFIGS := aruba2 cardhu enterprise whistler
 
 TEGRA_PLATFORM_DEFCONFIGS += curacao curacao_sim
+
+TEGRA_PLATFORM_DEFCONFIGS += bonaire bonaire_sim
 
 ifeq (,$(filter-out $(TEGRA_PLATFORM_DEFCONFIGS),$(TARGET_PRODUCT)))
     CONFIG_NAME := tegra_$(TARGET_PRODUCT)_android_defconfig
