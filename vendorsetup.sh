@@ -392,6 +392,18 @@ else
     return 1
 fi
 
+if [ `uname` == "Darwin" ]; then
+    if [[ -n $FINK_ROOT && -z $GNU_COREUTILS ]]; then
+        export GNU_COREUTILS=${FINK_ROOT}/lib/coreutils/bin
+    elif [[ -n $MACPORTS_ROOT && -z $GNU_COREUTILS ]]; then
+        export GNU_COREUTILS=${MACPORTS_ROOT}/local/libexec/gnubin
+    elif [[ -n $GNU_COREUTILS ]]; then
+        :
+    else
+        echo "Cannot find GNU coreutils. Please set either GNU_COREUTILS, FINK_ROOT or MACPORTS_ROOT."
+    fi
+fi
+
 if [ -f $TEGRA_TOP/tmake/scripts/setupenv.sh ]; then
     . $TEGRA_TOP/tmake/scripts/setupenv.sh
 fi
