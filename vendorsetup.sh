@@ -8,6 +8,7 @@ function _gethosttype()
     if [ "$H" == Darwin ]; then
         HOSTTYPE="darwin-x86"
         export HOST_EXTRACFLAGS="-I$TOP/vendor/nvidia/tegra/core-private/include"
+        export PATH=$FINK_ROOT/lib/coreutils/bin:$PATH
     fi
 }
 
