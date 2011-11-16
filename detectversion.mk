@@ -1,7 +1,4 @@
-ifneq (,$(filter 2.%,$(PLATFORM_VERSION)))
-  PLATFORM_IS_GINGERBREAD := YES
-else ifneq (,$(filter 3.%,$(PLATFORM_VERSION)))
-  PLATFORM_IS_HONEYCOMB := YES
+ifeq ($(PLATFORM_VERSION),IceCreamSandwich)
+PLATFORM_IS_ICECREAMSANDWICH := 1
 else
-  $(warning PLATFORM_VERSION = $(PLATFORM_VERSION) is unknown))
-endif
+PLATFORM_IS_HONEYCOMB := 1
