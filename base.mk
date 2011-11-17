@@ -4,6 +4,12 @@ $(error $(LOCAL_PATH): NVIDIA variables not cleared)
 endif
 NVIDIA_CLEARED := false
 
+# Make sure that LOCAL_SRC_FILES don't contain files with ../ in the path
+# devics is not yet ready for this yet
+#ifneq ($(findstring ../, $(dir $(LOCAL_SRC_FILES))),)
+#$(error $(LOCAL_PATH): ../ in path is not allowed for LOCAL_SRC_FILES)
+#endif
+
 # output directory for generated files
 
 ifneq ($(findstring $(LOCAL_MODULE_CLASS),EXECUTABLES STATIC_LIBRARIES SHARED_LIBRARIES),)
