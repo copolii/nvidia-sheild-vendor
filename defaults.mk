@@ -14,11 +14,16 @@ LOCAL_C_INCLUDES += $(TEGRA_TOP)/core/drivers/hwinc
 ifneq (,$(findstring core-private,$(LOCAL_PATH)))
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/include
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/drivers/hwinc
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/drivers/hwinc/$(TARGET_TEGRA_FAMILY)
 endif
 
 ifneq (,$(findstring tests,$(LOCAL_PATH)))
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/include
 endif
+
+# Temporary define to enable T11X code
+NVUB_SUPPORTS_T114 ?= 1
+LOCAL_CFLAGS += -DNVUB_SUPPORTS_T114=1
 
 TEGRA_CFLAGS :=
 
