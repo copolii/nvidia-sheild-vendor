@@ -40,18 +40,29 @@ dotconfig := $(_kernel_intermediates)/.config
 KERNEL_EXTRA_ARGS=
 OS=$(shell uname)
 ifeq ($(OS),Darwin)
+  # check prerequisites
+  ifeq ($(GNU_COREUTILS),)
+    $(error GNU_COREUTILS is not set)
+  endif
+  ifeq ($(wildcard $(GNU_COREUTILS)/stat),)
+    $(error $(GNU_COREUTILS)/stat not found. Please install GNU coreutils.)
+  endif
+
+  # add GNU stat to the path
+  KERNEL_EXTRA_ENV=env PATH=$(GNU_COREUTILS):$(PATH)
   # bring in our elf.h
   KERNEL_EXTRA_ARGS=HOST_EXTRACFLAGS=-I$(TOP)/../vendor/nvidia/tegra/core-private/include\ -DKBUILD_NO_NLS
   HOSTTYPE=darwin-x86
 endif
 
 ifeq ($(OS),Linux)
+  KERNEL_EXTRA_ENV=
   HOSTTYPE=linux-x86
 endif
 
 # We should rather use CROSS_COMPILE=$(PRIVATE_TOPDIR)/$(TARGET_TOOLS_PREFIX).
 define kernel-make
-$(MAKE) -C $(PRIVATE_SRC_PATH) \
+$(KERNEL_EXTRA_ENV) $(MAKE) -C $(PRIVATE_SRC_PATH) \
     ARCH=$(TARGET_ARCH) \
     CROSS_COMPILE=$(PRIVATE_TOPDIR)/prebuilt/$(HOSTTYPE)/toolchain/arm-eabi-4.4.3/bin/arm-eabi- \
     O=$(PRIVATE_TOPDIR)/$(PRIVATE_KBUILD_OUT) $(KERNEL_EXTRA_ARGS) \
