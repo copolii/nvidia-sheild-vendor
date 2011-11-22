@@ -22,6 +22,9 @@ else
 endif
 
 $(LOCAL_BUILT_MODULE) : PRIVATE_ELF_FILE := $(intermediates)/$(PRIVATE_MODULE).elf
+$(LOCAL_BUILT_MODULE) : PRIVATE_LINK_SCRIPT := $(LOCAL_NVIDIA_LINK_SCRIPT_PATH)/$(PRIVATE_MODULE).x
+$(LOCAL_BUILT_MODULE) : PRIVATE_RAW_EXECUTABLE_LDFLAGS :=
+$(LOCAL_BUILT_MODULE) : PRIVATE_RAW_EXECUTABLE_LDFLAGS += --entry=_start --gc-sections
 
 # This is a WAR until we have immplemented the missing functions in NVOs.
 # Once implemented, PRIVATE_LIBS must be defined to an empty string or removed.
