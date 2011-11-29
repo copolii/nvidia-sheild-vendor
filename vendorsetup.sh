@@ -8,6 +8,23 @@ function _gethosttype()
     if [ "$H" == Darwin ]; then
         HOSTTYPE="darwin-x86"
         export HOST_EXTRACFLAGS="-I$TOP/vendor/nvidia/tegra/core-private/include"
+        export PATH=$FINK_ROOT/lib/coreutils/bin:$PATH
+    fi
+}
+
+function _getnumcpus ()
+{
+    # if we happen to not figure it out, default to 2 CPUs
+    NUMCPUS=2
+
+    _gethosttype
+
+    if [ "$HOSTTYPE" == "linux-x86" ]; then
+        NUMCPUS=`cat /proc/cpuinfo | grep processor | wc -l`
+    fi
+
+    if [ "$HOSTTYPE" == "darwin-x86" ]; then
+        NUMCPUS=`sysctl -n hw.activecpu`
     fi
 }
 
@@ -136,6 +153,7 @@ function krebuild()
     fi
 
     _gethosttype
+    _getnumcpus
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
     local TOOLS=$(get_build_var TARGET_TOOLS_PREFIX)
@@ -144,10 +162,9 @@ function krebuild()
     local KOUT="O=$T/$INTERMEDIATES/KERNEL"
     local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
     local KARCH="ARCH=$ARCHITECTURE"
-    local MULTICORE="$(cat /proc/cpuinfo | grep processor | wc -l)"
 
-    echo "make -j$MULTICORE -C $SRC $* $KARCH $CROSS $KOUT"
-    (cd $T && make -j$MULTICORE -C $SRC $* $KARCH $CROSS $KOUT)
+    echo "make -j$NUMCPUS -C $SRC $* $KARCH $CROSS $KOUT"
+    (cd $T && make -j$NUMCPUS -C $SRC $* $KARCH $CROSS $KOUT)
 
     if [ -d "$T/$OUTDIR/modules" ] ; then
         rm -r $T/$OUTDIR/modules
@@ -160,12 +177,14 @@ function krebuild()
 
 function mp()
 {
-    m -j$(cat /proc/cpuinfo | grep processor | wc -l) $*
+    _getnumcpus
+    m -j$NUMCPUS $*
 }
 
 function mmp()
 {
-    mm -j$(cat /proc/cpuinfo | grep processor | wc -l) $*
+    _getnumcpus
+    mm -j$NUMCPUS $*
 }
 
 function _flash()
@@ -175,12 +194,6 @@ function _flash()
     if [ ! "$T" ]; then
         echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
         return 1
-    fi
-
-    # Get NVFLASH_ODM_DATA from the product specific shell script.
-    local product=$(get_build_var TARGET_PRODUCT)
-    if [ -f $T/vendor/nvidia/build/${product}/${product}.sh ]; then
-        . $T/vendor/nvidia/build/${product}/${product}.sh
     fi
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
@@ -303,6 +316,14 @@ function flash()
     fi
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
+
+    # Get NVFLASH_ODM_DATA from the product specific shell script.
+    local product=$(get_build_var TARGET_PRODUCT)
+    if [ -f $T/vendor/nvidia/build/${product}/${product}.sh ]; then
+        echo "run product script"
+        . $T/vendor/nvidia/build/${product}/${product}.sh
+    fi
+
     local FLASH_CMD=$(_flash | tail -1)
     echo $FLASH_CMD
 
@@ -322,6 +343,13 @@ function _nvflash_sh()
     if [ ! "$T" ]; then
         echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
         return 1
+    fi
+
+    # Get NVFLASH_ODM_DATA from the product specific shell script.
+    local product=$(get_build_var TARGET_PRODUCT)
+    if [ -f $T/vendor/nvidia/build/${product}/${product}.sh ]; then
+        echo "run product script"
+        . $T/vendor/nvidia/build/${product}/${product}.sh
     fi
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
