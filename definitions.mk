@@ -3,6 +3,11 @@
 # Global build system definitions go here
 #
 
+# Inherit build shell from Android if applicable
+ifdef ANDROID_BUILD_SHELL
+SHELL := $(ANDROID_BUILD_SHELL)
+endif
+
 ifndef TEGRA_TOP
 TEGRA_TOP := vendor/nvidia/tegra
 endif
