@@ -21,6 +21,8 @@ TEGRA_PLATFORM_DEFCONFIGS := aruba2 cardhu enterprise whistler
 
 TEGRA_PLATFORM_DEFCONFIGS += curacao curacao_sim
 
+TEGRA_PLATFORM_DEFCONFIGS += bonaire bonaire_sim
+
 ifeq (,$(filter-out $(TEGRA_PLATFORM_DEFCONFIGS),$(TARGET_PRODUCT)))
     CONFIG_NAME := tegra_$(TARGET_PRODUCT)_android_defconfig
     CONFIG_PATH := $(KERNEL_PATH)/arch/$(TARGET_ARCH)/configs/$(CONFIG_NAME)
