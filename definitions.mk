@@ -29,6 +29,7 @@ NVIDIA_PACKAGE             := $(NVIDIA_BUILD_ROOT)/package.mk
 NVIDIA_COVERAGE            := $(NVIDIA_BUILD_ROOT)/coverage.mk
 NVIDIA_PREBUILT            := $(NVIDIA_BUILD_ROOT)/prebuilt.mk
 NVIDIA_WARNINGS            := $(NVIDIA_BUILD_ROOT)/warnings.mk
+NVIDIA_UBM_DEFAULTS        := $(NVIDIA_BUILD_ROOT)/ubm_defaults.mk
 
 # compiler
 

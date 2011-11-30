@@ -21,13 +21,7 @@ ifneq (,$(findstring tests,$(LOCAL_PATH)))
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/include
 endif
 
-# Temporary define to enable T11X code
-NVUB_SUPPORTS_T114 ?= 1
-LOCAL_CFLAGS += -DNVUB_SUPPORTS_T114=1
-
-# Temporary define to disable T14X code
-NVUB_SUPPORTS_T148 ?= 0
-LOCAL_CFLAGS += -DNVUB_SUPPORTS_T148=0
+-include $(NVIDIA_UBM_DEFAULTS)
 
 TEGRA_CFLAGS :=
 
