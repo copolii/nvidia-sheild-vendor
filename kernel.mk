@@ -16,15 +16,7 @@ ifeq ($(TARGET_TEGRA_VERSION),t30)
 endif
 endif
 
-ifeq (,$(filter-out aruba2 cardhu enterprise whistler,$(TARGET_PRODUCT)))
-    CONFIG_NAME := tegra_$(TARGET_PRODUCT)_android_defconfig
-    CONFIG_PATH := $(KERNEL_PATH)/arch/$(TARGET_ARCH)/configs/$(CONFIG_NAME)
-    ifeq ($(wildcard $(CONFIG_PATH)),$(CONFIG_PATH))
-        TARGET_KERNEL_CONFIG := $(CONFIG_NAME)
-    endif
-endif
-
-ifeq ($(TARGET_KERNEL_CONFIG),)
+ifeq ($(wildcard $(KERNEL_PATH)/arch/arm/configs/$(TARGET_KERNEL_CONFIG)),)
     $(error Could not find kernel defconfig for board)
 endif
 
