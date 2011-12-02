@@ -196,6 +196,13 @@ function _flash()
         return 1
     fi
 
+    # Get NVFLASH_ODM_DATA from the product specific shell script.
+    local product=$(get_build_var TARGET_PRODUCT)
+    if [ -f $T/vendor/nvidia/build/${product}/${product}.sh ]; then
+        echo "run product script"
+        . $T/vendor/nvidia/build/${product}/${product}.sh
+    fi
+
     local OUTDIR=$(get_build_var PRODUCT_OUT)
     local HOSTOUT=$(get_build_var HOST_OUT)
 
@@ -317,13 +324,6 @@ function flash()
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
 
-    # Get NVFLASH_ODM_DATA from the product specific shell script.
-    local product=$(get_build_var TARGET_PRODUCT)
-    if [ -f $T/vendor/nvidia/build/${product}/${product}.sh ]; then
-        echo "run product script"
-        . $T/vendor/nvidia/build/${product}/${product}.sh
-    fi
-
     local FLASH_CMD=$(_flash | tail -1)
     echo $FLASH_CMD
 
@@ -343,13 +343,6 @@ function _nvflash_sh()
     if [ ! "$T" ]; then
         echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
         return 1
-    fi
-
-    # Get NVFLASH_ODM_DATA from the product specific shell script.
-    local product=$(get_build_var TARGET_PRODUCT)
-    if [ -f $T/vendor/nvidia/build/${product}/${product}.sh ]; then
-        echo "run product script"
-        . $T/vendor/nvidia/build/${product}/${product}.sh
     fi
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
