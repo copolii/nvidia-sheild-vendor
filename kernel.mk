@@ -96,7 +96,7 @@ $(BUILT_KERNEL_TARGET): $(dotconfig) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 kmodules: $(BUILT_KERNEL_TARGET) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR) $(NV_KERNEL_MODULES_TARGET_DIR)
 	@echo "Kernel modules build"
 	+$(hide) $(kernel-make) modules
-	find $(PRIVATE_TOPDIR)/$(NV_KERNEL_INTERMEDIATES_DIR) -name "*.ko" -print0 | xargs -0 -IX cp -v X $(NV_KERNEL_MODULES_TARGET_DIR)
+	find $(NV_KERNEL_INTERMEDIATES_DIR) -name "*.ko" -print0 | xargs -0 -IX cp -v X $(NV_KERNEL_MODULES_TARGET_DIR)
 
 kernel-tests: kmodules FORCE
 	@echo "Kernel space tests build"
