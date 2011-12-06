@@ -34,6 +34,7 @@ NVIDIA_PACKAGE             := $(NVIDIA_BUILD_ROOT)/package.mk
 NVIDIA_COVERAGE            := $(NVIDIA_BUILD_ROOT)/coverage.mk
 NVIDIA_PREBUILT            := $(NVIDIA_BUILD_ROOT)/prebuilt.mk
 NVIDIA_WARNINGS            := $(NVIDIA_BUILD_ROOT)/warnings.mk
+NVIDIA_GENERATED_HEADER    := $(NVIDIA_BUILD_ROOT)/generated_headers.mk
 
 # compiler
 
