@@ -91,11 +91,14 @@ $(BUILT_KERNEL_TARGET): $(dotconfig) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel build"
 	+$(hide) $(kernel-make) zImage
 
-# This will add all kernel modules we build for inclusion the system
-# image - no blessing takes place.
-kmodules: $(BUILT_KERNEL_TARGET) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR) $(NV_KERNEL_MODULES_TARGET_DIR)
+kmodules-build_only: $(BUILT_KERNEL_TARGET) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel modules build"
 	+$(hide) $(kernel-make) modules
+
+# This will add all kernel modules we build for inclusion the system
+# image - no blessing takes place.
+kmodules: kmodules-build_only FORCE | $(NV_KERNEL_MODULES_TARGET_DIR)
+	@echo "Kernel modules install"
 	find $(NV_KERNEL_INTERMEDIATES_DIR) -name "*.ko" -print0 | xargs -0 -IX cp -v X $(NV_KERNEL_MODULES_TARGET_DIR)
 
 # At this stage, BUILT_SYSTEMIMAGE in $TOP/build/core/Makefile has not
@@ -144,6 +147,8 @@ $(BUILT_SYSTEMIMAGE_KMODULES): kmodules
 # which will prevent too early creation of systemimage.
 $(NV_INSTALLED_SYSTEMIMAGE): $(BUILT_SYSTEMIMAGE_KMODULES)
 
+# $(INSTALLED_KERNEL_TARGET) is defined in
+# $(TOP)/build/target/board/Android.mk
 $(INSTALLED_KERNEL_TARGET): $(BUILT_KERNEL_TARGET) | $(ACP)
 	$(copy-file-to-target)
 
@@ -153,6 +158,18 @@ $(INSTALLED_KERNEL_TARGET): $(BUILT_KERNEL_TARGET) | $(ACP)
 # so that recompilation of kernel automatically updates also the
 # drivers in system image to be flashed to the device.
 kernel: $(INSTALLED_KERNEL_TARGET) kmodules $(NV_INSTALLED_SYSTEMIMAGE)
+
+# 'kernel-build_only' is an isolated target meant to be used if _only_
+# the build of the kernel and kernel modules is needed. This can be
+# useful for example when measuring the build time of these
+# components, but in most cases 'kernel-build_only' is probably not
+# the target you want to use!
+#
+# Please use 'kernel'-target instead, it will also update the system
+# image after compiling kernel and modules, and copy both the kernel
+# and system images to correct locations for flashing.
+kernel-build_only: $(BUILT_KERNEL_TARGET) kmodules-build_only
+	@echo "kernel + modules built successfully! (Note, just build, no install done!)"
 
 kernel-%: | $(NV_KERNEL_INTERMEDIATES_DIR)
 	$(hide) $(kernel-make) $*
