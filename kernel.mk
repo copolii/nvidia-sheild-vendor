@@ -91,21 +91,15 @@ $(BUILT_KERNEL_TARGET): $(dotconfig) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel build"
 	+$(hide) $(kernel-make) zImage
 
-# This will add all kernel modules we build for inclusion the system
-# image - no blessing takes place.
-kmodules: $(BUILT_KERNEL_TARGET) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR) $(NV_KERNEL_MODULES_TARGET_DIR)
+kmodules-build_only: $(BUILT_KERNEL_TARGET) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel modules build"
 	+$(hide) $(kernel-make) modules
-	find $(NV_KERNEL_INTERMEDIATES_DIR) -name "*.ko" -print0 | xargs -0 -IX cp -v X $(NV_KERNEL_MODULES_TARGET_DIR)
 
-kernel-tests: kmodules FORCE
-	@echo "Kernel space tests build"
-	@echo "Tests at $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests"
-	+$(hide) $(kernel-make) M=$(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests
-	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "*.ko" -print0 | xargs -0 -IX cp -v X $(NV_KERNEL_MODULES_TARGET_DIR)
-	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "*.sh" -print0 | xargs -0 -IX cp -v X $(TARGET_OUT)/bin/
-	+$(hide) $(kernel-make) M=$(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests clean
-	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "modules.order" -print0 | xargs -0 -IX rm -rf X
+# This will add all kernel modules we build for inclusion the system
+# image - no blessing takes place.
+kmodules: kmodules-build_only FORCE | $(NV_KERNEL_MODULES_TARGET_DIR)
+	@echo "Kernel modules install"
+	find $(NV_KERNEL_INTERMEDIATES_DIR) -name "*.ko" -print0 | xargs -0 -IX cp -v X $(NV_KERNEL_MODULES_TARGET_DIR)
 
 # At this stage, BUILT_SYSTEMIMAGE in $TOP/build/core/Makefile has not
 # yet been defined, so we cannot rely on it.
@@ -113,6 +107,31 @@ _systemimage_intermediates_kmodules := \
     $(call intermediates-dir-for,PACKAGING,systemimage)
 BUILT_SYSTEMIMAGE_KMODULES := $(_systemimage_intermediates_kmodules)/system.img
 NV_INSTALLED_SYSTEMIMAGE := $(PRODUCT_OUT)/system.img
+
+# When kernel tests are built, we also want to update the system
+# image, but in general case we do not want to build kernel tests
+# always.
+ifneq ($(findstring kernel-tests,$(MAKECMDGOALS)),)
+kernel-tests: build_kernel_tests $(NV_INSTALLED_SYSTEMIMAGE) FORCE
+
+# In order to prevent kernel-tests rule from matching pattern rule
+# kernel-%
+kernel-tests:
+	@echo "Kernel space tests built and system image updated!"
+
+# For parallel builds. Systemimage can only be built after kernel
+# tests have been built.
+$(BUILT_SYSTEMIMAGE_KMODULES): build_kernel_tests
+endif
+
+build_kernel_tests: kmodules FORCE
+	@echo "Kernel space tests build"
+	@echo "Tests at $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests"
+	+$(hide) $(kernel-make) M=$(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests
+	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "*.ko" -print0 | xargs -0 -IX cp -v X $(NV_KERNEL_MODULES_TARGET_DIR)
+	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "*.sh" -print0 | xargs -0 -IX cp -v X $(TARGET_OUT)/bin/
+	+$(hide) $(kernel-make) M=$(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests clean
+	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "modules.order" -print0 | xargs -0 -IX rm -rf X
 
 # Unless we hardcode the list of kernel modules, we cannot create
 # a proper dependency from systemimage to the kernel modules.
@@ -128,6 +147,8 @@ $(BUILT_SYSTEMIMAGE_KMODULES): kmodules
 # which will prevent too early creation of systemimage.
 $(NV_INSTALLED_SYSTEMIMAGE): $(BUILT_SYSTEMIMAGE_KMODULES)
 
+# $(INSTALLED_KERNEL_TARGET) is defined in
+# $(TOP)/build/target/board/Android.mk
 $(INSTALLED_KERNEL_TARGET): $(BUILT_KERNEL_TARGET) | $(ACP)
 	$(copy-file-to-target)
 
@@ -138,17 +159,29 @@ $(INSTALLED_KERNEL_TARGET): $(BUILT_KERNEL_TARGET) | $(ACP)
 # drivers in system image to be flashed to the device.
 kernel: $(INSTALLED_KERNEL_TARGET) kmodules $(NV_INSTALLED_SYSTEMIMAGE)
 
+# 'kernel-build_only' is an isolated target meant to be used if _only_
+# the build of the kernel and kernel modules is needed. This can be
+# useful for example when measuring the build time of these
+# components, but in most cases 'kernel-build_only' is probably not
+# the target you want to use!
+#
+# Please use 'kernel'-target instead, it will also update the system
+# image after compiling kernel and modules, and copy both the kernel
+# and system images to correct locations for flashing.
+kernel-build_only: $(BUILT_KERNEL_TARGET) kmodules-build_only
+	@echo "kernel + modules built successfully! (Note, just build, no install done!)"
+
 kernel-%: | $(NV_KERNEL_INTERMEDIATES_DIR)
 	$(hide) $(kernel-make) $*
 
 $(NV_KERNEL_INTERMEDIATES_DIR) $(NV_KERNEL_MODULES_TARGET_DIR):
 	$(hide) mkdir -p $@
 
-.PHONY: kernel kernel-% kernel-tests kmodules
+.PHONY: kernel kernel-% build_kernel_tests kmodules
 
 # Set private variables for all builds. TODO: Why?
-kernel kernel-% kernel-tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET): PRIVATE_SRC_PATH := $(KERNEL_PATH)
-kernel kernel-% kernel-tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET): PRIVATE_TOPDIR := $(CURDIR)
+kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET): PRIVATE_SRC_PATH := $(KERNEL_PATH)
+kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET): PRIVATE_TOPDIR := $(CURDIR)
 
 endif
 # of ifneq ($(TARGET_NO_KERNEL),true)
