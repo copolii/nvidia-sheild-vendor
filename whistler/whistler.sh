@@ -1,9 +1,10 @@
 # NVIDIA Tegra2 "Whistler" development system
 OUTDIR=$(get_build_var PRODUCT_OUT)
 
-echo -n "Memory (1)512MB (2)1GB: "
+echo -n "Enter Memory (1)512MB (2)1GB: " >&2
 read -t 10 MEMORYSIZE
 
+echo "\n"
 # setup NVFLASH ODM Data
 cp $TOP/$OUTDIR/flash_512MB.bct $TOP/$OUTDIR/flash.bct
 export NVFLASH_ODM_DATA=0x2B080105
