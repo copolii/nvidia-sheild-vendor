@@ -4,7 +4,17 @@ $(error $(LOCAL_PATH): NVIDIA variables not cleared)
 endif
 NVIDIA_CLEARED := false
 
-# Make sure that LOCAL_SRC_FILES don't contain files with ../ in the path
+# Protect against an empty LOCAL_PATH
+ifeq ($(LOCAL_PATH),)
+$(error $(NVIDIA_MAKEFILE): empty LOCAL_PATH is not allowed))
+endif
+
+# Protect against absolute paths in LOCAL_SRC_FILES
+ifneq ($(filter /%, $(dir $(LOCAL_SRC_FILES))),)
+$(error $(LOCAL_PATH): absolute paths are not allowed in LOCAL_SRC_FILES)
+endif
+
+# Protect against ../ in paths in LOCAL_SRC_FILES
 ifneq ($(findstring ../, $(dir $(LOCAL_SRC_FILES))),)
 $(error $(LOCAL_PATH): ../ in path is not allowed for LOCAL_SRC_FILES)
 endif
