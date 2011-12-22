@@ -39,8 +39,8 @@ $(all_objects) : TARGET_GLOBAL_CPPFLAGS :=
 include $(NVIDIA_BASE)
 
 $(LOCAL_BUILT_MODULE): $(all_objects) $(all_libraries)
-	@$(mkdir -p $(dir $@)
 	@echo "target Linking static AVP executable: $(PRIVATE_MODULE)"
+	$(hide) mkdir -p $(dir $@)
 	$(hide) $(PRIVATE_TARGET_LD) \
 		$(addprefix --script ,$(PRIVATE_LINK_SCRIPT)) \
 		$(PRIVATE_RAW_EXECUTABLE_LDFLAGS) \
