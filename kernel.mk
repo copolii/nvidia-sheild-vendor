@@ -42,6 +42,11 @@ else
 NV_KERNEL_MODULES_TARGET_DIR := $(CURDIR)/$(TARGET_OUT)/lib/modules
 endif
 
+ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
+NV_COMPAT_KERNEL_DIR := $(CURDIR)/vendor/nvidia/tegra/3rdparty/ti/compat-wireless
+NV_COMPAT_KERNEL_MODULES_TARGET_DIR := $(NV_KERNEL_MODULES_TARGET_DIR)/compat
+endif
+
 KERNEL_EXTRA_ARGS=
 OS=$(shell uname)
 ifeq ($(OS),Darwin)
@@ -75,6 +80,17 @@ $(KERNEL_EXTRA_ENV) $(MAKE) -C $(PRIVATE_SRC_PATH) \
     $(if $(SHOW_COMMANDS),V=1)
 endef
 
+ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
+define compat-kernel-make
+$(KERNEL_EXTRA_ENV) $(MAKE) -C $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/3rdparty/ti/compat-wireless \
+    ARCH=$(TARGET_ARCH) \
+    CROSS_COMPILE=$(PRIVATE_TOPDIR)/prebuilt/$(HOSTTYPE)/toolchain/arm-eabi-4.4.3/bin/arm-eabi- \
+    KLIB=$(NV_KERNEL_INTERMEDIATES_DIR) \
+    KLIB_BUILD=$(NV_KERNEL_INTERMEDIATES_DIR) \
+    $(if $(SHOW_COMMANDS),V=1)
+endef
+endif
+
 BUILT_KERNEL_TARGET := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/zImage
 
 $(dotconfig): $(KERNEL_PATH)/arch/$(TARGET_ARCH)/configs/$(TARGET_KERNEL_CONFIG) | $(NV_KERNEL_INTERMEDIATES_DIR)
@@ -89,17 +105,24 @@ endif
 # + in front of kernel-make will enable job control (parallelization).
 $(BUILT_KERNEL_TARGET): $(dotconfig) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel build"
+
 	+$(hide) $(kernel-make) zImage
 
 kmodules-build_only: $(BUILT_KERNEL_TARGET) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel modules build"
 	+$(hide) $(kernel-make) modules
+ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
+	+$(hide) $(compat-kernel-make)
+endif
 
 # This will add all kernel modules we build for inclusion the system
 # image - no blessing takes place.
-kmodules: kmodules-build_only FORCE | $(NV_KERNEL_MODULES_TARGET_DIR)
+kmodules: kmodules-build_only FORCE | $(NV_KERNEL_MODULES_TARGET_DIR) $(NV_COMPAT_KERNEL_MODULES_TARGET_DIR)
 	@echo "Kernel modules install"
 	find $(NV_KERNEL_INTERMEDIATES_DIR) -name "*.ko" -print0 | xargs -0 cp -v -t $(NV_KERNEL_MODULES_TARGET_DIR)
+ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
+	find $(NV_COMPAT_KERNEL_DIR) -name "*.ko" -print0 | xargs -0 -IX cp -v X $(NV_COMPAT_KERNEL_MODULES_TARGET_DIR)
+endif
 
 # At this stage, BUILT_SYSTEMIMAGE in $TOP/build/core/Makefile has not
 # yet been defined, so we cannot rely on it.
@@ -173,8 +196,11 @@ kernel-build_only: $(BUILT_KERNEL_TARGET) kmodules-build_only
 
 kernel-%: | $(NV_KERNEL_INTERMEDIATES_DIR)
 	$(hide) $(kernel-make) $*
+ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
+	$(hide) $(compat-kernel-make) $*
+endif
 
-$(NV_KERNEL_INTERMEDIATES_DIR) $(NV_KERNEL_MODULES_TARGET_DIR):
+$(NV_KERNEL_INTERMEDIATES_DIR) $(NV_KERNEL_MODULES_TARGET_DIR) $(NV_COMPAT_KERNEL_MODULES_TARGET_DIR):
 	$(hide) mkdir -p $@
 
 .PHONY: kernel kernel-% build_kernel_tests kmodules
