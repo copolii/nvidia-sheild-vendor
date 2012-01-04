@@ -206,7 +206,11 @@ function _flash()
     local HOSTOUT=$(get_build_var HOST_OUT)
 
     local FLASH_CMD="$T/$HOSTOUT/bin/nvflash"
-    FLASH_CMD="$FLASH_CMD --bct flash.bct --setbct"
+    if [ "${NVFLASH_BCT}" != "" ] ; then
+        FLASH_CMD="$FLASH_CMD --bct ${NVFLASH_BCT} --setbct"
+    else
+        FLASH_CMD="$FLASH_CMD --bct flash.bct --setbct"
+    fi
     if [ "${NVFLASH_ODM_DATA}" != "" ] ; then
         FLASH_CMD="$FLASH_CMD --odmdata ${NVFLASH_ODM_DATA}"
     fi
