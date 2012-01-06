@@ -99,7 +99,7 @@ kmodules-build_only: $(BUILT_KERNEL_TARGET) FORCE | $(NV_KERNEL_INTERMEDIATES_DI
 # image - no blessing takes place.
 kmodules: kmodules-build_only FORCE | $(NV_KERNEL_MODULES_TARGET_DIR)
 	@echo "Kernel modules install"
-	find $(NV_KERNEL_INTERMEDIATES_DIR) -name "*.ko" -print0 | xargs -0 -IX cp -v X $(NV_KERNEL_MODULES_TARGET_DIR)
+	find $(NV_KERNEL_INTERMEDIATES_DIR) -name "*.ko" -print0 | xargs -0 cp -v -t $(NV_KERNEL_MODULES_TARGET_DIR)
 
 # At this stage, BUILT_SYSTEMIMAGE in $TOP/build/core/Makefile has not
 # yet been defined, so we cannot rely on it.
@@ -128,10 +128,10 @@ build_kernel_tests: kmodules FORCE
 	@echo "Kernel space tests build"
 	@echo "Tests at $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests"
 	+$(hide) $(kernel-make) M=$(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests
-	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "*.ko" -print0 | xargs -0 -IX cp -v X $(NV_KERNEL_MODULES_TARGET_DIR)
-	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "*.sh" -print0 | xargs -0 -IX cp -v X $(TARGET_OUT)/bin/
+	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "*.ko" -print0 | xargs -0 cp -v -t $(NV_KERNEL_MODULES_TARGET_DIR)
+	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "*.sh" -print0 | xargs -0 cp -v -t $(TARGET_OUT)/bin/
 	+$(hide) $(kernel-make) M=$(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests clean
-	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "modules.order" -print0 | xargs -0 -IX rm -rf X
+	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "modules.order" -print0 | xargs -0 rm -rf
 
 # Unless we hardcode the list of kernel modules, we cannot create
 # a proper dependency from systemimage to the kernel modules.
