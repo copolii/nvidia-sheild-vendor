@@ -78,7 +78,7 @@ endef
 BUILT_KERNEL_TARGET := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/zImage
 
 $(dotconfig): $(KERNEL_PATH)/arch/$(TARGET_ARCH)/configs/$(TARGET_KERNEL_CONFIG) | $(NV_KERNEL_INTERMEDIATES_DIR)
-	@echo "Kernel config"
+	@echo "Kernel config " $(TARGET_KERNEL_CONFIG)
 	$(hide) $(kernel-make) $(TARGET_KERNEL_CONFIG)
 ifeq ($(SECURE_OS_BUILD),y)
 	@echo "SecureOS enabled kernel"
