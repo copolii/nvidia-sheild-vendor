@@ -119,9 +119,9 @@ endif
 # image - no blessing takes place.
 kmodules: kmodules-build_only FORCE | $(NV_KERNEL_MODULES_TARGET_DIR) $(NV_COMPAT_KERNEL_MODULES_TARGET_DIR)
 	@echo "Kernel modules install"
-	find $(NV_KERNEL_INTERMEDIATES_DIR) -name "*.ko" -print0 | xargs -0 cp -v -t $(NV_KERNEL_MODULES_TARGET_DIR)
+	for f in `find $(NV_KERNEL_INTERMEDIATES_DIR) -name "*.ko"` ; do cp -v "$$f" $(NV_KERNEL_MODULES_TARGET_DIR) ; done
 ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
-	find $(NV_COMPAT_KERNEL_DIR) -name "*.ko" -print0 | xargs -0 -IX cp -v X $(NV_COMPAT_KERNEL_MODULES_TARGET_DIR)
+	for f in `find $(NV_COMPAT_KERNEL_DIR) -name "*.ko"` ; do cp -v "$$f" $(NV_COMPAT_KERNEL_MODULES_TARGET_DIR) ; done
 endif
 
 # At this stage, BUILT_SYSTEMIMAGE in $TOP/build/core/Makefile has not
@@ -151,8 +151,8 @@ build_kernel_tests: kmodules FORCE
 	@echo "Kernel space tests build"
 	@echo "Tests at $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests"
 	+$(hide) $(kernel-make) M=$(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests
-	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "*.ko" -print0 | xargs -0 cp -v -t $(NV_KERNEL_MODULES_TARGET_DIR)
-	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "*.sh" -print0 | xargs -0 cp -v -t $(TARGET_OUT)/bin/
+	for f in `find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "*.ko"` ; do cp -v "$$f" $(NV_KERNEL_MODULES_TARGET_DIR) ; done
+	for f in `find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "*.sh"` ; do cp -v "$$f" $(TARGET_OUT)/bin/ ; done
 	+$(hide) $(kernel-make) M=$(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests clean
 	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "modules.order" -print0 | xargs -0 rm -rf
 
