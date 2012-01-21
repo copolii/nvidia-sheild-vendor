@@ -7,14 +7,18 @@ read -t 10 MEMORYSIZE
 echo "\n"
 # setup NVFLASH ODM Data
 cp $TOP/$OUTDIR/flash_512MB.bct $TOP/$OUTDIR/flash.bct
-export NVFLASH_ODM_DATA=0x2B080105
+_NVFLASH_ODM_DATA=0x2B080105
 
 if [ "$MEMORYSIZE" = "2" ]; then
 cp $TOP/$OUTDIR/flash_1GB.bct $TOP/$OUTDIR/flash.bct
-export NVFLASH_ODM_DATA=0x3B080105
+_NVFLASH_ODM_DATA=0x3B080105
 fi
 
 if [ "$MEMORYSIZE" = "3" ]; then
 cp $TOP/$OUTDIR/flash_AP25_1GB.bct $TOP/$OUTDIR/flash.bct
-export NVFLASH_ODM_DATA=0x3B080105
+_NVFLASH_ODM_DATA=0x3B080105
+fi
+
+if [ ! "$NVFLASH_ODM_DATA" ]; then
+    export NVFLASH_ODM_DATA=$_NVFLASH_ODM_DATA
 fi
