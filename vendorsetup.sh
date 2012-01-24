@@ -57,10 +57,15 @@ function ksetup()
     local KOUT="$T/$INTERMEDIATES/KERNEL"
     local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
     local KARCH="ARCH=$ARCHITECTURE"
+    local SECURE_OS_BUILD=$(get_build_var SECURE_OS_BUILD)
 
     echo "mkdir -p $KOUT"
     echo "make -C $SRC $KARCH $CROSS O=$KOUT $1"
     (cd $T && mkdir -p $KOUT ; make -C $SRC $KARCH $CROSS O=$KOUT $1)
+
+    if [ "$SECURE_OS_BUILD" == "y" ]; then
+        $SRC/scripts/config --file $KOUT/.config --enable TRUSTED_FOUNDATIONS
+    fi
 }
 
 function kconfig()
@@ -123,13 +128,21 @@ function ksavedefconfig()
     local TOOLS=$(get_build_var TARGET_TOOLS_PREFIX)
     local ARCHITECTURE=$(get_build_var TARGET_ARCH)
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
-    local KOUT="O=$T/$INTERMEDIATES/KERNEL"
+    local KOUT="$T/$INTERMEDIATES/KERNEL"
     local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
     local KARCH="ARCH=$ARCHITECTURE"
+    local SECURE_OS_BUILD=$(get_build_var SECURE_OS_BUILD)
 
-    echo "make -C $SRC $KARCH $CROSS $KOUT savedefconfig"
-    (cd $T && make -C $SRC $KARCH $CROSS $KOUT savedefconfig &&
-        cp $T/$INTERMEDIATES/KERNEL/defconfig $SRC/arch/arm/configs/$1)
+    # CONFIG_TRUSTED_FOUNDATIONS is turned on in kernel.mk or ksetup rather than defconfig
+    $SRC/scripts/config --file $KOUT/.config --disable TRUSTED_FOUNDATIONS
+
+    echo "make -C $SRC $KARCH $CROSS O=$KOUT savedefconfig"
+    (cd $T && make -C $SRC $KARCH $CROSS O=$KOUT savedefconfig &&
+        cp $KOUT/defconfig $SRC/arch/arm/configs/$1)
+
+    if [ "$SECURE_OS_BUILD" == "y" ]; then
+        $SRC/scripts/config --file $KOUT/.config --enable TRUSTED_FOUNDATIONS
+    fi
 }
 
 function krebuild()
