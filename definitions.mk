@@ -8,6 +8,10 @@ ifdef ANDROID_BUILD_SHELL
 SHELL := $(ANDROID_BUILD_SHELL)
 endif
 
+ifndef NV_TARGET_BOOTLOADER_PINMUX
+NV_TARGET_BOOTLOADER_PINMUX := kernel
+endif
+
 ifndef TEGRA_TOP
 TEGRA_TOP := vendor/nvidia/tegra
 endif
