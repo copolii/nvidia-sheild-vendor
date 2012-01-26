@@ -76,7 +76,7 @@ def addr2line(symbols_dir, module, offset):
             assert os.path.isfile(symfile)
 
         # -C for demangling, -f for functions
-        stuff = stdout_of_cmd('arm-eabi-addr2line', '-C', '-f', '-e',
+        stuff = stdout_of_cmd('arm-linux-androideabi-addr2line', '-C', '-f', '-e',
                               symfile, hex(offset))
 
         func, line = stuff.splitlines()
