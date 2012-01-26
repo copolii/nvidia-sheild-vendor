@@ -14,11 +14,14 @@ LOCAL_C_INCLUDES += $(TEGRA_TOP)/core/drivers/hwinc
 ifneq (,$(findstring core-private,$(LOCAL_PATH)))
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/include
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/drivers/hwinc
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/drivers/hwinc/$(TARGET_TEGRA_FAMILY)
 endif
 
 ifneq (,$(findstring tests,$(LOCAL_PATH)))
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/include
 endif
+
+-include $(NVIDIA_UBM_DEFAULTS)
 
 TEGRA_CFLAGS :=
 
