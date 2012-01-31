@@ -43,7 +43,7 @@ NV_KERNEL_MODULES_TARGET_DIR := $(CURDIR)/$(TARGET_OUT)/lib/modules
 endif
 
 ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
-NV_COMPAT_KERNEL_DIR := $(CURDIR)/vendor/nvidia/tegra/3rdparty/ti/compat-wireless
+NV_COMPAT_KERNEL_DIR := $(CURDIR)/3rdparty/ti/compat-wireless
 NV_COMPAT_KERNEL_MODULES_TARGET_DIR := $(NV_KERNEL_MODULES_TARGET_DIR)/compat
 endif
 
@@ -82,7 +82,7 @@ endef
 
 ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
 define compat-kernel-make
-$(KERNEL_EXTRA_ENV) $(MAKE) -C $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/3rdparty/ti/compat-wireless \
+$(KERNEL_EXTRA_ENV) $(MAKE) -C $(PRIVATE_TOPDIR)/3rdparty/ti/compat-wireless \
     ARCH=$(TARGET_ARCH) \
     CROSS_COMPILE=$(PRIVATE_TOPDIR)/prebuilt/$(HOSTTYPE)/toolchain/arm-eabi-4.4.3/bin/arm-eabi- \
     KLIB=$(NV_KERNEL_INTERMEDIATES_DIR) \
