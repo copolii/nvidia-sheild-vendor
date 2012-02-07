@@ -232,6 +232,7 @@ function _flash()
     # TODO: can this be removed?  See commit 63c25d2ea07972.
     [ "${NVFLASH_VERIFY}" ] && FLASH_CMD="$FLASH_CMD --verifypart -1"
     FLASH_CMD="$FLASH_CMD --bl bootloader.bin"
+    [ "$*" != "" ] && FLASH_CMD="$FLASH_CMD $*"
     FLASH_CMD="$FLASH_CMD --go"
 
     echo $FLASH_CMD
@@ -340,7 +341,7 @@ function flash()
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
 
-    local FLASH_CMD=$(_flash | tail -1)
+    local FLASH_CMD=$(_flash $* | tail -1)
     echo $FLASH_CMD
 
     (cd $T/$OUTDIR && sudo $FLASH_CMD)
