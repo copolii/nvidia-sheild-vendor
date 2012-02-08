@@ -221,5 +221,6 @@ ifneq ($(NO_ROOT_DEVICE),)
 	device/nvidia/common/generate_full_filesystem.sh
   else
 	device/nvidia/common/generate_nvtest_ramdisk.sh $(TARGET_PRODUCT) $(TARGET_BUILD_TYPE)
+	device/nvidia/common/generate_qt_ramdisk.sh     $(TARGET_PRODUCT) $(TARGET_BUILD_TYPE)
   endif
 endif
