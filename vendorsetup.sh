@@ -441,9 +441,12 @@ if [ `uname` == "Darwin" ]; then
     fi
 fi
 
-if [ -f $TEGRA_TOP/tmake/scripts/setupenv.sh ]; then
-    . $TEGRA_TOP/tmake/scripts/setupenv.sh
-fi
+# Disabled in early development phase.
+#if [ -f $TEGRA_TOP/tmake/scripts/envsetup.sh ]; then
+#    _nvsrc=$(echo ${TEGRA_TOP}|colrm 1 `echo $TOP|wc -c`)
+#    echo "including ${_nvsrc}/tmake/scripts/envsetup.sh"
+#    . $TEGRA_TOP/tmake/scripts/envsetup.sh
+#fi
 
 _nvm_wrap=$TEGRA_TOP/core-private/tools/nvm_wrap/prebuilt/`uname | tr '[:upper:]' '[:lower:]'`-x86/nvm_wrap
 if [ -f $_nvm_wrap ]; then
