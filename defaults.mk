@@ -17,6 +17,10 @@ LOCAL_C_INCLUDES += $(TEGRA_TOP)/camera/core/hwinc
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/camera/core/camera
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/include
 
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia/codecs/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia/tvmr/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia-partner/utils/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia-partner/nvmm/include
 ifneq (,$(findstring core-private,$(LOCAL_PATH)))
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/include
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/drivers/hwinc
