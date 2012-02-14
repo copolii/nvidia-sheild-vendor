@@ -187,6 +187,11 @@ function krebuild()
 
     echo "make -j$NUMCPUS -C $SRC $* $KARCH $CROSS $KOUT"
     (cd $T && make -j$NUMCPUS -C $SRC $* $KARCH $CROSS $KOUT)
+    local ERR=$?
+
+    if [ $ERR -ne 0 ] ; then
+	return $ERR
+    fi
 
     if [ -d "$T/$OUTDIR/modules" ] ; then
         rm -r $T/$OUTDIR/modules
