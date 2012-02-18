@@ -111,9 +111,9 @@ $(BUILT_KERNEL_TARGET): $(dotconfig) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 kmodules-build_only: $(BUILT_KERNEL_TARGET) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel modules build"
 	+$(hide) $(kernel-make) modules
-#ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
-#	+$(hide) $(compat-kernel-make)
-#endif
+ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
+	+$(hide) $(compat-kernel-make)
+endif
 
 # This will add all kernel modules we build for inclusion the system
 # image - no blessing takes place.
