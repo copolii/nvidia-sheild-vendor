@@ -10,6 +10,12 @@ include $(CLEAR_VARS)
 
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core/include
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core/drivers/hwinc
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/camera/core/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia-partner/openmax/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/camera-partner/imager/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/camera/core/hwinc
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/camera/core/camera
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/include
 
 ifneq (,$(findstring core-private,$(LOCAL_PATH)))
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/include
