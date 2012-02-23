@@ -11,6 +11,10 @@ include $(CLEAR_VARS)
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core/include
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core/drivers/hwinc
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/camera/core/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia/codecs/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia/tvmr/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia-partner/utils/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia-partner/nvmm/include
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia-partner/openmax/include
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/camera-partner/imager/include
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/camera/core/hwinc
