@@ -21,6 +21,10 @@ LOCAL_C_INCLUDES += $(TEGRA_TOP)/camera/core/hwinc
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/camera/core/camera
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/include
 
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia/codecs/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia/tvmr/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia-partner/utils/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia-partner/nvmm/include
 ifneq (,$(findstring core-private,$(LOCAL_PATH)))
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/include
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/drivers/hwinc
@@ -81,6 +85,8 @@ NVIDIA_CLEARED := true
 LOCAL_IDL_INCLUDES := $(TEGRA_TOP)/core/include
 LOCAL_IDLFLAGS :=
 LOCAL_NVIDIA_CGOPTS :=
+LOCAL_NVIDIA_CGFRAGOPTS :=
+LOCAL_NVIDIA_CGVERTOPTS :=
 LOCAL_NVIDIA_INTERMEDIATES_DIR :=
 LOCAL_NVIDIA_STUBS :=
 LOCAL_NVIDIA_DISPATCHERS :=

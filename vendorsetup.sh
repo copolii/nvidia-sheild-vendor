@@ -171,12 +171,27 @@ function krebuild()
     local TOOLS=$(get_build_var TARGET_TOOLS_PREFIX)
     local ARCHITECTURE=$(get_build_var TARGET_ARCH)
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
+    local HOSTOUT=$(get_build_var HOST_OUT)
+    local MKBOOTIMG=$T/$HOSTOUT/bin/mkbootimg
+    local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/arm/boot/zImage
+    local RAMDISK=$T/$OUTDIR/ramdisk.img
+
     local KOUT="O=$T/$INTERMEDIATES/KERNEL"
     local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
     local KARCH="ARCH=$ARCHITECTURE"
 
+    if [ ! -f "$RAMDISK" ]; then
+        echo "Couldn't find $RAMDISK. Try setting TARGET_PRODUCT." >&2
+        return 1
+    fi
+
     echo "make -j$NUMCPUS -C $SRC $* $KARCH $CROSS $KOUT"
     (cd $T && make -j$NUMCPUS -C $SRC $* $KARCH $CROSS $KOUT)
+    local ERR=$?
+
+    if [ $ERR -ne 0 ] ; then
+	return $ERR
+    fi
 
     if [ -d "$T/$OUTDIR/modules" ] ; then
         rm -r $T/$OUTDIR/modules
@@ -184,7 +199,8 @@ function krebuild()
 
     (mkdir -p $T/$OUTDIR/modules \
         cd $T && make modules_install -C $SRC $KARCH $CROSS $KOUT INSTALL_MOD_PATH=$T/$OUTDIR/modules \
-        && mkdir -p $T/$OUTDIR/system/lib/modules && cp -f `find $T/$OUTDIR/modules -name *.ko` $T/$OUTDIR/system/lib/modules)
+        && mkdir -p $T/$OUTDIR/system/lib/modules && cp -f `find $T/$OUTDIR/modules -name *.ko` $T/$OUTDIR/system/lib/modules \
+        && $MKBOOTIMG --kernel $ZIMAGE --ramdisk $RAMDISK --output $T/$OUTDIR/boot.img )
 }
 
 function mp()
@@ -232,6 +248,7 @@ function _flash()
     # TODO: can this be removed?  See commit 63c25d2ea07972.
     [ "${NVFLASH_VERIFY}" ] && FLASH_CMD="$FLASH_CMD --verifypart -1"
     FLASH_CMD="$FLASH_CMD --bl bootloader.bin"
+    [ "$*" != "" ] && FLASH_CMD="$FLASH_CMD $*"
     FLASH_CMD="$FLASH_CMD --go"
 
     echo $FLASH_CMD
@@ -340,7 +357,7 @@ function flash()
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
 
-    local FLASH_CMD=$(_flash | tail -1)
+    local FLASH_CMD=$(_flash $* | tail -1)
     echo $FLASH_CMD
 
     (cd $T/$OUTDIR && sudo $FLASH_CMD)
