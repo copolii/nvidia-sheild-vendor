@@ -18,7 +18,9 @@ else
     _NVFLASH_ODM_DATA=0x10080000
 fi
 
-if [ ! "$NVFLASH_ODM_DATA" ]; then
+if [ "$ODMDATA_OVERRIDE" ]; then
+    export NVFLASH_ODM_DATA=$ODMDATA_OVERRIDE
+else
     export NVFLASH_ODM_DATA=$_NVFLASH_ODM_DATA
 fi
 

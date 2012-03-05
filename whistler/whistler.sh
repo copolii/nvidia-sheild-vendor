@@ -19,6 +19,8 @@ cp $TOP/$OUTDIR/flash_AP25_1GB.bct $TOP/$OUTDIR/flash.bct
 _NVFLASH_ODM_DATA=0x3B080105
 fi
 
-if [ ! "$NVFLASH_ODM_DATA" ]; then
+if [ "$ODMDATA_OVERRIDE" ]; then
+    export NVFLASH_ODM_DATA=$ODMDATA_OVERRIDE
+else
     export NVFLASH_ODM_DATA=$_NVFLASH_ODM_DATA
 fi

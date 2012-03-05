@@ -6,7 +6,9 @@ echo "DEBUG: PRODUCT_OUT = $OUTDIR"
 export FASTBOOT_VID=0x955
 
 # Set ODM_DATA for 768MB SDRAM
-if [ ! "$NVFLASH_ODM_DATA" ]; then
+if [ "$ODMDATA_OVERRIDE" ]; then
+    export NVFLASH_ODM_DATA=$ODMDATA_OVERRIDE
+else
     export NVFLASH_ODM_DATA=0x30098000
 fi
 

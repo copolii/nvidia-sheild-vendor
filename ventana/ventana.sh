@@ -1,7 +1,9 @@
 # NVIDIA Tegra2 "Ventana" development system
 
 # setup NVFLASH ODM Data
-if [ ! "$NVFLASH_ODM_DATA" ]; then
+if [ "$ODMDATA_OVERRIDE" ]; then
+    export NVFLASH_ODM_DATA=$ODMDATA_OVERRIDE
+else
     export NVFLASH_ODM_DATA=0x30098011
 fi
 
