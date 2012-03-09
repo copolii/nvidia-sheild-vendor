@@ -465,7 +465,9 @@ fi
 #    . $TEGRA_TOP/tmake/scripts/envsetup.sh
 #fi
 
-_nvm_wrap=$TEGRA_TOP/core-private/tools/nvm_wrap/prebuilt/`uname | tr '[:upper:]' '[:lower:]'`-x86/nvm_wrap
-if [ -f $_nvm_wrap ]; then
-    export ANDROID_BUILD_SHELL=$_nvm_wrap
+if uname -m|grep '64$' > /dev/null; then
+    _nvm_wrap=$TEGRA_TOP/core-private/tools/nvm_wrap/prebuilt/`uname | tr '[:upper:]' '[:lower:]'`-x86/nvm_wrap
+    if [ -f "$_nvm_wrap" ]; then
+        export ANDROID_BUILD_SHELL=$_nvm_wrap
+    fi
 fi
