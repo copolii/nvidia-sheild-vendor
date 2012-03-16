@@ -75,6 +75,7 @@ endif
 
 # We should rather use CROSS_COMPILE=$(PRIVATE_TOPDIR)/$(TARGET_TOOLS_PREFIX).
 # Absolute paths used in all path variables.
+# ALWAYS prefix these macros with "+" to correctly enable parallel building!
 define kernel-make
 $(KERNEL_EXTRA_ENV) $(MAKE) -C $(PRIVATE_SRC_PATH) \
     ARCH=$(TARGET_ARCH) \
@@ -98,17 +99,22 @@ BUILT_KERNEL_TARGET := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/z
 
 $(dotconfig): $(KERNEL_PATH)/arch/$(TARGET_ARCH)/configs/$(TARGET_KERNEL_CONFIG) | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel config " $(TARGET_KERNEL_CONFIG)
-	$(hide) $(kernel-make) $(TARGET_KERNEL_CONFIG)
+	+$(hide) $(kernel-make) $(TARGET_KERNEL_CONFIG)
 ifeq ($(SECURE_OS_BUILD),y)
 	@echo "SecureOS enabled kernel"
-	$(KERNEL_PATH)/scripts/config --file $(dotconfig) --enable TRUSTED_FOUNDATIONS
+	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TRUSTED_FOUNDATIONS
+endif
+ifeq ($(NVIDIA_KERNEL_COVERAGE_ENABLED),1)
+	@echo "Explicitly enabling coverage support in kernel config on user request"
+	$(hide) $(KERNEL_PATH)/scripts/config --file $@ \
+		--enable DEBUG_FS \
+		--enable GCOV_KERNEL \
+		--disable GCOV_PROFILE_ALL
 endif
 
 # TODO: figure out a way of not forcing kernel & module builds.
-# + in front of kernel-make will enable job control (parallelization).
 $(BUILT_KERNEL_TARGET): $(dotconfig) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel build"
-
 	+$(hide) $(kernel-make) zImage
 
 kmodules-build_only: $(BUILT_KERNEL_TARGET) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
@@ -198,9 +204,9 @@ kernel-build_only: $(BUILT_KERNEL_TARGET) kmodules-build_only
 	@echo "kernel + modules built successfully! (Note, just build, no install done!)"
 
 kernel-%: | $(NV_KERNEL_INTERMEDIATES_DIR)
-	$(hide) $(kernel-make) $*
+	+$(hide) $(kernel-make) $*
 ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
-	$(hide) $(compat-kernel-make) $*
+	+$(hide) $(compat-kernel-make) $*
 endif
 
 NV_KERNEL_BUILD_DIRECTORY_LIST := \
