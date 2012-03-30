@@ -35,11 +35,14 @@ endif
 
 dotconfig := $(NV_KERNEL_INTERMEDIATES_DIR)/.config
 
-# Always use absolute path for NV_KERNEL_MODULES_TARGET_DIR
+# Always use absolute path for NV_KERNEL_MODULES_TARGET_DIR and
+# NV_KERNEL_BIN_TARGET_DIR
 ifneq ($(filter /%, $(TARGET_OUT)),)
 NV_KERNEL_MODULES_TARGET_DIR := $(TARGET_OUT)/lib/modules
+NV_KERNEL_BIN_TARGET_DIR     := $(TARGET_OUT)/bin
 else
 NV_KERNEL_MODULES_TARGET_DIR := $(CURDIR)/$(TARGET_OUT)/lib/modules
+NV_KERNEL_BIN_TARGET_DIR     := $(CURDIR)/$(TARGET_OUT)/bin
 endif
 
 ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
@@ -147,12 +150,12 @@ kernel-tests:
 $(BUILT_SYSTEMIMAGE_KMODULES): build_kernel_tests
 endif
 
-build_kernel_tests: kmodules FORCE
+build_kernel_tests: kmodules FORCE | $(NV_KERNEL_MODULES_TARGET_DIR) $(NV_KERNEL_BIN_TARGET_DIR)
 	@echo "Kernel space tests build"
 	@echo "Tests at $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests"
 	+$(hide) $(kernel-make) M=$(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests
 	for f in `find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "*.ko"` ; do cp -v "$$f" $(NV_KERNEL_MODULES_TARGET_DIR) ; done
-	for f in `find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "*.sh"` ; do cp -v "$$f" $(TARGET_OUT)/bin/ ; done
+	for f in `find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "*.sh"` ; do cp -v "$$f" $(NV_KERNEL_BIN_TARGET_DIR) ; done
 	+$(hide) $(kernel-make) M=$(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests clean
 	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "modules.order" -print0 | xargs -0 rm -rf
 
@@ -200,7 +203,13 @@ ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
 	$(hide) $(compat-kernel-make) $*
 endif
 
-$(NV_KERNEL_INTERMEDIATES_DIR) $(NV_KERNEL_MODULES_TARGET_DIR) $(NV_COMPAT_KERNEL_MODULES_TARGET_DIR):
+NV_KERNEL_BUILD_DIRECTORY_LIST := \
+	$(NV_KERNEL_INTERMEDIATES_DIR) \
+	$(NV_KERNEL_MODULES_TARGET_DIR) \
+	$(NV_COMPAT_KERNEL_MODULES_TARGET_DIR) \
+	$(NV_KERNEL_BIN_TARGET_DIR)
+
+$(NV_KERNEL_BUILD_DIRECTORY_LIST):
 	$(hide) mkdir -p $@
 
 .PHONY: kernel kernel-% build_kernel_tests kmodules
