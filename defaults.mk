@@ -77,6 +77,22 @@ ifdef PLATFORM_IS_ICECREAMSANDWICH
 LOCAL_CFLAGS += -DPLATFORM_IS_ICECREAMSANDWICH=1
 endif
 
+ifeq ($(SECURE_OS_BUILD),y)
+# Disallow all profiling and debug on both Android and Secure OS
+TEGRA_CFLAGS += -DS_PROF_OFF_DBG_OFF_NS_PROF_OFF_DBG_OFF=0
+# Only profiling on Android
+TEGRA_CFLAGS += -DS_PROF_OFF_DBG_OFF_NS_PROF_ON_DBG_OFF=0
+# Full profiling and debug on Android
+TEGRA_CFLAGS += -DS_PROF_OFF_DBG_OFF_NS_PROF_ON_DBG_ON=1
+# Full profiling and debug on both Android and Secure OS
+TEGRA_CFLAGS += -DS_PROF_ON_DBG_ON_NS_PROF_ON_DBG_ON=0
+else
+# Only profiling on Android
+TEGRA_CFLAGS += -DNS_PROF_ON_DBG_OFF=1
+# Full profiling and debug on Android
+TEGRA_CFLAGS += -DNS_PROF_ON_DBG_ON=0
+endif
+
 LOCAL_CFLAGS += $(TEGRA_CFLAGS)
 
 LOCAL_PRELINK_MODULE := false
