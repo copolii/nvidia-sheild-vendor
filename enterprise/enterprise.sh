@@ -1,5 +1,5 @@
 # NVIDIA Tegra3 "Enterprise" development system
-OUTDIR=$(get_build_var PRODUCT_OUT)
+OUTDIR=$(get_abs_build_var PRODUCT_OUT)
 echo "DEBUG: PRODUCT_OUT = $OUTDIR"
 
 # setup FASTBOOT VENDOR ID
@@ -14,8 +14,8 @@ fi
 
 if [ "$ENTERPRISE_A01" ]
 then
-    cp $TOP/$OUTDIR/flash_a01.bct $TOP/$OUTDIR/flash.bct
+    cp $OUTDIR/flash_a01.bct $OUTDIR/flash.bct
 else
-    cp $TOP/$OUTDIR/flash_a02.bct $TOP/$OUTDIR/flash.bct
+    cp $OUTDIR/flash_a02.bct $OUTDIR/flash.bct
 fi
 

@@ -7,7 +7,7 @@ function _gethosttype()
 
     if [ "$H" == Darwin ]; then
         HOSTTYPE="darwin-x86"
-        export HOST_EXTRACFLAGS="-I$TOP/vendor/nvidia/tegra/core-private/include"
+        export HOST_EXTRACFLAGS="-I$(gettop)/vendor/nvidia/tegra/core-private/include"
     fi
 }
 
@@ -433,15 +433,15 @@ if [ -f $HOME/lib/android/envsetup.sh ]; then
     .  $HOME/lib/android/envsetup.sh
 fi
 
-if [ -d $TOP/vendor/nvidia/proprietary_src ]; then
-    export TEGRA_TOP=$TOP/vendor/nvidia/proprietary_src
-elif [ -d $TOP/vendor/nvidia/tegra ]; then
-    export TEGRA_TOP=$TOP/vendor/nvidia/tegra
+if [ -d $(gettop)/vendor/nvidia/proprietary_src ]; then
+    export TEGRA_TOP=$(gettop)/vendor/nvidia/proprietary_src
+elif [ -d $(gettop)/vendor/nvidia/tegra ]; then
+    export TEGRA_TOP=$(gettop)/vendor/nvidia/tegra
 else
     echo "WARNING: Unable to set TEGRA_TOP environment variable."
     echo "Valid TEGRA_TOP directories are:"
-    echo "$TOP/vendor/nvidia/proprietary_src"
-    echo "$TOP/vendor/nvidia/tegra"
+    echo "$(gettop)/vendor/nvidia/proprietary_src"
+    echo "$(gettop)/vendor/nvidia/tegra"
     echo "At least one of them should exist."
     echo "Please make sure your Android source tree is setup correctly."
     # This script will be sourced, so use return instead of exit
