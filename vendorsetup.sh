@@ -359,10 +359,10 @@ function flash()
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
 
-    local FLASH_CMD=$(_flash $* | tail -1)
+    local FLASH_CMD="$(_flash $* | tail -1)"
     echo $FLASH_CMD
 
-    (cd $T/$OUTDIR && sudo $FLASH_CMD)
+    (cd $T/$OUTDIR && eval sudo $FLASH_CMD)
 }
 
 # Inform user about the new name of the function.  This should be removed
