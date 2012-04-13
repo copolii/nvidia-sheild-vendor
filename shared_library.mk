@@ -38,6 +38,7 @@ LOCAL_MODULE_PATH := $(intermediates)/CHECK
 LOCAL_MODULE_TAGS := optional
 LOCAL_GENERATED_SOURCES += $(intermediates)/check.c
 LOCAL_LDFLAGS += -l$(patsubst lib%,%,$(NVIDIA_CHECK_MODULE))
+LOCAL_DONT_CHECK_MODULE := true
 include $(BUILD_EXECUTABLE)
 $(linked_module): $(NVIDIA_CHECK_MODULE_LINK)
 $(intermediates)/check.c: $(LOCAL_NVIDIA_EXPORTS) $(NVIDIA_GETEXPORTS)
