@@ -300,7 +300,7 @@ function fboot()
     fi
 
     echo "sudo $FASTBOOT $CMD"
-    (sudo $FASTBOOT $CMD)
+    (eval sudo $FASTBOOT $CMD)
 }
 
 function fflash()
