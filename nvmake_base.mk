@@ -32,6 +32,9 @@ else
   NVIDIA_NVMAKE_VERBOSE := -s
 endif
 
+# extra definitions to pass to nvmake
+NVIDIA_NVMAKE_EXTRADEFS :=
+
 #
 # Call into the nvmake build system to build the module
 #
@@ -47,6 +50,7 @@ $(NVIDIA_NVMAKE_MODULE) $(LOCAL_MODULE)_nvmakeclean: NVIDIA_NVMAKE_COMMAND := $(
     NV_TARGET_OS=Android \
     NV_TARGET_ARCH=ARMv7 \
     NV_BUILD_TYPE=$(NVIDIA_NVMAKE_BUILD_TYPE) \
+    $(NVIDIA_NVMAKE_EXTRADEFS) \
     $(NVIDIA_NVMAKE_VERBOSE) \
     -C $(NVIDIA_NVMAKE_TOP)/$(LOCAL_NVIDIA_NVMAKE_BUILD_DIR) \
     -f makefile.nvmk \
