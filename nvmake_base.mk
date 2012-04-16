@@ -34,6 +34,9 @@ endif
 
 # extra definitions to pass to nvmake
 NVIDIA_NVMAKE_EXTRADEFS :=
+ifdef NVUB_SUPPORTS_T114
+  NVIDIA_NVMAKE_EXTRADEFS += NVUB_SUPPORTS_T114=$(NVUB_SUPPORTS_T114)
+endif
 
 #
 # Call into the nvmake build system to build the module
