@@ -40,6 +40,9 @@ endif
 ifdef NVUB_SUPPORTS_T124
   NVIDIA_NVMAKE_EXTRADEFS += NVUB_SUPPORTS_T124=$(NVUB_SUPPORTS_T124)
 endif
+ifdef NVUB_SUPPORTS_T148
+  NVIDIA_NVMAKE_EXTRADEFS += NVUB_SUPPORTS_T148=$(NVUB_SUPPORTS_T148)
+endif
 
 #
 # Call into the nvmake build system to build the module
