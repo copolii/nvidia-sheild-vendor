@@ -448,6 +448,10 @@ else
     return 1
 fi
 
+if [ -f $TOP/jellybean/platform-zip/platform.zip ]; then
+    export PDK_FUSION_PLATFORM_ZIP=$TOP/jellybean/platform-zip/platform.zip
+fi
+
 if [ `uname` == "Darwin" ]; then
     if [[ -n $FINK_ROOT && -z $GNU_COREUTILS ]]; then
         export GNU_COREUTILS=${FINK_ROOT}/lib/coreutils/bin
