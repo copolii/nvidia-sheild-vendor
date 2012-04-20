@@ -109,7 +109,8 @@ ifeq ($(NVIDIA_KERNEL_COVERAGE_ENABLED),1)
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ \
 		--enable DEBUG_FS \
 		--enable GCOV_KERNEL \
-		--disable GCOV_PROFILE_ALL
+		--disable GCOV_PROFILE_ALL \
+		--disable FTRACE
 endif
 
 # TODO: figure out a way of not forcing kernel & module builds.
