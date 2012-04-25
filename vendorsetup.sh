@@ -66,6 +66,14 @@ function ksetup()
     if [ "$SECURE_OS_BUILD" == "y" ]; then
         $SRC/scripts/config --file $KOUT/.config --enable TRUSTED_FOUNDATIONS
     fi
+    if [ "$NVIDIA_KERNEL_COVERAGE_ENABLED" == "1" ]; then
+        echo "Explicitly enabling coverage support in kernel config on user request"
+        $SRC/scripts/config --file $KOUT/.config \
+            --enable DEBUG_FS \
+            --enable GCOV_KERNEL \
+            --disable GCOV_PROFILE_ALL \
+            --disable FTRACE
+    fi
 }
 
 function kconfig()
@@ -131,18 +139,24 @@ function ksavedefconfig()
     local KOUT="$T/$INTERMEDIATES/KERNEL"
     local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
     local KARCH="ARCH=$ARCHITECTURE"
-    local SECURE_OS_BUILD=$(get_build_var SECURE_OS_BUILD)
+
+    # make a backup of the current configuration
+    cp $KOUT/.config $KOUT/.config.backup
 
     # CONFIG_TRUSTED_FOUNDATIONS is turned on in kernel.mk or ksetup rather than defconfig
-    $SRC/scripts/config --file $KOUT/.config --disable TRUSTED_FOUNDATIONS
+    # don't store coverage setup to defconfig
+    $SRC/scripts/config --file $KOUT/.config \
+        --disable TRUSTED_FOUNDATIONS \
+        --disable GCOV_KERNEL \
+        --enable FTRACE --enable FUNCTION_TRACER
 
     echo "make -C $SRC $KARCH $CROSS O=$KOUT savedefconfig"
     (cd $T && make -C $SRC $KARCH $CROSS O=$KOUT savedefconfig &&
         cp $KOUT/defconfig $SRC/arch/arm/configs/$1)
 
-    if [ "$SECURE_OS_BUILD" == "y" ]; then
-        $SRC/scripts/config --file $KOUT/.config --enable TRUSTED_FOUNDATIONS
-    fi
+    # restore configuration from backup
+    rm $KOUT/.config
+    mv $KOUT/.config.backup $KOUT/.config
 }
 
 function krebuild()
