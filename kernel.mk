@@ -17,6 +17,7 @@ KERNEL_PATH ?= $(CURDIR)/kernel
 TARGET_USE_DTB ?= false
 BOOTLOADER_SUPPORTS_DTB ?= false
 KERNEL_SUPPORTS_DTB := false
+APPEND_DTB_TO_KERNEL ?= false
 EXTRA_KERNEL_TARGETS :=
 
 # Always use absolute path for NV_KERNEL_INTERMEDIATES_DIR
@@ -74,10 +75,17 @@ endif
 
 # If we don't have kernel or bootloader support for DTB loading, we won't be using it
 ifeq ($(BOOTLOADER_SUPPORTS_DTB),false)
+ifeq ($(APPEND_DTB_TO_KERNEL),false)
 ifeq ($(TARGET_USE_DTB),true)
     $(warning No support to pass Device Tree to kernel, disabling DT)
     TARGET_USE_DTB := false
 endif
+endif
+endif
+
+# If we are not using DTB, don't append DTB to kernel
+ifeq ($(TARGET_USE_DTB),false)
+    APPEND_DTB_TO_KERNEL := false
 endif
 
 # The target must provide a name for the DT file (sources located in arch/arm/boot/dts/*)
@@ -93,7 +101,9 @@ ifeq ($(TARGET_USE_DTB),true)
         endif
     endif
 
-    EXTRA_KERNEL_TARGETS := $(INSTALLED_DTB_TARGET)
+    ifeq ($(APPEND_DTB_TO_KERNEL),false)
+        EXTRA_KERNEL_TARGETS := $(INSTALLED_DTB_TARGET)
+    endif
 endif
 
 $(warning TARGET_USE_DTB = $(TARGET_USE_DTB))
@@ -101,6 +111,7 @@ $(warning KERNEL_DTS_PATH = $(KERNEL_DTS_PATH))
 $(warning BUILT_KERNEL_DTB = $(BUILT_KERNEL_DTB))
 $(warning INSTALLED_DTB_TARGET = $(INSTALLED_DTB_TARGET))
 $(warning EXTRA_KERNEL_TARGETS = $(EXTRA_KERNEL_TARGETS))
+$(warning APPEND_DTB_TO_KERNEL = $(APPEND_DTB_TO_KERNEL))
 
 KERNEL_EXTRA_ARGS=
 OS=$(shell uname)
@@ -169,14 +180,20 @@ ifeq ($(NVIDIA_KERNEL_COVERAGE_ENABLED),1)
 		--disable FTRACE
 endif
 
+ifeq ($(APPEND_DTB_TO_KERNEL),true)
+	@echo "Enable configs to handle DTB appended kernel image (zImage)"
+	$(hide) $(KERNEL_PATH)/scripts/config --file $@ \
+		--enable ARM_APPENDED_DTB \
+		--enable ARM_ATAG_DTB_COMPAT
+endif
+
 # TODO: figure out a way of not forcing kernel & module builds.
 $(BUILT_KERNEL_TARGET): $(dotconfig) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel build"
 	+$(hide) $(kernel-make) zImage
 
-$(BUILT_KERNEL_DTB): FORCE
+$(BUILT_KERNEL_DTB): $(BUILT_KERNEL_TARGET) FORCE
 	@echo "Device tree build"
-
 	+$(hide) $(kernel-make) $(TARGET_KERNEL_DT_NAME).dtb
 
 kmodules-build_only: $(BUILT_KERNEL_TARGET) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
@@ -244,9 +261,16 @@ $(NV_INSTALLED_SYSTEMIMAGE): $(BUILT_SYSTEMIMAGE_KMODULES)
 # $(INSTALLED_KERNEL_TARGET) is defined in
 # $(TOP)/build/target/board/Android.mk
 $(INSTALLED_DTB_TARGET): $(BUILT_KERNEL_DTB) | $(ACP)
+ifeq ($(APPEND_DTB_TO_KERNEL),false)
+	@echo "Copying DTB file"
 	$(copy-file-to-target)
+endif
 
-$(INSTALLED_KERNEL_TARGET): $(BUILT_KERNEL_TARGET) $(EXTRA_KERNEL_TARGETS) | $(ACP)
+$(INSTALLED_KERNEL_TARGET): $(BUILT_KERNEL_TARGET) $(BUILT_KERNEL_DTB) $(EXTRA_KERNEL_TARGETS) FORCE | $(ACP)
+ifeq ($(APPEND_DTB_TO_KERNEL),true)
+	@echo "Appending DTB file to kernel image"
+	+$(hide) cat $(BUILT_KERNEL_DTB) >>$(BUILT_KERNEL_TARGET)
+endif
 	$(copy-file-to-target)
 
 # Kernel build also includes some drivers as kernel modules which are
