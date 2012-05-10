@@ -65,8 +65,12 @@ def add_map(im, line):
     except:
        pass
 
+cppRE = re.compile(r'(.*) \([+\w]*\)')
 def addr2line(symbols_dir, module, offset):
     try:
+        m = cppRE.match(module)
+        if m:
+          module = m.group(1)
         module_dir, module_name = os.path.split(module)
         symfile = symbols_dir + module
         if not os.path.isfile(symfile):
