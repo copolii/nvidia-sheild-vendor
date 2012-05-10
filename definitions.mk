@@ -24,6 +24,9 @@ NVIDIA_STATIC_LIBRARY      := $(NVIDIA_BUILD_ROOT)/static_library.mk
 NVIDIA_STATIC_AVP_LIBRARY  := $(NVIDIA_BUILD_ROOT)/static_avp_library.mk
 NVIDIA_SHARED_LIBRARY      := $(NVIDIA_BUILD_ROOT)/shared_library.mk
 NVIDIA_EXECUTABLE          := $(NVIDIA_BUILD_ROOT)/executable.mk
+NVIDIA_NVMAKE_BASE         := $(NVIDIA_BUILD_ROOT)/nvmake_base.mk
+NVIDIA_NVMAKE_SHARED_LIBRARY := $(NVIDIA_BUILD_ROOT)/nvmake_shared_library.mk
+NVIDIA_NVMAKE_EXECUTABLE   := $(NVIDIA_BUILD_ROOT)/nvmake_executable.mk
 NVIDIA_STATIC_AVP_EXECUTABLE := $(NVIDIA_BUILD_ROOT)/static_avp_executable.mk
 NVIDIA_STATIC_AND_SHARED_LIBRARY := $(NVIDIA_BUILD_ROOT)/static_and_shared_library.mk
 NVIDIA_HOST_STATIC_LIBRARY := $(NVIDIA_BUILD_ROOT)/host_static_library.mk
@@ -36,12 +39,13 @@ NVIDIA_PREBUILT            := $(NVIDIA_BUILD_ROOT)/prebuilt.mk
 NVIDIA_HOST_PREBUILT       := $(NVIDIA_BUILD_ROOT)/host_prebuilt.mk
 NVIDIA_WARNINGS            := $(NVIDIA_BUILD_ROOT)/warnings.mk
 NVIDIA_GENERATED_HEADER    := $(NVIDIA_BUILD_ROOT)/generated_headers.mk
+NVIDIA_UBM_DEFAULTS        := $(NVIDIA_BUILD_ROOT)/ubm_defaults.mk
 
 # compiler
 
 NVIDIA_AR20ASM             := $(TEGRA_TOP)/cg/Cg/$(HOST_OS)/ar20asm
 NVIDIA_CGC                 := $(HOST_OUT_EXECUTABLES)/cgc
-NVIDIA_CGC_PROFILE         := glesar20
+NVIDIA_CGC_PROFILE         := glest114
 NVIDIA_SHADERFIX           := $(HOST_OUT_EXECUTABLES)/shaderfix
 NVIDIA_AR20SHADERLAYOUT    := $(HOST_OUT_EXECUTABLES)/ar20shaderlayout
 
