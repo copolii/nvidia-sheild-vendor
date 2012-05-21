@@ -406,7 +406,7 @@ function _nvflash_sh()
     chmod 755 $FLASH_SH
 }
 
-function adb-server()
+function adbserver()
 {
     f=$(pgrep adb)
     if [ $? -ne 0 ]; then
@@ -423,13 +423,13 @@ function nvlog()
 	echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
 	return 1
     fi
-    adb-server
+    adbserver
     adb logcat | $T/vendor/nvidia/build/asymfilt.py
 }
 
 function stayon()
 {
-    adb-server
+    adbserver
     adb shell "svc power stayon true && echo main >/sys/power/wake_lock"
 }
 
