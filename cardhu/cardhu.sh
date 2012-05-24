@@ -1,5 +1,5 @@
 # NVIDIA Tegra3 "Cardhu" development system
-OUTDIR=$(get_build_var PRODUCT_OUT)
+OUTDIR=$(get_abs_build_var PRODUCT_OUT)
 echo "DEBUG: PRODUCT_OUT = $OUTDIR"
 
 # setup FASTBOOT VENDOR ID
@@ -13,11 +13,11 @@ fi
 
 if [ "$BOARD_IS_PM269" ]
 then
-	cp $TOP/$OUTDIR/flash_pm269.bct $TOP/$OUTDIR/flash.bct
+	cp $OUTDIR/flash_pm269.bct $OUTDIR/flash.bct
 elif [ "$BOARD_IS_PM305" ]
 then
-	cp $TOP/$OUTDIR/flash_pm305.bct $TOP/$OUTDIR/flash.bct
+	cp $OUTDIR/flash_pm305.bct $OUTDIR/flash.bct
 else
-	cp $TOP/$OUTDIR/flash_cardhu.bct $TOP/$OUTDIR/flash.bct
+	cp $OUTDIR/flash_cardhu.bct $OUTDIR/flash.bct
 fi
 

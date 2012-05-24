@@ -7,7 +7,7 @@ function _gethosttype()
 
     if [ "$H" == Darwin ]; then
         HOSTTYPE="darwin-x86"
-        export HOST_EXTRACFLAGS="-I$TOP/vendor/nvidia/tegra/core-private/include"
+        export HOST_EXTRACFLAGS="-I$(gettop)/vendor/nvidia/tegra/core-private/include"
     fi
 }
 
@@ -65,6 +65,14 @@ function ksetup()
 
     if [ "$SECURE_OS_BUILD" == "y" ]; then
         $SRC/scripts/config --file $KOUT/.config --enable TRUSTED_FOUNDATIONS
+    fi
+    if [ "$NVIDIA_KERNEL_COVERAGE_ENABLED" == "1" ]; then
+        echo "Explicitly enabling coverage support in kernel config on user request"
+        $SRC/scripts/config --file $KOUT/.config \
+            --enable DEBUG_FS \
+            --enable GCOV_KERNEL \
+            --disable GCOV_PROFILE_ALL \
+            --disable FTRACE
     fi
 }
 
@@ -131,18 +139,24 @@ function ksavedefconfig()
     local KOUT="$T/$INTERMEDIATES/KERNEL"
     local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
     local KARCH="ARCH=$ARCHITECTURE"
-    local SECURE_OS_BUILD=$(get_build_var SECURE_OS_BUILD)
+
+    # make a backup of the current configuration
+    cp $KOUT/.config $KOUT/.config.backup
 
     # CONFIG_TRUSTED_FOUNDATIONS is turned on in kernel.mk or ksetup rather than defconfig
-    $SRC/scripts/config --file $KOUT/.config --disable TRUSTED_FOUNDATIONS
+    # don't store coverage setup to defconfig
+    $SRC/scripts/config --file $KOUT/.config \
+        --disable TRUSTED_FOUNDATIONS \
+        --disable GCOV_KERNEL \
+        --enable FTRACE --enable FUNCTION_TRACER
 
     echo "make -C $SRC $KARCH $CROSS O=$KOUT savedefconfig"
     (cd $T && make -C $SRC $KARCH $CROSS O=$KOUT savedefconfig &&
         cp $KOUT/defconfig $SRC/arch/arm/configs/$1)
 
-    if [ "$SECURE_OS_BUILD" == "y" ]; then
-        $SRC/scripts/config --file $KOUT/.config --enable TRUSTED_FOUNDATIONS
-    fi
+    # restore configuration from backup
+    rm $KOUT/.config
+    mv $KOUT/.config.backup $KOUT/.config
 }
 
 function krebuild()
@@ -198,7 +212,7 @@ function krebuild()
     fi
 
     (mkdir -p $T/$OUTDIR/modules \
-        cd $T && make modules_install -C $SRC $KARCH $CROSS $KOUT INSTALL_MOD_PATH=$T/$OUTDIR/modules \
+        && cd $T && make modules_install -C $SRC $KARCH $CROSS $KOUT INSTALL_MOD_PATH=$T/$OUTDIR/modules \
         && mkdir -p $T/$OUTDIR/system/lib/modules && cp -f `find $T/$OUTDIR/modules -name *.ko` $T/$OUTDIR/system/lib/modules \
         && $MKBOOTIMG --kernel $ZIMAGE --ramdisk $RAMDISK --output $T/$OUTDIR/boot.img )
 
@@ -300,7 +314,7 @@ function fboot()
     fi
 
     echo "sudo $FASTBOOT $CMD"
-    (sudo $FASTBOOT $CMD)
+    (eval sudo $FASTBOOT $CMD)
 }
 
 function fflash()
@@ -359,10 +373,10 @@ function flash()
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
 
-    local FLASH_CMD=$(_flash $* | tail -1)
+    local FLASH_CMD="$(_flash $* | tail -1)"
     echo $FLASH_CMD
 
-    (cd $T/$OUTDIR && sudo $FLASH_CMD)
+    (cd $T/$OUTDIR && eval sudo $FLASH_CMD)
 }
 
 # Inform user about the new name of the function.  This should be removed
@@ -392,7 +406,7 @@ function _nvflash_sh()
     chmod 755 $FLASH_SH
 }
 
-function adb-server()
+function adbserver()
 {
     f=$(pgrep adb)
     if [ $? -ne 0 ]; then
@@ -409,13 +423,13 @@ function nvlog()
 	echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
 	return 1
     fi
-    adb-server
+    adbserver
     adb logcat | $T/vendor/nvidia/build/asymfilt.py
 }
 
 function stayon()
 {
-    adb-server
+    adbserver
     adb shell "svc power stayon true && echo main >/sys/power/wake_lock"
 }
 
@@ -433,15 +447,15 @@ if [ -f $HOME/lib/android/envsetup.sh ]; then
     .  $HOME/lib/android/envsetup.sh
 fi
 
-if [ -d $TOP/vendor/nvidia/proprietary_src ]; then
-    export TEGRA_TOP=$TOP/vendor/nvidia/proprietary_src
-elif [ -d $TOP/vendor/nvidia/tegra ]; then
-    export TEGRA_TOP=$TOP/vendor/nvidia/tegra
+if [ -d $(gettop)/vendor/nvidia/proprietary_src ]; then
+    export TEGRA_TOP=$(gettop)/vendor/nvidia/proprietary_src
+elif [ -d $(gettop)/vendor/nvidia/tegra ]; then
+    export TEGRA_TOP=$(gettop)/vendor/nvidia/tegra
 else
     echo "WARNING: Unable to set TEGRA_TOP environment variable."
     echo "Valid TEGRA_TOP directories are:"
-    echo "$TOP/vendor/nvidia/proprietary_src"
-    echo "$TOP/vendor/nvidia/tegra"
+    echo "$(gettop)/vendor/nvidia/proprietary_src"
+    echo "$(gettop)/vendor/nvidia/tegra"
     echo "At least one of them should exist."
     echo "Please make sure your Android source tree is setup correctly."
     # This script will be sourced, so use return instead of exit
