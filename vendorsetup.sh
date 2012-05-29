@@ -271,8 +271,17 @@ function _flash()
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
     local HOSTOUT=$(get_build_var HOST_OUT)
-
     local FLASH_CMD="$T/$HOSTOUT/bin/nvflash"
+    local NVFLASH_PATH="${FLASH_CMD}"
+    local _PRODUCT_MDM_PARTITION="${product}_MDM_PARTITION"
+
+    if [ "${!_PRODUCT_MDM_PARTITION}" == "yes" -a "${PRODUCT_MDM_PARTITION}" != "no" ] ; then
+        # Read MDM partition for back-up:
+        MDM_BACKUP_CMD="${NVFLASH_PATH} --read MDM MDM_${product}.img --bl bootloader.bin"
+        # Remaining nvflash operations will be in resume mode:
+        FLASH_CMD="${FLASH_CMD} --resume "
+    fi
+
     if [ "${NVFLASH_BCT}" != "" ] ; then
         FLASH_CMD="$FLASH_CMD --bct ${NVFLASH_BCT} --setbct"
     else
@@ -287,6 +296,14 @@ function _flash()
     [ "${NVFLASH_VERIFY}" ] && FLASH_CMD="$FLASH_CMD --verifypart -1"
     FLASH_CMD="$FLASH_CMD --bl bootloader.bin"
     [ "$*" != "" ] && FLASH_CMD="$FLASH_CMD $*"
+
+    if [ "${!_PRODUCT_MDM_PARTITION}" == "yes" -a "${PRODUCT_MDM_PARTITION}" != "no" ] ; then
+        # Restore MDM partition:
+        MDM_RESTORE_CMD="${NVFLASH_PATH} --resume --download MDM MDM_${product}.img --bl bootloader.bin"
+        # Update full flash cmd:
+        FLASH_CMD="${MDM_BACKUP_CMD} && ${FLASH_CMD} && ${MDM_RESTORE_CMD}"
+    fi
+
     FLASH_CMD="$FLASH_CMD --go"
 
     echo $FLASH_CMD
