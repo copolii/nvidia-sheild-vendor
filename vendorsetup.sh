@@ -57,7 +57,7 @@ function ksetup()
         return 1
     fi
 
-    local SRC="$T/kernel"
+    local SRC=${KERNEL_PATH:-"$T/kernel"}
     if [ $# -lt 1 ] ; then
         echo "Usage: ksetup <defconfig> <path>"
         return 1
@@ -105,7 +105,7 @@ function kconfig()
         return 1
     fi
 
-    local SRC="$T/kernel"
+    local SRC=${KERNEL_PATH:-"$T/kernel"}
     if [ -d "$1" ] ; then
         SRC="$1"
         shift 1
@@ -137,7 +137,7 @@ function ksavedefconfig()
         return 1
     fi
 
-    local SRC="$T/kernel"
+    local SRC=${KERNEL_PATH:-"$T/kernel"}
     if [ $# -lt 1 ] ; then
         echo "Usage: ksavedefconfig <defconfig> [kernelpath]"
         return 1
@@ -187,7 +187,7 @@ function krebuild()
         return 1
     fi
 
-    local SRC="$T/kernel"
+    local SRC=${KERNEL_PATH:-"$T/kernel"}
     if [ -d "$1" ] ; then
         SRC="$1"
         shift 1
