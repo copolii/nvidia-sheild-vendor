@@ -152,9 +152,6 @@ else
 nvidia-modules: $(NVIDIA_TARGET_NAME)
 endif
 
-# BAD!!!, but lets us compile base images with many other modules not compiling
-LOCAL_DONT_CHECK_MODULE := true
-
 nvidia-tests-automation: nvidia-tests
 
 NVIDIA_TARGET_NAME :=
