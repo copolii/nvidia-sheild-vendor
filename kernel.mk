@@ -73,13 +73,19 @@ ifeq ($(OS),Linux)
   HOSTTYPE=linux-x86
 endif
 
+ifdef PLATFORM_IS_JELLYBEAN
+KERNEL_TOOLCHAIN := prebuilts/gcc/$(HOSTTYPE)/arm/arm-eabi-4.6/bin/arm-eabi-
+else
+KERNEL_TOOLCHAIN := prebuilt/$(HOSTTYPE)/toolchain/arm-eabi-4.4.3/bin/arm-eabi-
+endif
+
 # We should rather use CROSS_COMPILE=$(PRIVATE_TOPDIR)/$(TARGET_TOOLS_PREFIX).
 # Absolute paths used in all path variables.
 # ALWAYS prefix these macros with "+" to correctly enable parallel building!
 define kernel-make
 $(KERNEL_EXTRA_ENV) $(MAKE) -C $(PRIVATE_SRC_PATH) \
     ARCH=$(TARGET_ARCH) \
-    CROSS_COMPILE=$(PRIVATE_TOPDIR)/prebuilt/$(HOSTTYPE)/toolchain/arm-eabi-4.4.3/bin/arm-eabi- \
+    CROSS_COMPILE=$(PRIVATE_KERNEL_TOOLCHAIN) \
     O=$(NV_KERNEL_INTERMEDIATES_DIR) $(KERNEL_EXTRA_ARGS) \
     $(if $(SHOW_COMMANDS),V=1)
 endef
@@ -88,7 +94,7 @@ ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
 define compat-kernel-make
 $(KERNEL_EXTRA_ENV) $(MAKE) -C $(PRIVATE_TOPDIR)/3rdparty/ti/compat-wireless \
     ARCH=$(TARGET_ARCH) \
-    CROSS_COMPILE=$(PRIVATE_TOPDIR)/prebuilt/$(HOSTTYPE)/toolchain/arm-eabi-4.4.3/bin/arm-eabi- \
+    CROSS_COMPILE=$(PRIVATE_KERNEL_TOOLCHAIN) \
     KLIB=$(NV_KERNEL_INTERMEDIATES_DIR) \
     KLIB_BUILD=$(NV_KERNEL_INTERMEDIATES_DIR) \
     $(if $(SHOW_COMMANDS),V=1)
@@ -224,6 +230,7 @@ $(NV_KERNEL_BUILD_DIRECTORY_LIST):
 # Set private variables for all builds. TODO: Why?
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET): PRIVATE_SRC_PATH := $(KERNEL_PATH)
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET): PRIVATE_TOPDIR := $(CURDIR)
+kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET): PRIVATE_KERNEL_TOOLCHAIN := $(CURDIR)/$(KERNEL_TOOLCHAIN)
 
 endif
 # of ifneq ($(TARGET_NO_KERNEL),true)

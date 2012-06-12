@@ -1,3 +1,15 @@
+###############################################################################
+#
+# Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
+#
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+#
+###############################################################################
+
 function _gethosttype()
 {
     H=`uname`
@@ -24,6 +36,16 @@ function _getnumcpus ()
 
     if [ "$HOSTTYPE" == "darwin-x86" ]; then
         NUMCPUS=`sysctl -n hw.activecpu`
+    fi
+}
+
+function _ktoolchain()
+{
+    local build_id=$(get_build_var BUILD_ID)
+    if [[ "${build_id}" =~ ^J ]]; then
+        echo "CROSS_COMPILE=$T/prebuilts/gcc/$HOSTTYPE/arm/arm-eabi-4.6/bin/arm-eabi-"
+    else
+        echo "CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
     fi
 }
 
@@ -55,7 +77,7 @@ function ksetup()
     local ARCHITECTURE=$(get_build_var TARGET_ARCH)
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local KOUT="$T/$INTERMEDIATES/KERNEL"
-    local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
+    local CROSS=$(_ktoolchain)
     local KARCH="ARCH=$ARCHITECTURE"
     local SECURE_OS_BUILD=$(get_build_var SECURE_OS_BUILD)
 
@@ -101,7 +123,7 @@ function kconfig()
     local ARCHITECTURE=$(get_build_var TARGET_ARCH)
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local KOUT="O=$T/$INTERMEDIATES/KERNEL"
-    local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
+    local CROSS=$(_ktoolchain)
     local KARCH="ARCH=$ARCHITECTURE"
 
     echo "make -C $SRC $KARCH $CROSS $KOUT menuconfig"
@@ -137,7 +159,7 @@ function ksavedefconfig()
     local ARCHITECTURE=$(get_build_var TARGET_ARCH)
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local KOUT="$T/$INTERMEDIATES/KERNEL"
-    local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
+    local CROSS=$(_ktoolchain)
     local KARCH="ARCH=$ARCHITECTURE"
 
     # make a backup of the current configuration
@@ -191,7 +213,7 @@ function krebuild()
     local RAMDISK=$T/$OUTDIR/ramdisk.img
 
     local KOUT="O=$T/$INTERMEDIATES/KERNEL"
-    local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
+    local CROSS=$(_ktoolchain)
     local KARCH="ARCH=$ARCHITECTURE"
 
     if [ ! -f "$RAMDISK" ]; then
