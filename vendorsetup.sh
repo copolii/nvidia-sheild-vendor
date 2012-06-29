@@ -501,8 +501,8 @@ else
     return 1
 fi
 
-if [ -f $TOP/vendor/pdk/grouper/full_grouper-userdebug/platform/platform.zip ]; then
-    export PDK_FUSION_PLATFORM_ZIP=$TOP/vendor/pdk/grouper/full_grouper-userdebug/platform/platform.zip
+if [ -f $TOP/vendor/pdk/mini_armv7a_neon/mini_armv7a_neon-userdebug/platform/platform.zip ]; then
+    export PDK_FUSION_PLATFORM_ZIP=$TOP/vendor/pdk/mini_armv7a_neon/mini_armv7a_neon-userdebug/platform/platform.zip
 fi
 
 if [ `uname` == "Darwin" ]; then
