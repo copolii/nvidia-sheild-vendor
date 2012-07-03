@@ -233,12 +233,3 @@ kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET):
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET): PRIVATE_KERNEL_TOOLCHAIN := $(CURDIR)/$(KERNEL_TOOLCHAIN)
 
 endif
-# of ifneq ($(TARGET_NO_KERNEL),true)
-
-# FIXME: This should be moved to a file of its own.
-# TODO: This may not be what we want.
-.PHONY: dev
-dev: droidcore
-ifneq ($(NO_ROOT_DEVICE),)
-	device/nvidia/common/generate_nvtest_ramdisk.sh $(TARGET_PRODUCT) $(TARGET_BUILD_TYPE)
-endif
