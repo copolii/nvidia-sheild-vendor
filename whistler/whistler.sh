@@ -24,3 +24,6 @@ if [ "$ODMDATA_OVERRIDE" ]; then
 else
     export NVFLASH_ODM_DATA=$_NVFLASH_ODM_DATA
 fi
+
+# Indicate MDM partition is to be back-up/restore:
+export whistler_MDM_PARTITION="yes"

@@ -1,0 +1,205 @@
+From fe05ee4c50ddf14cd7b88f392f403be4f2b53155 Mon Sep 17 00:00:00 2001
+From: Rakesh Goyal <rgoyal@nvidia.com>
+Date: Fri, 1 Jun 2012 20:01:37 +0530
+Subject: [PATCH] Enable support for bcm modules
+
+1) use wifi.driver.path system property to set  DRIVER_MODULE_PATH
+2) use wifi.driver.arg system property to set  DRIVER_MODULE_ARG
+3) update supplicant_name and supplicant_prop_name according to chip
+
+bug 991513
+
+Change-Id: I67b7922fedb1335616a56086a90352390c9b143d
+Reviewed-on: http://git-psac/r/232
+Reviewed-by: Ankit Pashiney <apashiney@nvidia.com>
+Tested-by: Ankit Pashiney <apashiney@nvidia.com>
+Reviewed-by: Dan Willemsen <dwillemsen@nvidia.com>
+---
+ wifi/wifi.c |   94 ++++++++++++++++++++++++++++++++++++++++++-----------------
+ 1 files changed, 67 insertions(+), 27 deletions(-)
+
+diff --git a/wifi/wifi.c b/wifi/wifi.c
+index 5a42e2d..dbbe7ca 100644
+--- a/wifi/wifi.c
++++ b/wifi/wifi.c
+@@ -95,13 +95,19 @@ static const char DRIVER_MODULE_NAME[]  = WIFI_DRIVER_MODULE_NAME;
+ static const char DRIVER_MODULE_TAG[]   = WIFI_DRIVER_MODULE_NAME " ";
+ static const char DRIVER_MODULE_PATH[]  = WIFI_DRIVER_MODULE_PATH;
+ static const char DRIVER_MODULE_ARG[]   = WIFI_DRIVER_MODULE_ARG;
++#else
++char DRIVER_MODULE_PATH[PROPERTY_VALUE_MAX];
++char DRIVER_MODULE_TAG[PROPERTY_VALUE_MAX];
++char DRIVER_MODULE_NAME[PROPERTY_VALUE_MAX];
++char DRIVER_MODULE_ARG[PROPERTY_VALUE_MAX];
+ #endif
++char DRIVER_FW_PATH_AP[PROPERTY_VALUE_MAX];
+ static const char FIRMWARE_LOADER[]     = WIFI_FIRMWARE_LOADER;
+ static const char DRIVER_PROP_NAME[]    = "wlan.driver.status";
+ static const char SUPPLICANT_NAME[]     = "wpa_supplicant";
+-static const char SUPP_PROP_NAME[]      = "init.svc.wpa_supplicant";
++static const char SUPP_PROP_NAME[]      = "init.svc.%s";
+ static const char P2P_SUPPLICANT_NAME[] = "p2p_supplicant";
+-static const char P2P_PROP_NAME[]       = "init.svc.p2p_supplicant";
++static const char P2P_PROP_NAME[]       = "init.svc.%s";
+ static const char SUPP_CONFIG_TEMPLATE[]= "/system/etc/wifi/wpa_supplicant.conf";
+ static const char SUPP_CONFIG_FILE[]    = "/data/misc/wifi/wpa_supplicant.conf";
+ static const char P2P_CONFIG_FILE[]     = "/data/misc/wifi/p2p_supplicant.conf";
+@@ -187,18 +193,15 @@ const char *get_dhcp_error_string() {
+     return dhcp_lasterror();
+ }
+ 
+-int is_wifi_driver_loaded() {
++int check_wifi_driver_loaded() {
+     char driver_status[PROPERTY_VALUE_MAX];
+-#ifdef WIFI_DRIVER_MODULE_PATH
+     FILE *proc;
+-    char line[sizeof(DRIVER_MODULE_TAG)+10];
+-#endif
++    char line[sizeof(DRIVER_MODULE_NAME)+10];
+ 
+-    if (!property_get(DRIVER_PROP_NAME, driver_status, NULL)
+-            || strcmp(driver_status, "ok") != 0) {
+-        return 0;  /* driver not loaded */
+-    }
+-#ifdef WIFI_DRIVER_MODULE_PATH
++#ifndef WIFI_DRIVER_MODULE_PATH
++    property_get("wifi.driver.name", DRIVER_MODULE_NAME, NULL);
++    snprintf(DRIVER_MODULE_TAG, PROPERTY_VALUE_MAX,"%s ",DRIVER_MODULE_NAME);
++#endif
+     /*
+      * If the property says the driver is loaded, check to
+      * make sure that the property setting isn't just left
+@@ -219,14 +222,25 @@ int is_wifi_driver_loaded() {
+     fclose(proc);
+     property_set(DRIVER_PROP_NAME, "unloaded");
+     return 0;
++}
++
++int is_wifi_driver_loaded() {
++    char driver_status[PROPERTY_VALUE_MAX];
++    if (!property_get(DRIVER_PROP_NAME, driver_status, NULL)
++            || strcmp(driver_status, "ok") != 0) {
++        return 0;  /* driver not loaded */
++    }
++#ifdef WIFI_DRIVER_MODULE_PATH
++    return check_wifi_driver_loaded();
+ #else
+-    return 1;
++    if (DRIVER_MODULE_PATH[0] != '\0')
++        return check_wifi_driver_loaded();
+ #endif
++   return 1;
+ }
+ 
+-int wifi_load_driver()
++int load_driver()
+ {
+-#ifdef WIFI_DRIVER_MODULE_PATH
+     char driver_status[PROPERTY_VALUE_MAX];
+     int count = 100; /* wait at most 20 seconds for completion */
+ 
+@@ -259,16 +273,25 @@ int wifi_load_driver()
+     property_set(DRIVER_PROP_NAME, "timeout");
+     wifi_unload_driver();
+     return -1;
++}
++
++int wifi_load_driver()
++{
++#ifdef WIFI_DRIVER_MODULE_PATH
++    load_driver();
+ #else
+-    property_set(DRIVER_PROP_NAME, "ok");
+-    return 0;
++    if (property_get("wifi.driver.path", DRIVER_MODULE_PATH, NULL)) {
++        property_get("wifi.driver.arg", DRIVER_MODULE_ARG, NULL);
++        load_driver();
++    } else {
++        property_set(DRIVER_PROP_NAME, "ok");
++    }
+ #endif
++    return 0;
+ }
+ 
+-int wifi_unload_driver()
++int unload_driver()
+ {
+-    usleep(200000); /* allow to finish interface down */
+-#ifdef WIFI_DRIVER_MODULE_PATH
+     if (rmmod(DRIVER_MODULE_NAME) == 0) {
+         int count = 20; /* wait at most 10 seconds for completion */
+         while (count-- > 0) {
+@@ -283,10 +306,21 @@ int wifi_unload_driver()
+         return -1;
+     } else
+         return -1;
++}
++
++
++int wifi_unload_driver()
++{
++    usleep(200000); /* allow to finish interface down */
++#ifdef WIFI_DRIVER_MODULE_PATH
++    return unload_driver();
+ #else
+-    property_set(DRIVER_PROP_NAME, "unloaded");
+-    return 0;
++    if (property_get("wifi.driver.name", DRIVER_MODULE_NAME, NULL))
++        return unload_driver();
++    else
++        property_set(DRIVER_PROP_NAME, "unloaded");
+ #endif
++    return 0;
+ }
+ 
+ int ensure_entropy_file_exists()
+@@ -510,10 +544,11 @@ int wifi_start_supplicant(int p2p_supported)
+     unsigned serial = 0, i;
+ #endif
+ 
+-    if (p2p_supported) {
+-        strcpy(supplicant_name, P2P_SUPPLICANT_NAME);
+-        strcpy(supplicant_prop_name, P2P_PROP_NAME);
+ 
++
++    if (p2p_supported) {
++        property_get("wifi.supplicant", supplicant_name, P2P_SUPPLICANT_NAME);
++        snprintf(supplicant_prop_name, PROPERTY_VALUE_MAX, P2P_PROP_NAME, supplicant_name);
+         /* Ensure p2p config file is created */
+         if (ensure_config_file_exists(P2P_CONFIG_FILE) < 0) {
+             ALOGE("Failed to create a p2p config file");
+@@ -521,12 +556,12 @@ int wifi_start_supplicant(int p2p_supported)
+         }
+ 
+     } else {
+-        strcpy(supplicant_name, SUPPLICANT_NAME);
+-        strcpy(supplicant_prop_name, SUPP_PROP_NAME);
++        property_get("wifi.supplicant", supplicant_name, SUPPLICANT_NAME);
++        snprintf(supplicant_prop_name, PROPERTY_VALUE_MAX, SUPP_PROP_NAME, supplicant_name);
+     }
+ 
+     /* Check whether already running */
+-    if (property_get(supplicant_name, supp_status, NULL)
++    if (property_get(supplicant_prop_name, supp_status, NULL)
+             && strcmp(supp_status, "running") == 0) {
+         return 0;
+     }
+@@ -851,10 +886,15 @@ int wifi_command(const char *ifname, const char *command, char *reply, size_t *r
+ 
+ const char *wifi_get_fw_path(int fw_type)
+ {
++    int ret = 0;
+     switch (fw_type) {
+     case WIFI_GET_FW_PATH_STA:
+         return WIFI_DRIVER_FW_PATH_STA;
+     case WIFI_GET_FW_PATH_AP:
++    ret = property_get("wifi.firmware.path.ap", DRIVER_FW_PATH_AP, "");
++    if (ret)
++        return DRIVER_FW_PATH_AP;
++    else
+         return WIFI_DRIVER_FW_PATH_AP;
+     case WIFI_GET_FW_PATH_P2P:
+         return WIFI_DRIVER_FW_PATH_P2P;
+-- 
+1.7.0.4
+
