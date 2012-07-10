@@ -25,6 +25,7 @@ $(LOCAL_BUILT_MODULE) : PRIVATE_ELF_FILE := $(intermediates)/$(PRIVATE_MODULE).e
 $(LOCAL_BUILT_MODULE) : PRIVATE_LINK_SCRIPT := $(LOCAL_NVIDIA_LINK_SCRIPT_PATH)/$(PRIVATE_MODULE).x
 $(LOCAL_BUILT_MODULE) : PRIVATE_RAW_EXECUTABLE_LDFLAGS :=
 $(LOCAL_BUILT_MODULE) : PRIVATE_RAW_EXECUTABLE_LDFLAGS += --entry=_start --gc-sections
+$(LOCAL_BUILT_MODULE) : PRIVATE_OBJCOPY_FLAGS := $(LOCAL_NVIDIA_OBJCOPY_FLAGS)
 
 # This is a WAR until we have immplemented the missing functions in NVOs.
 # Once implemented, PRIVATE_LIBS must be defined to an empty string or removed.
@@ -52,5 +53,5 @@ $(LOCAL_BUILT_MODULE): $(all_objects) $(all_libraries)
 		$(PRIVATE_ALL_OBJECTS) \
 		--start-group $(PRIVATE_ALL_STATIC_LIBRARIES) --end-group \
 		$(PRIVATE_LIBS)
-	$(hide) $(TARGET_OBJCOPY) -O binary $(PRIVATE_ELF_FILE) $@
+	$(hide) $(TARGET_OBJCOPY) -O binary $(PRIVATE_OBJCOPY_FLAGS) $(PRIVATE_ELF_FILE) $@
 

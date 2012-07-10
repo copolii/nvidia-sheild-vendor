@@ -1,3 +1,15 @@
+###############################################################################
+#
+# Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
+#
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+#
+###############################################################################
+
 function _gethosttype()
 {
     H=`uname`
@@ -24,6 +36,16 @@ function _getnumcpus ()
 
     if [ "$HOSTTYPE" == "darwin-x86" ]; then
         NUMCPUS=`sysctl -n hw.activecpu`
+    fi
+}
+
+function _ktoolchain()
+{
+    local build_id=$(get_build_var BUILD_ID)
+    if [[ "${build_id}" =~ ^J ]]; then
+        echo "CROSS_COMPILE=$T/prebuilts/gcc/$HOSTTYPE/arm/arm-eabi-4.6/bin/arm-eabi-"
+    else
+        echo "CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
     fi
 }
 
@@ -55,7 +77,7 @@ function ksetup()
     local ARCHITECTURE=$(get_build_var TARGET_ARCH)
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local KOUT="$T/$INTERMEDIATES/KERNEL"
-    local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
+    local CROSS=$(_ktoolchain)
     local KARCH="ARCH=$ARCHITECTURE"
     local SECURE_OS_BUILD=$(get_build_var SECURE_OS_BUILD)
 
@@ -101,7 +123,7 @@ function kconfig()
     local ARCHITECTURE=$(get_build_var TARGET_ARCH)
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local KOUT="O=$T/$INTERMEDIATES/KERNEL"
-    local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
+    local CROSS=$(_ktoolchain)
     local KARCH="ARCH=$ARCHITECTURE"
 
     echo "make -C $SRC $KARCH $CROSS $KOUT menuconfig"
@@ -137,7 +159,7 @@ function ksavedefconfig()
     local ARCHITECTURE=$(get_build_var TARGET_ARCH)
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local KOUT="$T/$INTERMEDIATES/KERNEL"
-    local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
+    local CROSS=$(_ktoolchain)
     local KARCH="ARCH=$ARCHITECTURE"
 
     # make a backup of the current configuration
@@ -191,7 +213,7 @@ function krebuild()
     local RAMDISK=$T/$OUTDIR/ramdisk.img
 
     local KOUT="O=$T/$INTERMEDIATES/KERNEL"
-    local CROSS="CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
+    local CROSS=$(_ktoolchain)
     local KARCH="ARCH=$ARCHITECTURE"
 
     if [ ! -f "$RAMDISK" ]; then
@@ -249,8 +271,17 @@ function _flash()
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
     local HOSTOUT=$(get_build_var HOST_OUT)
-
     local FLASH_CMD="$T/$HOSTOUT/bin/nvflash"
+    local NVFLASH_PATH="${FLASH_CMD}"
+    local _PRODUCT_MDM_PARTITION="${product}_MDM_PARTITION"
+
+    if [ "${!_PRODUCT_MDM_PARTITION}" == "yes" -a "${PRODUCT_MDM_PARTITION}" != "no" ] ; then
+        # Read MDM partition for back-up:
+        MDM_BACKUP_CMD="${NVFLASH_PATH} --read MDM MDM_${product}.img --bl bootloader.bin"
+        # Remaining nvflash operations will be in resume mode:
+        FLASH_CMD="${FLASH_CMD} --resume "
+    fi
+
     if [ "${NVFLASH_BCT}" != "" ] ; then
         FLASH_CMD="$FLASH_CMD --bct ${NVFLASH_BCT} --setbct"
     else
@@ -265,6 +296,14 @@ function _flash()
     [ "${NVFLASH_VERIFY}" ] && FLASH_CMD="$FLASH_CMD --verifypart -1"
     FLASH_CMD="$FLASH_CMD --bl bootloader.bin"
     [ "$*" != "" ] && FLASH_CMD="$FLASH_CMD $*"
+
+    if [ "${!_PRODUCT_MDM_PARTITION}" == "yes" -a "${PRODUCT_MDM_PARTITION}" != "no" ] ; then
+        # Restore MDM partition:
+        MDM_RESTORE_CMD="${NVFLASH_PATH} --resume --download MDM MDM_${product}.img --bl bootloader.bin"
+        # Update full flash cmd:
+        FLASH_CMD="${MDM_BACKUP_CMD} && ${FLASH_CMD} && ${MDM_RESTORE_CMD}"
+    fi
+
     FLASH_CMD="$FLASH_CMD --go"
 
     echo $FLASH_CMD
@@ -460,6 +499,10 @@ else
     echo "Please make sure your Android source tree is setup correctly."
     # This script will be sourced, so use return instead of exit
     return 1
+fi
+
+if [ -f $TOP/vendor/pdk/mini_armv7a_neon/mini_armv7a_neon-userdebug/platform/platform.zip ]; then
+    export PDK_FUSION_PLATFORM_ZIP=$TOP/vendor/pdk/mini_armv7a_neon/mini_armv7a_neon-userdebug/platform/platform.zip
 fi
 
 if [ `uname` == "Darwin" ]; then
