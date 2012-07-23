@@ -142,6 +142,8 @@ endif
 
 ifdef PLATFORM_IS_JELLYBEAN
 KERNEL_TOOLCHAIN := prebuilts/gcc/$(HOSTTYPE)/arm/arm-eabi-4.6/bin/arm-eabi-
+else ifdef PLATFORM_IS_GTV_HC
+KERNEL_TOOLCHAIN := prebuilt/$(HOSTTYPE)/toolchain/arm-unknown-linux-gnueabi-4.5.3-glibc/bin/arm-unknown-linux-gnueabi-
 else
 KERNEL_TOOLCHAIN := prebuilt/$(HOSTTYPE)/toolchain/arm-eabi-4.4.3/bin/arm-eabi-
 endif
