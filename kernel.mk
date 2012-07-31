@@ -176,8 +176,7 @@ ifeq ($(NVIDIA_KERNEL_COVERAGE_ENABLED),1)
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ \
 		--enable DEBUG_FS \
 		--enable GCOV_KERNEL \
-		--disable GCOV_PROFILE_ALL \
-		--disable FTRACE
+		--disable GCOV_PROFILE_ALL
 endif
 
 ifeq ($(APPEND_DTB_TO_KERNEL),true)
