@@ -14,6 +14,22 @@ KERNEL_PATH ?= $(CURDIR)/kernel
 #kernel_version := $(strip $(shell head $(KERNEL_PATH)/Makefile | \
 #	grep "SUBLEVEL =" | cut -d= -f2))
 
+TARGET_USE_DTB ?= false
+BOOTLOADER_SUPPORTS_DTB ?= false
+KERNEL_SUPPORTS_DTB := false
+APPEND_DTB_TO_KERNEL ?= false
+EXTRA_KERNEL_TARGETS :=
+
+# Always use absolute path for NV_KERNEL_INTERMEDIATES_DIR
+ifneq ($(filter /%, $(TARGET_OUT_INTERMEDIATES)),)
+NV_KERNEL_INTERMEDIATES_DIR := $(TARGET_OUT_INTERMEDIATES)/KERNEL
+else
+NV_KERNEL_INTERMEDIATES_DIR := $(CURDIR)/$(TARGET_OUT_INTERMEDIATES)/KERNEL
+endif
+
+dotconfig := $(NV_KERNEL_INTERMEDIATES_DIR)/.config
+BUILT_KERNEL_TARGET := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/zImage
+
 ifeq ($(TARGET_TEGRA_VERSION),ap20)
     TARGET_KERNEL_CONFIG ?= tegra_android_defconfig
 else
@@ -26,14 +42,6 @@ ifeq ($(wildcard $(KERNEL_PATH)/arch/arm/configs/$(TARGET_KERNEL_CONFIG)),)
     $(error Could not find kernel defconfig for board)
 endif
 
-# Always use absolute path for NV_KERNEL_INTERMEDIATES_DIR
-ifneq ($(filter /%, $(TARGET_OUT_INTERMEDIATES)),)
-NV_KERNEL_INTERMEDIATES_DIR := $(TARGET_OUT_INTERMEDIATES)/KERNEL
-else
-NV_KERNEL_INTERMEDIATES_DIR := $(CURDIR)/$(TARGET_OUT_INTERMEDIATES)/KERNEL
-endif
-
-dotconfig := $(NV_KERNEL_INTERMEDIATES_DIR)/.config
 
 # Always use absolute path for NV_KERNEL_MODULES_TARGET_DIR and
 # NV_KERNEL_BIN_TARGET_DIR
@@ -49,6 +57,61 @@ ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
 NV_COMPAT_KERNEL_DIR := $(CURDIR)/3rdparty/ti/compat-wireless
 NV_COMPAT_KERNEL_MODULES_TARGET_DIR := $(NV_KERNEL_MODULES_TARGET_DIR)/compat
 endif
+
+KERNEL_DEFCONFIG_PATH := $(KERNEL_PATH)/arch/$(TARGET_ARCH)/configs/$(TARGET_KERNEL_CONFIG)
+
+# If target claims to support Device Tree, check for the device tree configs in the defconfig
+ifeq ($(shell grep CONFIG_USE_OF=y $(KERNEL_DEFCONFIG_PATH)),CONFIG_USE_OF=y)
+    KERNEL_SUPPORTS_DTB := true
+endif
+
+# If we don't have kernel support for DTB, we won't be using it
+ifeq ($(KERNEL_SUPPORTS_DTB),false)
+ifeq ($(TARGET_USE_DTB),true)
+    $(warning Kernel doesn\'t support Device Tree, disabling DT)
+    TARGET_USE_DTB := false
+endif
+endif
+
+# If we don't have kernel or bootloader support for DTB loading, we won't be using it
+ifeq ($(BOOTLOADER_SUPPORTS_DTB),false)
+ifeq ($(APPEND_DTB_TO_KERNEL),false)
+ifeq ($(TARGET_USE_DTB),true)
+    $(warning No support to pass Device Tree to kernel, disabling DT)
+    TARGET_USE_DTB := false
+endif
+endif
+endif
+
+# If we are not using DTB, don't append DTB to kernel
+ifeq ($(TARGET_USE_DTB),false)
+    APPEND_DTB_TO_KERNEL := false
+endif
+
+# The target must provide a name for the DT file (sources located in arch/arm/boot/dts/*)
+ifeq ($(TARGET_USE_DTB),true)
+    ifeq ($(TARGET_KERNEL_DT_NAME),)
+        $(error Must provide a DT file name in TARGET_KERNEL_DT_NAME -- <kernel>/arch/arm/boot/dts/*)
+    else
+        KERNEL_DTS_PATH := $(KERNEL_PATH)/arch/$(TARGET_ARCH)/boot/dts/$(TARGET_KERNEL_DT_NAME).dts
+        BUILT_KERNEL_DTB := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/$(TARGET_KERNEL_DT_NAME).dtb
+        INSTALLED_DTB_TARGET := $(OUT)/$(TARGET_KERNEL_DT_NAME).dtb
+        ifneq ($(wildcard $(KERNEL_DTS_PATH)), $(KERNEL_DTS_PATH))
+            $(error DTS file not found -- $(KERNEL_DTS_PATH))
+        endif
+    endif
+
+    ifeq ($(APPEND_DTB_TO_KERNEL),false)
+        EXTRA_KERNEL_TARGETS := $(INSTALLED_DTB_TARGET)
+    endif
+endif
+
+$(warning TARGET_USE_DTB = $(TARGET_USE_DTB))
+$(warning KERNEL_DTS_PATH = $(KERNEL_DTS_PATH))
+$(warning BUILT_KERNEL_DTB = $(BUILT_KERNEL_DTB))
+$(warning INSTALLED_DTB_TARGET = $(INSTALLED_DTB_TARGET))
+$(warning EXTRA_KERNEL_TARGETS = $(EXTRA_KERNEL_TARGETS))
+$(warning APPEND_DTB_TO_KERNEL = $(APPEND_DTB_TO_KERNEL))
 
 KERNEL_EXTRA_ARGS=
 OS=$(shell uname)
@@ -101,8 +164,6 @@ $(KERNEL_EXTRA_ENV) $(MAKE) -C $(PRIVATE_TOPDIR)/3rdparty/ti/compat-wireless \
 endef
 endif
 
-BUILT_KERNEL_TARGET := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/zImage
-
 $(dotconfig): $(KERNEL_PATH)/arch/$(TARGET_ARCH)/configs/$(TARGET_KERNEL_CONFIG) | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel config " $(TARGET_KERNEL_CONFIG)
 	+$(hide) $(kernel-make) $(TARGET_KERNEL_CONFIG)
@@ -119,10 +180,21 @@ ifeq ($(NVIDIA_KERNEL_COVERAGE_ENABLED),1)
 		--disable FTRACE
 endif
 
+ifeq ($(APPEND_DTB_TO_KERNEL),true)
+	@echo "Enable configs to handle DTB appended kernel image (zImage)"
+	$(hide) $(KERNEL_PATH)/scripts/config --file $@ \
+		--enable ARM_APPENDED_DTB \
+		--enable ARM_ATAG_DTB_COMPAT
+endif
+
 # TODO: figure out a way of not forcing kernel & module builds.
 $(BUILT_KERNEL_TARGET): $(dotconfig) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel build"
 	+$(hide) $(kernel-make) zImage
+
+$(BUILT_KERNEL_DTB): $(BUILT_KERNEL_TARGET) FORCE
+	@echo "Device tree build"
+	+$(hide) $(kernel-make) $(TARGET_KERNEL_DT_NAME).dtb
 
 kmodules-build_only: $(BUILT_KERNEL_TARGET) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel modules build"
@@ -188,7 +260,17 @@ $(NV_INSTALLED_SYSTEMIMAGE): $(BUILT_SYSTEMIMAGE_KMODULES)
 
 # $(INSTALLED_KERNEL_TARGET) is defined in
 # $(TOP)/build/target/board/Android.mk
-$(INSTALLED_KERNEL_TARGET): $(BUILT_KERNEL_TARGET) | $(ACP)
+$(INSTALLED_DTB_TARGET): $(BUILT_KERNEL_DTB) | $(ACP)
+ifeq ($(APPEND_DTB_TO_KERNEL),false)
+	@echo "Copying DTB file"
+	$(copy-file-to-target)
+endif
+
+$(INSTALLED_KERNEL_TARGET): $(BUILT_KERNEL_TARGET) $(BUILT_KERNEL_DTB) $(EXTRA_KERNEL_TARGETS) FORCE | $(ACP)
+ifeq ($(APPEND_DTB_TO_KERNEL),true)
+	@echo "Appending DTB file to kernel image"
+	+$(hide) cat $(BUILT_KERNEL_DTB) >>$(BUILT_KERNEL_TARGET)
+endif
 	$(copy-file-to-target)
 
 # Kernel build also includes some drivers as kernel modules which are
@@ -228,9 +310,9 @@ $(NV_KERNEL_BUILD_DIRECTORY_LIST):
 .PHONY: kernel kernel-% build_kernel_tests kmodules
 
 # Set private variables for all builds. TODO: Why?
-kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET): PRIVATE_SRC_PATH := $(KERNEL_PATH)
-kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET): PRIVATE_TOPDIR := $(CURDIR)
-kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET): PRIVATE_KERNEL_TOOLCHAIN := $(CURDIR)/$(KERNEL_TOOLCHAIN)
+kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(BUILT_KERNEL_DTB): PRIVATE_SRC_PATH := $(KERNEL_PATH)
+kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(BUILT_KERNEL_DTB): PRIVATE_TOPDIR := $(CURDIR)
+kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(BUILT_KERNEL_DTB): PRIVATE_KERNEL_TOOLCHAIN := $(CURDIR)/$(KERNEL_TOOLCHAIN)
 
 endif
 
