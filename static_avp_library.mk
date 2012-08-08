@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2011 NVIDIA Corporation.  All rights reserved.
+# Copyright (c) 2011-2012 NVIDIA Corporation.  All rights reserved.
 #
 
 # Build a static library that will be run on AVP (ARMv4 only).
@@ -28,6 +28,8 @@ LOCAL_AVP_CFLAGS += -UDEBUG -U_DEBUG -DNDEBUG -DNV_DEBUG=0
 LOCAL_MODULE_CFLAGS := $(LOCAL_CFLAGS)
 LOCAL_CFLAGS := $(LOCAL_AVP_CFLAGS)
 LOCAL_CFLAGS += $(LOCAL_MODULE_CFLAGS)
+
+-include $(NVIDIA_UBM_DEFAULTS)
 
 # Froyo arm-eabi-4.4.0 toolchain does not produce valid code for
 # ARMv4T ARM/Thumb interworking.
