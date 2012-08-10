@@ -4,7 +4,7 @@
 
 .PHONY: dev nv-blob
 
-dev: droidcore
+dev: droidcore target-files-package
 ifneq ($(NO_ROOT_DEVICE),)
 	device/nvidia/common/generate_nvtest_ramdisk.sh $(TARGET_PRODUCT) $(TARGET_BUILD_TYPE)
 endif
