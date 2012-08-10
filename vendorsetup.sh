@@ -93,8 +93,7 @@ function ksetup()
         $SRC/scripts/config --file $KOUT/.config \
             --enable DEBUG_FS \
             --enable GCOV_KERNEL \
-            --disable GCOV_PROFILE_ALL \
-            --disable FTRACE
+            --disable GCOV_PROFILE_ALL
     fi
 }
 
@@ -169,8 +168,7 @@ function ksavedefconfig()
     # don't store coverage setup to defconfig
     $SRC/scripts/config --file $KOUT/.config \
         --disable TRUSTED_FOUNDATIONS \
-        --disable GCOV_KERNEL \
-        --enable FTRACE --enable FUNCTION_TRACER
+        --disable GCOV_KERNEL
 
     echo "make -C $SRC $KARCH $CROSS O=$KOUT savedefconfig"
     (cd $T && make -C $SRC $KARCH $CROSS O=$KOUT savedefconfig &&
