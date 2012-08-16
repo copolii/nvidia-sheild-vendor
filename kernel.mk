@@ -33,9 +33,13 @@ BUILT_KERNEL_TARGET := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/z
 ifeq ($(TARGET_TEGRA_VERSION),ap20)
     TARGET_KERNEL_CONFIG ?= tegra_android_defconfig
 else
-ifeq ($(TARGET_TEGRA_VERSION),t30)
-    TARGET_KERNEL_CONFIG ?= tegra3_android_defconfig
-endif
+    ifeq ($(TARGET_TEGRA_VERSION),t30)
+        TARGET_KERNEL_CONFIG ?= tegra3_android_defconfig
+    else
+        ifeq ($(TARGET_TEGRA_VERSION),t114)
+             TARGET_KERNEL_CONFIG ?= tegra11_android_defconfig
+        endif
+    endif
 endif
 
 ifeq ($(wildcard $(KERNEL_PATH)/arch/arm/configs/$(TARGET_KERNEL_CONFIG)),)
