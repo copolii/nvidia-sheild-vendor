@@ -2,7 +2,7 @@
 # Nvidia specific targets
 #
 
-.PHONY: dev nv-blob sim-image
+.PHONY: dev nv-blob sim-image list-non-nv-modules
 
 dev: droidcore target-files-package
 ifneq ($(NO_ROOT_DEVICE),)
@@ -75,6 +75,34 @@ sim-image: nvidia-tests
 	    -s 2048 -z \
 	    -o $(PRODUCT_OUT)/sdmmc_full_fs.img \
 	    -c device/nvidia/common/sdmmc_full_fs.cfg
+
+# This macro lists all modules filtering those which
+# 1. Are in a path which contains 'nvidia'
+# 2. Have dependencies which are in a path which contains 'nvidia'
+# TODO: This doesn't work well if a dependency have same name but different
+# class. Eg. libexpat which is defined in multiple makefiles as host shared
+# lib, shared lib and static lib
+define list_nv_independent_modules
+$(foreach _m,$(call module-names-for-tag-list,$(ALL_MODULE_TAGS)), \
+    $(if $(findstring nvidia,$(ALL_MODULES.$(_m).PATH)), \
+        $(info Skipping $(_m) location : $(ALL_MODULES.$(_m).PATH)), \
+        $(if $(strip $(ALL_MODULES.$(_m).REQUIRED)), \
+	    $(foreach _d,$(ALL_MODULES.$(_m).REQUIRED), \
+	        $(if $(findstring nvidia,$(ALL_MODULES.$(_d).PATH)), \
+	            $(info Skipping $(_m) location : $(ALL_MODULES.$(_m).PATH) dependency : $(_d) dependency location : $(ALL_MODULES.$(_d).PATH)), \
+	            $(_m) \
+	        ) \
+	    ), \
+	    $(_m) \
+        ) \
+    ) \
+)
+endef
+
+# List all nvidia independent modules as well as modules skipped with reason
+list-non-nv-modules:
+	@echo "Nvidia independent modules analysis:"
+	@for m in $(call list_nv_independent_modules); do echo $$m; done | sort -u
 
 # Clear local variable
 _blob_deps :=
