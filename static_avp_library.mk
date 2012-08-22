@@ -22,6 +22,7 @@ LOCAL_AVP_CFLAGS += -fomit-frame-pointer
 LOCAL_AVP_CFLAGS += -ffunction-sections
 LOCAL_AVP_CFLAGS += -fdata-sections
 LOCAL_AVP_CFLAGS += -DWIN_INTERFACE_CUSTOM
+LOCAL_AVP_CFLAGS += -DNO_MALLINFO
 LOCAL_AVP_CFLAGS += -UDEBUG -U_DEBUG -DNDEBUG -DNV_DEBUG=0
 
 # Let the user override flags above.
