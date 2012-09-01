@@ -62,8 +62,13 @@ NV_KERNEL_BIN_TARGET_DIR     := $(CURDIR)/$(TARGET_OUT)/bin
 endif
 
 ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
-NV_COMPAT_KERNEL_DIR := $(CURDIR)/3rdparty/ti/compat-wireless
-NV_COMPAT_KERNEL_MODULES_TARGET_DIR := $(NV_KERNEL_MODULES_TARGET_DIR)/compat
+    NV_COMPAT_KERNEL_DIR := $(CURDIR)/3rdparty/ti/compat-wireless
+    NV_COMPAT_KERNEL_MODULES_TARGET_DIR := $(NV_KERNEL_MODULES_TARGET_DIR)/compat
+endif
+
+ifeq ($(BOARD_WLAN_DEVICE),wl18xx_mac80211)
+    NV_COMPAT_KERNEL_DIR := $(CURDIR)/3rdparty/ti/compat-wireless/compat-wireless-wl8
+    NV_COMPAT_KERNEL_MODULES_TARGET_DIR := $(NV_KERNEL_MODULES_TARGET_DIR)/compat
 endif
 
 KERNEL_DEFCONFIG_PATH := $(KERNEL_PATH)/arch/$(TARGET_ARCH)/configs/$(TARGET_KERNEL_CONFIG)
@@ -165,9 +170,9 @@ $(KERNEL_EXTRA_ENV) $(MAKE) -C $(PRIVATE_SRC_PATH) \
     $(if $(SHOW_COMMANDS),V=1)
 endef
 
-ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
+ifneq ( , $(findstring $(BOARD_WLAN_DEVICE), wl12xx_mac80211 wl18xx_mac80211))
 define compat-kernel-make
-$(KERNEL_EXTRA_ENV) $(MAKE) -C $(PRIVATE_TOPDIR)/3rdparty/ti/compat-wireless \
+$(KERNEL_EXTRA_ENV) $(MAKE) -C $(NV_COMPAT_KERNEL_DIR) \
     ARCH=$(TARGET_ARCH) \
     CROSS_COMPILE=$(PRIVATE_KERNEL_TOOLCHAIN) \
     KLIB=$(NV_KERNEL_INTERMEDIATES_DIR) \
@@ -210,7 +215,7 @@ $(BUILT_KERNEL_DTB): $(BUILT_KERNEL_TARGET) FORCE
 kmodules-build_only: $(BUILT_KERNEL_TARGET) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel modules build"
 	+$(hide) $(kernel-make) modules
-ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
+ifneq ( , $(findstring $(BOARD_WLAN_DEVICE), wl12xx_mac80211 wl18xx_mac80211))
 	+$(hide) $(compat-kernel-make)
 endif
 
@@ -219,7 +224,7 @@ endif
 kmodules: kmodules-build_only FORCE | $(NV_KERNEL_MODULES_TARGET_DIR) $(NV_COMPAT_KERNEL_MODULES_TARGET_DIR)
 	@echo "Kernel modules install"
 	for f in `find $(NV_KERNEL_INTERMEDIATES_DIR) -name "*.ko"` ; do cp -v "$$f" $(NV_KERNEL_MODULES_TARGET_DIR) ; done
-ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
+ifneq ( , $(findstring $(BOARD_WLAN_DEVICE), wl12xx_mac80211 wl18xx_mac80211))
 	for f in `find $(NV_COMPAT_KERNEL_DIR) -name "*.ko"` ; do cp -v "$$f" $(NV_COMPAT_KERNEL_MODULES_TARGET_DIR) ; done
 endif
 
@@ -305,7 +310,7 @@ kernel-build_only: $(BUILT_KERNEL_TARGET) kmodules-build_only
 
 kernel-%: | $(NV_KERNEL_INTERMEDIATES_DIR)
 	+$(hide) $(kernel-make) $*
-ifeq ($(BOARD_WLAN_DEVICE),wl12xx_mac80211)
+ifneq ( , $(findstring $(BOARD_WLAN_DEVICE), wl12xx_mac80211 wl18xx_mac80211))
 	+$(hide) $(compat-kernel-make) $*
 endif
 
