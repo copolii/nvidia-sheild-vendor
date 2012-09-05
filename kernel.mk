@@ -33,9 +33,13 @@ BUILT_KERNEL_TARGET := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/z
 ifeq ($(TARGET_TEGRA_VERSION),ap20)
     TARGET_KERNEL_CONFIG ?= tegra_android_defconfig
 else
-ifeq ($(TARGET_TEGRA_VERSION),t30)
-    TARGET_KERNEL_CONFIG ?= tegra3_android_defconfig
-endif
+    ifeq ($(TARGET_TEGRA_VERSION),t30)
+        TARGET_KERNEL_CONFIG ?= tegra3_android_defconfig
+    else
+        ifeq ($(TARGET_TEGRA_VERSION),t114)
+             TARGET_KERNEL_CONFIG ?= tegra11_android_defconfig
+        endif
+    endif
 endif
 
 ifeq ($(wildcard $(KERNEL_PATH)/arch/arm/configs/$(TARGET_KERNEL_CONFIG)),)
@@ -313,4 +317,19 @@ kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) 
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(BUILT_KERNEL_DTB): PRIVATE_TOPDIR := $(CURDIR)
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(BUILT_KERNEL_DTB): PRIVATE_KERNEL_TOOLCHAIN := $(CURDIR)/$(KERNEL_TOOLCHAIN)
 
+endif
+
+# of ifneq ($(TARGET_NO_KERNEL),true)
+
+# FIXME: This should be moved to a file of its own.
+# TODO: This may not be what we want.
+.PHONY: dev
+dev: droidcore
+ifneq ($(NO_ROOT_DEVICE),)
+  ifeq ($(TARGET_BOARD_PLATFORM_TYPE),simulation)
+	device/nvidia/common/generate_full_filesystem.sh
+  else
+	device/nvidia/common/generate_nvtest_ramdisk.sh $(TARGET_PRODUCT) $(TARGET_BUILD_TYPE)
+	device/nvidia/common/generate_qt_ramdisk.sh     $(TARGET_PRODUCT) $(TARGET_BUILD_TYPE)
+  endif
 endif

@@ -9,12 +9,16 @@ include $(CLEAR_VARS)
 # Build variables common to all nvidia modules
 
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core/include
-LOCAL_C_INCLUDES += $(TEGRA_TOP)/core/drivers/hwinc/$(TARGET_TEGRA_VERSION)
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/core/drivers/hwinc/$(TARGET_TEGRA_FAMILY)
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core/drivers/hwinc
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/camera/core/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia/codecs/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia/tvmr/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia-partner/utils/include
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia-partner/nvmm/include
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia-partner/openmax/include
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/camera-partner/imager/include
-LOCAL_C_INCLUDES += $(TEGRA_TOP)/camera/core/hwinc/$(TARGET_TEGRA_VERSION)
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/camera/core/hwinc/$(TARGET_TEGRA_FAMILY)
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/camera/core/hwinc
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/camera/core/camera
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/include
@@ -25,13 +29,16 @@ LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia-partner/utils/include
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia-partner/nvmm/include
 ifneq (,$(findstring core-private,$(LOCAL_PATH)))
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/include
-LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/drivers/hwinc/$(TARGET_TEGRA_VERSION)
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/drivers/hwinc/$(TARGET_TEGRA_FAMILY)
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/drivers/hwinc
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/drivers/hwinc/$(TARGET_TEGRA_FAMILY)
 endif
 
 ifneq (,$(findstring tests,$(LOCAL_PATH)))
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/include
 endif
+
+-include $(NVIDIA_UBM_DEFAULTS)
 
 TEGRA_CFLAGS :=
 
@@ -112,5 +119,11 @@ LOCAL_NVIDIA_NULL_COVERAGE :=
 LOCAL_NVIDIA_NO_EXTRA_WARNINGS :=
 LOCAL_NVIDIA_NO_WARNINGS_AS_ERRORS :=
 LOCAL_NVIDIA_RM_WARNING_FLAGS :=
+LOCAL_NVIDIA_NVMAKE_ARGS :=
+LOCAL_NVIDIA_NVMAKE_BUILD_DIR :=
+LOCAL_NVIDIA_NVMAKE_OVERRIDE_BUILD_TYPE :=
+LOCAL_NVIDIA_NVMAKE_OVERRIDE_MODULE_NAME :=
+LOCAL_NVIDIA_NVMAKE_OVERRIDE_TOP :=
+LOCAL_NVIDIA_NVMAKE_TREE :=
 LOCAL_NVIDIA_LINK_SCRIPT_PATH :=
 LOCAL_NVIDIA_OBJCOPY_FLAGS :=
