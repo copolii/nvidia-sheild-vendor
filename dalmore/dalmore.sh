@@ -9,3 +9,9 @@ else
     export NVFLASH_ODM_DATA=0x20098000
 fi
 
+if [ "$T30_ON_T114" ]
+then
+        cp $OUTDIR/flash_noxusb.cfg $OUTDIR/flash.cfg
+else
+        cp $OUTDIR/flash_xusb.cfg $OUTDIR/flash.cfg
+fi
