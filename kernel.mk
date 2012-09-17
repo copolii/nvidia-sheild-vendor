@@ -114,12 +114,14 @@ ifeq ($(TARGET_USE_DTB),true)
     endif
 endif
 
-$(warning TARGET_USE_DTB = $(TARGET_USE_DTB))
-$(warning KERNEL_DTS_PATH = $(KERNEL_DTS_PATH))
-$(warning BUILT_KERNEL_DTB = $(BUILT_KERNEL_DTB))
-$(warning INSTALLED_DTB_TARGET = $(INSTALLED_DTB_TARGET))
-$(warning EXTRA_KERNEL_TARGETS = $(EXTRA_KERNEL_TARGETS))
-$(warning APPEND_DTB_TO_KERNEL = $(APPEND_DTB_TO_KERNEL))
+$(info ==============Kernel DTS/DTB================)
+$(info TARGET_USE_DTB = $(TARGET_USE_DTB))
+$(info KERNEL_DTS_PATH = $(KERNEL_DTS_PATH))
+$(info BUILT_KERNEL_DTB = $(BUILT_KERNEL_DTB))
+$(info INSTALLED_DTB_TARGET = $(INSTALLED_DTB_TARGET))
+$(info EXTRA_KERNEL_TARGETS = $(EXTRA_KERNEL_TARGETS))
+$(info APPEND_DTB_TO_KERNEL = $(APPEND_DTB_TO_KERNEL))
+$(info ============================================)
 
 KERNEL_EXTRA_ARGS=
 OS=$(shell uname)
@@ -323,19 +325,4 @@ kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) 
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(BUILT_KERNEL_DTB): PRIVATE_TOPDIR := $(CURDIR)
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(BUILT_KERNEL_DTB): PRIVATE_KERNEL_TOOLCHAIN := $(CURDIR)/$(KERNEL_TOOLCHAIN)
 
-endif
-
-# of ifneq ($(TARGET_NO_KERNEL),true)
-
-# FIXME: This should be moved to a file of its own.
-# TODO: This may not be what we want.
-.PHONY: dev
-dev: droidcore
-ifneq ($(NO_ROOT_DEVICE),)
-  ifeq ($(TARGET_BOARD_PLATFORM_TYPE),simulation)
-	device/nvidia/common/generate_full_filesystem.sh
-  else
-	device/nvidia/common/generate_nvtest_ramdisk.sh $(TARGET_PRODUCT) $(TARGET_BUILD_TYPE)
-	device/nvidia/common/generate_qt_ramdisk.sh     $(TARGET_PRODUCT) $(TARGET_BUILD_TYPE)
-  endif
 endif
