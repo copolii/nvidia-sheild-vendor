@@ -14,4 +14,6 @@ then
         cp $OUTDIR/flash_noxusb.cfg $OUTDIR/flash.cfg
 else
         cp $OUTDIR/flash_xusb.cfg $OUTDIR/flash.cfg
+        cp $OUTDIR/flash_dalmore.bct $OUTDIR/flash.bct
+
 fi
