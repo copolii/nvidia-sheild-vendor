@@ -17,7 +17,7 @@ export FASTBOOT_VID=0x955
 if [ "$ODMDATA_OVERRIDE" ]; then
     export NVFLASH_ODM_DATA=$ODMDATA_OVERRIDE
 else
-    export NVFLASH_ODM_DATA=0x80098000
+    export NVFLASH_ODM_DATA=0x40098000
 fi
 
 if [ "$T30_ON_T114" == "1" ]
