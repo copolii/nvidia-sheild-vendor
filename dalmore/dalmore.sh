@@ -25,14 +25,14 @@ if [ "$T30_ON_T114" == "1" ]
 then
         cp $OUTDIR/flash_noxusb.cfg $OUTDIR/flash.cfg
 else
-  if [ "$BOARD_IS_E1611" == "1" ]
+  if [ "$BOARD_IS_E1613" == "1" ]
   then
-        cp $OUTDIR/flash_xusb.cfg $OUTDIR/flash.cfg
-        cp $OUTDIR/flash_dalmore_e1611.bct $OUTDIR/flash.bct  
-        cp $OUTDIR/flash_dalmore_e1611.cfg $OUTDIR/bct.cfg
-  else
         cp $OUTDIR/flash_xusb.cfg $OUTDIR/flash.cfg
         cp $OUTDIR/flash_dalmore_e1613.bct $OUTDIR/flash.bct
         cp $OUTDIR/flash_dalmore_e1613.cfg $OUTDIR/bct.cfg
+  else
+        cp $OUTDIR/flash_xusb.cfg $OUTDIR/flash.cfg
+        cp $OUTDIR/flash_dalmore_e1611.bct $OUTDIR/flash.bct
+        cp $OUTDIR/flash_dalmore_e1611.cfg $OUTDIR/bct.cfg
   fi
 fi
