@@ -8,6 +8,7 @@ dev: droidcore target-files-package
 ifneq ($(NO_ROOT_DEVICE),)
 ifeq ($(TARGET_BOARD_PLATFORM_TYPE),simulation)
 	device/nvidia/common/generate_full_filesystem.sh
+	device/nvidia/common/generate_asim_bootimg.sh
 else
 	device/nvidia/common/generate_nvtest_ramdisk.sh $(TARGET_PRODUCT) $(TARGET_BUILD_TYPE)
 	device/nvidia/common/generate_qt_ramdisk.sh $(TARGET_PRODUCT) $(TARGET_BUILD_TYPE)
