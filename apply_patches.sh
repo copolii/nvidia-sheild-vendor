@@ -27,6 +27,7 @@ if [ a$TOP == a ]; then
 else
     apply_patch build 0001-Fix-issue-with-DEBUG_OUT_DIR-not-properly-selected.patch
     apply_patch build 0002-build-Fix-Argument-list-too-long-error.patch
+    apply_patch build 0003-pdk-Support-AIDL-files-in-java-builds.patch
     apply_patch external/tinyalsa 0001-tinyalsa-return-card-number-from-its-name-substring.patch
     apply_patch frameworks/native 0001-egl-Return-values-from-eglDestroyImageKHR.patch
     apply_patch frameworks/native 0002-frameworks-native-add-extra-dalvik-heap-configs.patch
