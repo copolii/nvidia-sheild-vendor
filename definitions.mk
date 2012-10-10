@@ -32,6 +32,7 @@ NVIDIA_NVMAKE_BASE         := $(NVIDIA_BUILD_ROOT)/nvmake_base.mk
 NVIDIA_NVMAKE_SHARED_LIBRARY := $(NVIDIA_BUILD_ROOT)/nvmake_shared_library.mk
 NVIDIA_NVMAKE_EXECUTABLE   := $(NVIDIA_BUILD_ROOT)/nvmake_executable.mk
 NVIDIA_STATIC_AVP_EXECUTABLE := $(NVIDIA_BUILD_ROOT)/static_avp_executable.mk
+NVIDIA_STATIC_EXECUTABLE := $(NVIDIA_BUILD_ROOT)/static_executable.mk
 NVIDIA_STATIC_AND_SHARED_LIBRARY := $(NVIDIA_BUILD_ROOT)/static_and_shared_library.mk
 NVIDIA_HOST_STATIC_LIBRARY := $(NVIDIA_BUILD_ROOT)/host_static_library.mk
 NVIDIA_HOST_SHARED_LIBRARY := $(NVIDIA_BUILD_ROOT)/host_shared_library.mk
