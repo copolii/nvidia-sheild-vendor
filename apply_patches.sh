@@ -34,5 +34,6 @@ else
     apply_patch hardware/libhardware_legacy 0001-Enable-support-for-bcm-modules.patch
     apply_patch system/core 0001-TEMPORARY-Re-add-LOG-variants.patch
     apply_patch system/core 0002-Enable-use-of-modem.-property-by-radio-user.patch
+    apply_patch system/core 0003-Enable-use-of-ro.sf.lcd_density-prop-by-system-user.patch
 fi
 
