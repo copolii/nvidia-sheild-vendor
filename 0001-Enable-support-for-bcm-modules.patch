@@ -164,7 +164,7 @@ index 5a42e2d..dbbe7ca 100644
 +
 +    if (p2p_supported) {
 +        property_get("wifi.supplicant", supplicant_name, P2P_SUPPLICANT_NAME);
-+        snprintf(supplicant_prop_name, PROPERTY_VALUE_MAX, P2P_PROP_NAME, supplicant_name);
++        snprintf(supplicant_prop_name, PROPERTY_KEY_MAX, P2P_PROP_NAME, supplicant_name);
          /* Ensure p2p config file is created */
          if (ensure_config_file_exists(P2P_CONFIG_FILE) < 0) {
              ALOGE("Failed to create a p2p config file");
@@ -175,7 +175,7 @@ index 5a42e2d..dbbe7ca 100644
 -        strcpy(supplicant_name, SUPPLICANT_NAME);
 -        strcpy(supplicant_prop_name, SUPP_PROP_NAME);
 +        property_get("wifi.supplicant", supplicant_name, SUPPLICANT_NAME);
-+        snprintf(supplicant_prop_name, PROPERTY_VALUE_MAX, SUPP_PROP_NAME, supplicant_name);
++        snprintf(supplicant_prop_name, PROPERTY_KEY_MAX, SUPP_PROP_NAME, supplicant_name);
      }
  
      /* Check whether already running */
