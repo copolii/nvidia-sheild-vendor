@@ -25,6 +25,6 @@ if [ a$TOP == a ]; then
     echo \$TOP is not set. Please set \$TOP before running this script
     exit 1
 else
-    #apply_patch system/core 0002-set-ro.commchip-in-init.c.patch
+    echo === apply_patch: There are no patches to run for the branch!
 fi
 
