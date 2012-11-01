@@ -16,7 +16,6 @@ KERNEL_PATH ?= $(CURDIR)/kernel
 
 TARGET_USE_DTB ?= false
 BOOTLOADER_SUPPORTS_DTB ?= false
-KERNEL_SUPPORTS_DTB := false
 APPEND_DTB_TO_KERNEL ?= false
 EXTRA_KERNEL_TARGETS :=
 
@@ -72,19 +71,6 @@ ifeq ($(BOARD_WLAN_DEVICE),wl18xx_mac80211)
 endif
 
 KERNEL_DEFCONFIG_PATH := $(KERNEL_PATH)/arch/$(TARGET_ARCH)/configs/$(TARGET_KERNEL_CONFIG)
-
-# If target claims to support Device Tree, check for the device tree configs in the defconfig
-ifeq ($(shell grep CONFIG_USE_OF=y $(KERNEL_DEFCONFIG_PATH)),CONFIG_USE_OF=y)
-    KERNEL_SUPPORTS_DTB := true
-endif
-
-# If we don't have kernel support for DTB, we won't be using it
-ifeq ($(KERNEL_SUPPORTS_DTB),false)
-ifeq ($(TARGET_USE_DTB),true)
-    $(warning Kernel doesn\'t support Device Tree, disabling DT)
-    TARGET_USE_DTB := false
-endif
-endif
 
 # If we don't have kernel or bootloader support for DTB loading, we won't be using it
 ifeq ($(BOOTLOADER_SUPPORTS_DTB),false)
