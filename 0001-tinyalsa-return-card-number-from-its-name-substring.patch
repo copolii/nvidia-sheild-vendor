@@ -1,0 +1,92 @@
+From f29cbb1d72e05c6b5667e38776e7317bc61cc705 Mon Sep 17 00:00:00 2001
+From: Ravindra Lokhande <rlokhande@nvidia.com>
+Date: Thu, 9 Aug 2012 22:42:05 +0530
+Subject: [PATCH] tinyalsa: return card number from its name substring
+X-NVConfidentiality: public
+
+tinyalsa doesn't provide any way to get card number from its name.
+Added function to return card number from card name substring. This
+is needed as usb audio device can be plug-in and plug-out anytime
+which changes card number.
+
+Bug 1009921
+Bug 1026047
+
+(cherry picked from commit a354192ba66931d03bd322f933a357e7f11776eb)
+
+Change-Id: I2865d230cb361a0ef10ed5aacb7b4a7363390b0f
+Reviewed-on: http://git-master/r/127504
+Tested-by: Ravindra Lokhande <rlokhande@nvidia.com>
+Reviewed-by: Prajakta Gudadhe <pgudadhe@nvidia.com>
+GVS: Gerrit_Virtual_Submit
+(cherry picked from commit 7ecfdef7b30baf2a3f6b92fb9f89f2ec23698410)
+---
+ include/tinyalsa/asoundlib.h |    3 +++
+ mixer.c                      |   40 ++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 43 insertions(+)
+
+diff --git a/include/tinyalsa/asoundlib.h b/include/tinyalsa/asoundlib.h
+index a796a66..63c97d6 100644
+--- a/include/tinyalsa/asoundlib.h
++++ b/include/tinyalsa/asoundlib.h
+@@ -205,6 +205,9 @@ int mixer_ctl_set_enum_by_string(struct mixer_ctl *ctl, const char *string);
+ int mixer_ctl_get_range_min(struct mixer_ctl *ctl);
+ int mixer_ctl_get_range_max(struct mixer_ctl *ctl);
+ 
++/* Get sound card number using sub string */
++int snd_card_get_card_id_from_sub_string(const char *card_name);
++
+ #if defined(__cplusplus)
+ }  /* extern "C" */
+ #endif
+diff --git a/mixer.c b/mixer.c
+index 9514528..6b37dcf 100644
+--- a/mixer.c
++++ b/mixer.c
+@@ -416,3 +416,43 @@ int mixer_ctl_set_enum_by_string(struct mixer_ctl *ctl, const char *string)
+     return -EINVAL;
+ }
+ 
++
++int snd_card_get_card_id_from_sub_string(const char *card_name)
++{
++    int card;
++    int fd;
++    char fn[256];
++    struct snd_ctl_card_info info;
++
++    if (card_name == NULL)
++        return -EINVAL;
++
++    for (card = 0; card < 8; card++) {
++        snprintf(fn, sizeof(fn), "/dev/snd/controlC%u", card);
++        fd = open(fn, O_RDONLY);
++        if (fd < 0)
++            continue;
++        if (ioctl(fd, SNDRV_CTL_IOCTL_CARD_INFO, &info) < 0) {
++            close(fd);
++            continue;
++        }
++        close(fd);
++
++        /* search by card id */
++        if (strcasestr((const char *)info.id, card_name))
++            return info.card;
++
++        /* search by card name */
++        if (strcasestr((const char *)info.name, card_name))
++            return info.card;
++
++        /* search by driver name */
++        if (strcasestr((const char *)info.driver, card_name))
++            return info.card;
++
++        /* search by longname name */
++        if (strcasestr((const char *)info.longname, card_name))
++            return info.card;
++    }
++    return -EINVAL;
++}
+-- 
+1.7.9.5
+

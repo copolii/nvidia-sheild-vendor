@@ -1,0 +1,73 @@
+From 209f52dbb16272726becc73f7cbb9e86ae6c67f3 Mon Sep 17 00:00:00 2001
+From: Sandip Kumar <sandipk@nvidia.com>
+Date: Tue, 14 Aug 2012 15:25:44 +0530
+Subject: [PATCH] build: Fix 'Argument list too long' error
+X-NVConfidentiality: public
+
+While building target target-files-package, the length of command passed
+to shell by make exceeds the maximum length allowed by the system.
+
+In this fix, we seperate each command by using a macro.
+
+Bug 1016136
+
+Change-Id: I8fd2888a06b38f08a8ad292da44504d2ac715deb
+Reviewed-on: http://git-master/r/123311
+Reviewed-by: Automatic_Commit_Validation_User
+Reviewed-by: Stefan Becker <stefanb@nvidia.com>
+Tested-by: Sandip Kumar <sandipk@nvidia.com>
+Reviewed-by: Jan-Petter Vainionpaa <jvainionpaa@nvidia.com>
+Reviewed-by: Oskari Jaaskelainen <oskarij@nvidia.com>
+Reviewed-on: http://git-master/r/126771
+GVS: Gerrit_Virtual_Submit
+(cherry picked from commit 1c35f92b765bda96ebc89f3a76901887cc570302)
+---
+ core/Makefile |   19 +++++++++++++++----
+ 1 file changed, 15 insertions(+), 4 deletions(-)
+
+diff --git a/core/Makefile b/core/Makefile
+index 8f0895b..8d13ce3 100644
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -240,6 +240,7 @@ package-stats: $(PACKAGE_STATS_FILE)
+ 
+ # -----------------------------------------------------------------
+ # Cert-to-package mapping.  Used by the post-build signing tools.
++#
+ name := $(TARGET_PRODUCT)
+ ifeq ($(TARGET_BUILD_TYPE),debug)
+   name := $(name)_debug
+@@ -250,16 +251,26 @@ intermediates := \
+ APKCERTS_FILE := $(intermediates)/$(name).txt
+ # We don't need to really build all the modules.
+ # TODO: rebuild APKCERTS_FILE if any app change its cert.
++
++# Fix for 'Argument too long' error
++# Original implementation created string of shell commands like
++# cmd1; cmd2; cmd3; which caused this error due to argument length
++# exceeding ARG_MAX. Using this macro separates each command
++# NOTE: DO NOT REMOVE the empty line in the macro!
++define _add_apkcertfiles_certificate
++echo 'name="$(1).apk" certificate="$(2)" private_key="$(3)"' >> $(4)
++
++endef
++
+ $(APKCERTS_FILE):
+ 	@echo APK certs list: $@
+ 	@mkdir -p $(dir $@)
+ 	@rm -f $@
+ 	$(hide) $(foreach p,$(PACKAGES),\
+           $(if $(PACKAGES.$(p).EXTERNAL_KEY),\
+-	    echo 'name="$(p).apk" certificate="EXTERNAL" \
+-	         private_key=""' >> $@;,\
+-	    echo 'name="$(p).apk" certificate="$(PACKAGES.$(p).CERTIFICATE)" \
+-	         private_key="$(PACKAGES.$(p).PRIVATE_KEY)"' >> $@;))
++	    $(call _add_apkcertfiles_certificate,$(p),EXTERNAL,'',$@), \
++	    $(call _add_apkcertfiles_certificate,$(p),$(PACKAGES.$(p).CERTIFICATE),$(PACKAGES.$(p).PRIVATE_KEY),$@) \
++	    ))
+ 	# In case $(PACKAGES) is empty.
+ 	$(hide) touch $@
+ 
+-- 
+1.7.9.5
+
