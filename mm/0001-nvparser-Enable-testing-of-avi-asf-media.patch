@@ -1,0 +1,64 @@
+From deccea22d6886dc4dc48bbb0f9218d951b938ba1 Mon Sep 17 00:00:00 2001
+From: Suresh Choudhary <sureshc@nvidia.com>
+Date: Mon, 5 Nov 2012 17:05:11 +0530
+Subject: [PATCH] nvparser: Enable testing of avi/asf media
+
+Change-Id: Ic1f548a0149896f251e6079cfa04a91030fab910
+---
+ libnvasfparserhal/Android.mk   |    4 ++--
+ libnvaviparserhal/Android.mk   |    4 ++--
+ libnvparserhalutils/Android.mk |    4 ++--
+ 3 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/libnvasfparserhal/Android.mk b/libnvasfparserhal/Android.mk
+index d862e0a..6fbe2a9 100644
+--- a/libnvasfparserhal/Android.mk
++++ b/libnvasfparserhal/Android.mk
+@@ -1,4 +1,4 @@
+-ifeq ($(NV_ANDROID_FRAMEWORK_ENHANCEMENTS),TRUE)
++#ifeq ($(NV_ANDROID_FRAMEWORK_ENHANCEMENTS),TRUE)
+ LOCAL_PATH := $(call my-dir)
+ include $(NVIDIA_DEFAULTS)
+ 
+@@ -40,4 +40,4 @@ LOCAL_PRELINK_MODULE := false
+ #TODO: Remove following lines before include statement and fix the source giving warnings/errors
+ LOCAL_CFLAGS += -Wno-error=cast-align
+ include $(NVIDIA_SHARED_LIBRARY)
+-endif
++#endif
+diff --git a/libnvaviparserhal/Android.mk b/libnvaviparserhal/Android.mk
+index ef30690..b13ef00 100644
+--- a/libnvaviparserhal/Android.mk
++++ b/libnvaviparserhal/Android.mk
+@@ -1,4 +1,4 @@
+-ifeq ($(NV_ANDROID_FRAMEWORK_ENHANCEMENTS),TRUE)
++#ifeq ($(NV_ANDROID_FRAMEWORK_ENHANCEMENTS),TRUE)
+ LOCAL_PATH := $(call my-dir)
+ include $(NVIDIA_DEFAULTS)
+ include $(TEGRA_TOP)/multimedia-partner/nvmm/nvmm/Android.common.mk
+@@ -44,4 +44,4 @@ LOCAL_PRELINK_MODULE := false
+ #TODO: Remove following lines before include statement and fix the source giving warnings/errors
+ LOCAL_CFLAGS += -Wno-error=cast-align
+ include $(NVIDIA_SHARED_LIBRARY)
+-endif
++#endif
+diff --git a/libnvparserhalutils/Android.mk b/libnvparserhalutils/Android.mk
+index cc1f491..f9e8b63 100644
+--- a/libnvparserhalutils/Android.mk
++++ b/libnvparserhalutils/Android.mk
+@@ -1,4 +1,4 @@
+-ifeq ($(NV_ANDROID_FRAMEWORK_ENHANCEMENTS),TRUE)
++#ifeq ($(NV_ANDROID_FRAMEWORK_ENHANCEMENTS),TRUE)
+ LOCAL_PATH := $(call my-dir)
+ include $(NVIDIA_DEFAULTS)
+ 
+@@ -9,5 +9,5 @@ LOCAL_MODULE := libnvparserhalutils
+ LOCAL_SRC_FILES += nvparserhal_content_pipe.cpp
+ 
+ include $(NVIDIA_STATIC_LIBRARY)
+-endif
++#endif
+ 
+-- 
+1.7.1
+

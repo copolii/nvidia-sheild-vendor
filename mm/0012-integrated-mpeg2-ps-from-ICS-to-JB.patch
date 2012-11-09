@@ -1,0 +1,1004 @@
+From 666e6aaaa32c9090ba52267d7574bdf67ae5f56e Mon Sep 17 00:00:00 2001
+From: manikanta kanamarlapudi <manikak@nvidia.com>
+Date: Thu, 21 Jun 2012 17:48:08 +0530
+Subject: [PATCH 12/40] integrated mpeg2-ps from ICS to JB
+
+- libstagefright : Add extension of .vob files
+  http://git-master/r/#change,73682
+
+- libstagefright : support for mpeg1 files
+  http://git-master/r/#change,74316
+
+- SF/Mpeg2PS: Handle AC3 stream in mpeg2 PS
+  http://git-master/r/#change,78691
+
+- SF/MPeg2PS: Support of AC3 pass through for mpeg2 PS
+  http://git-master/r/#change,77323
+
+- Mpeg2PS: Duration/seek support for mpeg2 PS stream
+  http://git-master/r/#change,76794
+
+- SF/mpeg2PS: Seek only to video track
+  http://git-master/r/#change,83798
+
+- Correct the mpeg audio header comparison
+  http://git-master/r/#change,84933
+
+- Fixes false mpeg audio sync emulation
+  http://git-master/r/#change,87753
+
+- libstagefright : Fixed corner cases in MPEG PS Extractor
+  http://git-master/r/#change,84504
+
+- libstagefright : Handled TimeStamps properly for interlaced streams
+  http://git-master/r/#change,88220
+
+-  libstagefright : Corrected the logic of time stamp in Ps Extractor
+   http://git-master/r/#change,77372
+
+- libstagefright : Set Param to support Partial Frame data
+  http://git-master/r/#change,77782
+
+bug 991874
+
+Change-Id: I36be15f993a4503fdee63580ae980c3546ff99b0
+Reviewed-on: http://git-psac/r/291
+Reviewed-by: Zhijun He <zhhe@nvidia.com>
+Tested-by: Manikanta Kanamarlapudi <manikak@nvidia.com>
+Reviewed-by: Parag Mehendale <pmehendale@nvidia.com>
+Reviewed-by: Yogesh Solanke <ysolanke@nvidia.com>
+---
+ include/media/stagefright/MetaData.h              |    1 +
+ media/libstagefright/OMXCodec.cpp                 |   17 +
+ media/libstagefright/StagefrightMediaScanner.cpp  |    2 +-
+ media/libstagefright/include/MPEG2PSExtractor.h   |   11 +
+ media/libstagefright/mpeg2ts/ESQueue.cpp          |  154 ++++++---
+ media/libstagefright/mpeg2ts/ESQueue.h            |    3 +-
+ media/libstagefright/mpeg2ts/MPEG2PSExtractor.cpp |  417 ++++++++++++++++++++-
+ 7 files changed, 544 insertions(+), 61 deletions(-)
+
+diff --git a/include/media/stagefright/MetaData.h b/include/media/stagefright/MetaData.h
+index ff1d173..ecc49b9 100644
+--- a/include/media/stagefright/MetaData.h
++++ b/include/media/stagefright/MetaData.h
+@@ -134,6 +134,7 @@ enum {
+     kKeyRequiresSecureBuffers = 'secu',  // bool (int32_t)
+ 
+     kKeyIsADTS            = 'adts',  // bool (int32_t)
++    kKeyPSExtractor       = 'mpge',  //bool (int32_t)
+ 
+     // If a MediaBuffer's data represents (at least partially) encrypted
+     // data, the following fields aid in decryption.
+diff --git a/media/libstagefright/OMXCodec.cpp b/media/libstagefright/OMXCodec.cpp
+index 0d7d48a..853316b 100755
+--- a/media/libstagefright/OMXCodec.cpp
++++ b/media/libstagefright/OMXCodec.cpp
+@@ -454,6 +454,23 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta) {
+     ALOGV("configureCodec protected=%d",
+          (mFlags & kEnableGrallocUsageProtected) ? 1 : 0);
+ 
++    int32_t isPsExtractor;
++    bool success = meta->findInt32(kKeyPSExtractor, &isPsExtractor);
++
++    if (success && isPsExtractor) {
++        LOGV("Sending Partial frame data to mpeg2 Decoder");
++        OMX_INDEXTYPE index;
++        status_t err = mOMX->getExtensionIndex(mNode, "OMX.Nvidia.index.param.vdecfullframedata", &index);
++        CHECK_EQ(err, (status_t)OK);
++
++        OMX_CONFIG_BOOLEANTYPE FullFrameData;
++        InitOMXParams(&FullFrameData);
++        FullFrameData.bEnabled = OMX_FALSE;
++        err = mOMX->setParameter(
++            mNode, index, &FullFrameData, sizeof(FullFrameData));
++        CHECK_EQ(err, (status_t)OK);
++    }
++
+     if (!(mFlags & kIgnoreCodecSpecificData)) {
+         uint32_t type;
+         const void *data;
+diff --git a/media/libstagefright/StagefrightMediaScanner.cpp b/media/libstagefright/StagefrightMediaScanner.cpp
+index 559a9d2..2b0ac05 100644
+--- a/media/libstagefright/StagefrightMediaScanner.cpp
++++ b/media/libstagefright/StagefrightMediaScanner.cpp
+@@ -42,7 +42,7 @@ static bool FileHasAcceptableExtension(const char *extension) {
+         ".mpeg", ".ogg", ".mid", ".smf", ".imy", ".wma", ".aac",
+         ".wav", ".amr", ".midi", ".xmf", ".rtttl", ".rtx", ".ota",
+         ".mkv", ".mka", ".webm", ".ts", ".fl", ".flac", ".mxmf",
+-        ".avi", ".mpeg", ".mpg", ".asf"
++        ".avi", ".mpeg", ".mpg", ".asf", ".vob"
+     };
+     static const size_t kNumValidExtensions =
+         sizeof(kValidExtensions) / sizeof(kValidExtensions[0]);
+diff --git a/media/libstagefright/include/MPEG2PSExtractor.h b/media/libstagefright/include/MPEG2PSExtractor.h
+index fb76564..3578fea 100644
+--- a/media/libstagefright/include/MPEG2PSExtractor.h
++++ b/media/libstagefright/include/MPEG2PSExtractor.h
+@@ -40,6 +40,7 @@ struct MPEG2PSExtractor : public MediaExtractor {
+     virtual sp<MetaData> getMetaData();
+ 
+     virtual uint32_t flags() const;
++    void seekTo(int64_t seekTimeUs);
+ 
+ protected:
+     virtual ~MPEG2PSExtractor();
+@@ -52,12 +53,19 @@ private:
+     sp<DataSource> mDataSource;
+ 
+     off64_t mOffset;
++    off64_t filesize;
++    uint64_t mFirstPTS;
++    uint64_t mLastPTS;
++    uint64_t mDuration;
+     status_t mFinalResult;
+     sp<ABuffer> mBuffer;
+     KeyedVector<unsigned, sp<Track> > mTracks;
+     bool mScanning;
++    bool mSeeking;
++    bool mReverseScan;
+ 
+     bool mProgramStreamMapValid;
++    bool mpeg1Stream;
+     KeyedVector<unsigned, unsigned> mStreamTypeByESID;
+ 
+     status_t feedMore();
+@@ -66,6 +74,9 @@ private:
+     ssize_t dequeuePack();
+     ssize_t dequeueSystemHeader();
+     ssize_t dequeuePES();
++    ssize_t dequeueMPEG1PES();
++    ssize_t getDuration();
++    status_t scanpacketHeader();
+ 
+     DISALLOW_EVIL_CONSTRUCTORS(MPEG2PSExtractor);
+ };
+diff --git a/media/libstagefright/mpeg2ts/ESQueue.cpp b/media/libstagefright/mpeg2ts/ESQueue.cpp
+index d351e13..0b1793b 100644
+--- a/media/libstagefright/mpeg2ts/ESQueue.cpp
++++ b/media/libstagefright/mpeg2ts/ESQueue.cpp
+@@ -86,7 +86,8 @@ ElementaryStreamQueue::ElementaryStreamQueue(Mode mode, uint32_t flags)
+       mFlags(flags),
+       mvideoHeight(480),
+       mvideoWidth(640),
+-      bseqHdrSent(false) {
++      bseqHdrSent(false),
++      mPsExtractor(false) {
+ }
+ 
+ sp<MetaData> ElementaryStreamQueue::getFormat() {
+@@ -99,13 +100,16 @@ void ElementaryStreamQueue::clear(bool clearFormat) {
+     }
+ 
+     mRangeInfos.clear();
+-    bseqHdrSent = false;
+ 
+     if (clearFormat) {
+         mFormat.clear();
+     }
+ }
+ 
++void ElementaryStreamQueue::setPsExtractor(bool isPsExtractor) {
++    mPsExtractor = isPsExtractor;
++}
++
+ static bool IsSeeminglyValidVC1SeqHeader(const uint8_t *ptr, size_t size, uint16_t &w, uint16_t& h) 
+ {
+     if (size < 9)
+@@ -237,6 +241,9 @@ static bool ParseLPCMHeader(const uint8_t* data, size_t size, uint32_t* bps,
+ static bool ParseAC3Frame(const uint8_t* data, size_t size, uint32_t* framesize,
+                           uint32_t* rate, uint32_t* ch, uint32_t* blk,
+                           uint32_t* sid) {
++    if (size < 7)
++        return false;
++
+     ABitReader br(data, size);
+     uint8_t lfe_on = 0;
+     uint8_t acmod = 0;
+@@ -375,18 +382,49 @@ static bool IsSeeminglyValidAC3Header(const uint8_t *ptr, size_t size,
+     bits.skipBits(24);
+     uint8_t bsid = bits.getBits(5);
+     ALOGV(" AC3 bsid is %d", bsid);
+-    if (bsid <= 10)
+-    {
+-        //parse ac3 frame header
+-        if(!ParseAC3Frame(ptr, size, framesize, rate, ch, blk, sid))
+-            return false;
+-    }
+-    else if (bsid <= 16)
+-    {
+-        iseac3 = true;
+-        //parse the eac3 frame header
+-        if(!ParseEAC3Frame(ptr, size, framesize, rate, ch, blk, sid))
++    size_t offset = 0;
++    uint8_t success = 0;
++
++    while (offset < (size-7)) {
++        if (bsid <= 10)
++        {
++            uint8_t *header = (uint8_t *)ptr + offset;
++            //parse ac3 frame header
++            if(!ParseAC3Frame(header, size, framesize, rate, ch, blk, sid))
++                return false;
++
++            LOGV("returning from the ac-3 parsing\n");
++            if (*framesize == 0) {
++                return false;
++            } else {
++                offset += *framesize;
++                success++;
++            }
++
++            if (success == 3)
++                break;
++        }
++        else if (bsid <= 16)
++        {
++            iseac3 = true;
++            uint8_t *header = (uint8_t *)ptr + offset;
++            //parse the eac3 frame header
++            if(!ParseEAC3Frame(header, size, framesize, rate, ch, blk, sid))
++                return false;
++
++            if (*framesize == 0) {
++                offset++;
++                continue;
++            } else {
++                offset += *framesize;
++                success++;
++            }
++
++            if (success == 3)
++                break;
++        } else {
+             return false;
++        }
+     }
+     return true;
+ }
+@@ -495,13 +533,25 @@ status_t ElementaryStreamQueue::appendData(
+             case MPEG_VIDEO:
+             {
+                 uint8_t *ptr = (uint8_t *)data;
++                ssize_t startOffset = -1;
+                 //Ignoring the error from the below function call currently as
+                 // nvidia mpeg2 decoder can discard video frames till it received a
+                 // valid sequence header
+-                if ((IsSeeminglyValidMPEG2SeqHeader(&ptr[0], size,mvideoWidth, mvideoHeight)))
+-                    bseqHdrSent = true;
+-                else if (!bseqHdrSent)
+-                    return ERROR_MALFORMED;
++                if (!bseqHdrSent) {
++                    for (size_t i = 0; i < size ; i++) {
++                        if ((IsSeeminglyValidMPEG2SeqHeader(&ptr[i], size-i,mvideoWidth, mvideoHeight))) {
++                            bseqHdrSent = true;
++                            startOffset = i;
++                           break;
++                        }
++                    }
++
++                   if (!bseqHdrSent) {
++                        return ERROR_MALFORMED;
++                    }
++                    data = &ptr[startOffset];
++                    size -= startOffset;
++                }
+ 
+                 break;
+             }
+@@ -603,9 +653,10 @@ status_t ElementaryStreamQueue::appendData(
+                 uint8_t *ptr = (uint8_t *)data;
+                 ALOGV("Parsing AC3 audio stream");
+                 ssize_t startOffset = -1;
++                size_t frameSize;
+                 bool iseac3 = false;
+                 for (size_t i = 0; i < size; ++i) {
+-                    if (IsSeeminglyValidAC3Header(&ptr[i], size - i, NULL,
++                    if (IsSeeminglyValidAC3Header(&ptr[i], size - i, &frameSize,
+                                          NULL, NULL, NULL, NULL, iseac3)) {
+                         startOffset = i;
+                         break;
+@@ -840,39 +891,53 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAC3() {
+     uint32_t numBlks = 0;
+     uint32_t sid = 0;
+     bool iseac3 = false;
++    ssize_t pos = 0;
++    const uint8_t *data = mBuffer->data();
+ 
+-    if (mFormat == NULL) {
+-        //Create codec spefic data
+-        if (!IsSeeminglyValidAC3Header(mBuffer->data(), mBuffer->size(),
++    do
++    {
++        if(auSize == 0)
++            return NULL;
++
++        for(pos=0;pos<(ssize_t)auSize;pos++)
++        {
++            if (IsSeeminglyValidAC3Header(&data[pos], auSize-pos,
+                                    &framesize, &sample_rate, &channels,
+                                    &numBlks, &sid, iseac3)) {
+-            //Discard this buffer and proceed
+-            ALOGV("Failed to parse the AC3 header");
++                //Discard this buffer and proceed
++                LOGV("Got the AC3 frame at pos %d", pos);
++                break;
++            }
++        }
++        if (mFormat == NULL) {
++            mFormat = new MetaData;
++            mFormat->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_AC3);
++            LOGV("Setting Mimetype as MEDIA_MIME_TYPE_AUDIO_AC3");
++            mFormat->setInt32(kKeySampleRate, sample_rate);
++            mFormat->setInt32(kKeyChannelCount, channels);
++        }
++
++        if(auSize <= 0 || auSize < (framesize + pos) || framesize == 0) {
+             return NULL;
+         }
+-        mFormat = new MetaData;
+-        mFormat->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_AC3);
+-        ALOGV("Setting Mimetype as MEDIA_MIME_TYPE_AUDIO_AC3");
+-        mFormat->setInt32(kKeySampleRate, sample_rate);
+-        mFormat->setInt32(kKeyChannelCount, channels);
+-    }
+ 
+-    if(auSize == 0)
+-        return NULL;
++        auSize = auSize - framesize - pos;
+ 
+-    int64_t timeUs = fetchTimestamp(auSize);
+-    sp<ABuffer> accessUnit = new ABuffer(auSize);
+-    memcpy(accessUnit->data(), mBuffer->data(), auSize);
+-    memmove(mBuffer->data(), mBuffer->data() + auSize,
+-            mBuffer->size() - auSize);
+-    mBuffer->setRange(0, mBuffer->size() - auSize);
++        int64_t timeUs = fetchTimestamp(framesize);
++        sp<ABuffer> accessUnit = new ABuffer(framesize);
++        memcpy(accessUnit->data(), mBuffer->data()+ pos, framesize);
++        memmove(mBuffer->data(), mBuffer->data()+ pos + framesize,
++                mBuffer->size() - framesize - pos);
++        mBuffer->setRange(0, mBuffer->size() - framesize - pos);
++        if (timeUs >= 0) {
++            accessUnit->meta()->setInt64("timeUs", timeUs);
++        } else {
++            LOGW("no time for AC3 access unit");
++        }
++        return accessUnit;
++    } while (auSize < framesize);
+ 
+-    if (timeUs >= 0) {
+-        accessUnit->meta()->setInt64("timeUs", timeUs);
+-    } else {
+-        ALOGW("no time for AC3 access unit");
+-    }
+-    return accessUnit;
++    return NULL;
+ }
+ 
+ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAAC() {
+@@ -1258,6 +1323,9 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitMPEGVideo() {
+         ALOGV("Width is %d, Height is %d", mvideoWidth, mvideoHeight);
+         mFormat->setInt32(kKeyWidth, mvideoWidth);
+         mFormat->setInt32(kKeyHeight, mvideoHeight);
++
++        if (mPsExtractor)
++            mFormat->setInt32(kKeyPSExtractor, mPsExtractor);
+     }
+ 
+     if (auSize == 0)
+diff --git a/media/libstagefright/mpeg2ts/ESQueue.h b/media/libstagefright/mpeg2ts/ESQueue.h
+index 97fd855..90c77b9 100644
+--- a/media/libstagefright/mpeg2ts/ESQueue.h
++++ b/media/libstagefright/mpeg2ts/ESQueue.h
+@@ -48,7 +48,7 @@ struct ElementaryStreamQueue {
+ 
+     status_t appendData(const void *data, size_t size, int64_t timeUs);
+     void clear(bool clearFormat);
+-
++    void setPsExtractor (bool isPsExtractor);
+     sp<ABuffer> dequeueAccessUnit();
+ 
+     sp<MetaData> getFormat();
+@@ -64,6 +64,7 @@ private:
+     uint16_t mvideoWidth;
+     uint16_t mvideoHeight;
+     bool     bseqHdrSent;
++    bool     mPsExtractor;
+ 
+     sp<ABuffer> mBuffer;
+     List<RangeInfo> mRangeInfos;
+diff --git a/media/libstagefright/mpeg2ts/MPEG2PSExtractor.cpp b/media/libstagefright/mpeg2ts/MPEG2PSExtractor.cpp
+index dd714c9..197a33c 100644
+--- a/media/libstagefright/mpeg2ts/MPEG2PSExtractor.cpp
++++ b/media/libstagefright/mpeg2ts/MPEG2PSExtractor.cpp
+@@ -59,9 +59,17 @@ private:
+ 
+     unsigned mStreamID;
+     unsigned mStreamType;
++    int64_t mTimeUs;
++    int64_t mTrackFirstPTS;
++    unsigned mTrackTypeID;
++    int64_t mDuration;
++    bool mSeekable;
++    bool    mTrackFirstPTSAvailable;
+     ElementaryStreamQueue *mQueue;
+     sp<AnotherPacketSource> mSource;
+ 
++    status_t flush();
++    void setDuration(int64_t dur);
+     status_t appendPESData(
+             unsigned PTS_DTS_flags,
+             uint64_t PTS, uint64_t DTS,
+@@ -97,7 +105,12 @@ MPEG2PSExtractor::MPEG2PSExtractor(const sp<DataSource> &source)
+       mOffset(0),
+       mFinalResult(OK),
+       mBuffer(new ABuffer(0)),
++      mFirstPTS(0),
++      mLastPTS(0),
++      mSeeking(false),
+       mScanning(true),
++      mReverseScan(false),
++      mpeg1Stream(false),
+       mProgramStreamMapValid(false) {
+     for (size_t i = 0; i < 500; ++i) {
+         if (feedMore() != OK) {
+@@ -111,7 +124,7 @@ MPEG2PSExtractor::MPEG2PSExtractor(const sp<DataSource> &source)
+             mTracks.removeItemsAt(i);
+         }
+     }
+-
++    getDuration();
+     mScanning = false;
+ }
+ 
+@@ -134,8 +147,23 @@ sp<MetaData> MPEG2PSExtractor::getTrackMetaData(size_t index, uint32_t flags) {
+     if (index >= mTracks.size()) {
+         return NULL;
+     }
++//    return mTracks.valueAt(index)->getFormat();
++    sp<MetaData> meta;
++    if (index < mTracks.size()) {
++        meta = mTracks.valueAt(index)->getFormat();
++    }
+ 
+-    return mTracks.valueAt(index)->getFormat();
++    if (flags & kIncludeExtensiveMetaData) {
++        const char *mime;
++        CHECK(meta->findCString(kKeyMIMEType, &mime));
++        if (!strncasecmp("video/", mime, 6)) {
++            if(mDuration > (7 * 1000000))
++                meta->setInt64( kKeyThumbnailTime, (7 * 1000000));
++            else
++                meta->setInt64( kKeyThumbnailTime, 0);
++        }
++    }
++    return meta;
+ }
+ 
+ sp<MetaData> MPEG2PSExtractor::getMetaData() {
+@@ -145,8 +173,23 @@ sp<MetaData> MPEG2PSExtractor::getMetaData() {
+     return meta;
+ }
+ 
++void MPEG2PSExtractor::seekTo(int64_t seekTimeUs)
++{
++    Mutex::Autolock autoLock(mLock);
++    off64_t offset =(filesize / (1.0 * mDuration)) * seekTimeUs;
++    ALOGV("Seek to %lld and seekoffset %llx",seekTimeUs,offset);
++    offset -= offset % 2048;
++    ALOGV("offset after boundry correction %llx.. and now flushing", offset);
++    for(size_t i=0;i<mTracks.size();i++)
++    {
++        mTracks.editValueAt(i)->flush();
++    }
++    mOffset = offset;
++    mSeeking = true;
++}
++
+ uint32_t MPEG2PSExtractor::flags() const {
+-    return CAN_PAUSE;
++    return (CAN_PAUSE | CAN_SEEK_FORWARD | CAN_SEEK_BACKWARD | CAN_SEEK);
+ }
+ 
+ status_t MPEG2PSExtractor::feedMore() {
+@@ -194,8 +237,30 @@ status_t MPEG2PSExtractor::dequeueChunk() {
+         return -EAGAIN;
+     }
+ 
++    size_t offset = 0;
++    uint8_t *data = mBuffer->data();
++    ssize_t size = mBuffer->size();
++
++    if (mSeeking == true) {
++        while(offset + 4 < size) {
++            if(!memcmp("\x00\x00\x01\xba", &data[offset], 4)) {
++                mBuffer->setRange(offset, size-offset);
++                mSeeking = false;
++                break;
++            } else {
++                ++offset;
++            }
++        }
++
++        if (mSeeking == true) {
++            mBuffer->setRange(0, 0);
++            return -EAGAIN;
++        }
++    }
++
+     if (memcmp("\x00\x00\x01", mBuffer->data(), 3)) {
+-        return ERROR_MALFORMED;
++        mBuffer->setRange(0, 0);
++            return -EAGAIN;
+     }
+ 
+     unsigned chunkType = mBuffer->data()[3];
+@@ -217,6 +282,9 @@ status_t MPEG2PSExtractor::dequeueChunk() {
+ 
+         default:
+         {
++            if(mpeg1Stream)
++              res = dequeueMPEG1PES();
++            else
+             res = dequeuePES();
+             break;
+         }
+@@ -235,12 +303,20 @@ status_t MPEG2PSExtractor::dequeueChunk() {
+ }
+ 
+ ssize_t MPEG2PSExtractor::dequeuePack() {
+-    // 32 + 2 + 3 + 1 + 15 + 1 + 15+ 1 + 9 + 1 + 22 + 1 + 1 | +5
++    // 32 + 2 + 3 + 1 + 15 + 1 + 15+ 1 + 9 + 1 + 22 + 1 + 1 | +5    for mpeg2 Program stream
++    //32 + 4 + 3 + 1+ 15 + 1 + 15 + 1 + 1 + 22 + 1                  for mpeg1 program stream
+ 
+     if (mBuffer->size() < 14) {
+         return -EAGAIN;
+     }
+ 
++    unsigned chunkType = mBuffer->data()[4];
++
++    if ((chunkType >> 6) != 1) {
++        mpeg1Stream = true;
++        return 12;
++    }
++
+     unsigned pack_stuffing_length = mBuffer->data()[13] & 7;
+ 
+     return pack_stuffing_length + 14;
+@@ -256,6 +332,180 @@ ssize_t MPEG2PSExtractor::dequeueSystemHeader() {
+     return header_length + 6;
+ }
+ 
++ssize_t MPEG2PSExtractor::dequeueMPEG1PES() {
++    unsigned dataLength = 0;
++    unsigned stream_type = 0;
++
++    if (mBuffer->size() < 6) {
++        return -EAGAIN;
++    }
++
++    unsigned PES_packet_length = U16_AT(mBuffer->data() + 4);
++
++    size_t n = PES_packet_length + 6;
++
++    if (PES_packet_length <= 0)
++        return n;
++
++    dataLength = PES_packet_length;
++
++    if (mBuffer->size() < n) {
++        return -EAGAIN;
++    }
++
++    ABitReader br(mBuffer->data(), n);
++
++    unsigned packet_startcode_prefix = br.getBits(24);
++
++    ALOGV("packet_startcode_prefix = 0x%08x", packet_startcode_prefix);
++
++    if (packet_startcode_prefix != 1) {
++        ALOGV("Supposedly payload_unit_start=1 unit does not start "
++             "with startcode.");
++
++        return ERROR_MALFORMED;
++    }
++
++    CHECK_EQ(packet_startcode_prefix, 0x000001u);
++
++    unsigned stream_id = br.getBits(8);
++    ALOGV("stream_id = 0x%02x", stream_id);
++
++    if (stream_id == 0xe0)
++         stream_type = 0x01;
++
++    if (stream_id == 0xc0)
++        stream_type = 0x03;
++
++    if (stream_id == 0xbd)
++        stream_type = 0x81;
++
++    /* unsigned PES_packet_length = */br.getBits(16);
++
++    if (stream_id != 0xbe  // padding_stream                              // packetlength - 2 - 5 -5-
++            && stream_id != 0xbf  // private_stream_2
++            && stream_id != 0xf0  // ECM
++            && stream_id != 0xf1  // EMM
++            && stream_id != 0xff  // program_stream_directory
++            && stream_id != 0xf2  // DSMCC
++            && stream_id != 0xf8) {  // H.222.1 type E
++
++        unsigned nextbits = mBuffer->data()[6];
++
++        uint32_t i = 6;
++        while(nextbits == 0xff) {
++            br.skipBits(8);
++            dataLength = dataLength - 1;
++            i++;
++            nextbits = mBuffer->data()[i];
++        }
++
++        nextbits = nextbits & 0x40;
++
++        if(nextbits == 0x40) {
++            br.skipBits(2);
++            unsigned STD_buffer_scale = br.getBits(1);
++            unsigned STD_buffer_size = br.getBits(13);
++            dataLength = dataLength - 2;
++        }
++
++        unsigned PTS_DTS_flags = br.getBits(4);
++
++        uint64_t PTS = 0, DTS = 0;
++
++        if (PTS_DTS_flags == 2 || PTS_DTS_flags == 3) {
++            PTS = ((uint64_t)br.getBits(3)) << 30;
++            CHECK_EQ(br.getBits(1), 1u);
++            PTS |= ((uint64_t)br.getBits(15)) << 15;
++            CHECK_EQ(br.getBits(1), 1u);
++            PTS |= br.getBits(15);
++            CHECK_EQ(br.getBits(1), 1u);
++            dataLength = dataLength - 5;
++
++            ALOGV("PTS = %llu", PTS);
++
++            if (mScanning)
++            {
++                if (PTS > 0 && mFirstPTS == 0)
++                    mFirstPTS = PTS;
++
++                if (PTS > 0 && mLastPTS == 0)
++                    mLastPTS = PTS;
++             }
++            if (PTS_DTS_flags == 3) {
++                CHECK_EQ(br.getBits(4), 1u);
++                DTS = ((uint64_t)br.getBits(3)) << 30;
++                CHECK_EQ(br.getBits(1), 1u);
++                DTS |= ((uint64_t)br.getBits(15)) << 15;
++                CHECK_EQ(br.getBits(1), 1u);
++                DTS |= br.getBits(15);
++                CHECK_EQ(br.getBits(1), 1u);
++                dataLength = dataLength - 5;
++                ALOGV("DTS = %llu", DTS);
++            }
++        }  else {
++            CHECK_EQ(br.getBits(4), 15u);
++            dataLength = dataLength - 1;
++        }
++
++       if (br.numBitsLeft() < dataLength * 8) {
++            ALOGE("PES packet does not carry enough data to contain "
++                 "payload. (numBitsLeft = %d, required = %d)",
++                 br.numBitsLeft(), dataLength * 8);
++
++            return ERROR_MALFORMED;
++        }
++
++        ssize_t index = mTracks.indexOfKey(stream_id);
++        if (index < 0 && mScanning) {
++            unsigned streamType;
++
++            mStreamTypeByESID.add(stream_id, stream_type);
++            ssize_t streamTypeIndex;
++            if ((streamTypeIndex =
++                            mStreamTypeByESID.indexOfKey(stream_id)) >= 0) {
++                streamType = mStreamTypeByESID.valueAt(streamTypeIndex);
++            } else if ((stream_id & ~0x1f) == 0xc0) {
++                // ISO/IEC 13818-3 or ISO/IEC 11172-3 or ISO/IEC 13818-7
++                // or ISO/IEC 14496-3 audio
++                streamType = ATSParser::STREAMTYPE_MPEG2_AUDIO;
++            } else if ((stream_id & ~0x0f) == 0xe0) {
++                // ISO/IEC 13818-2 or ISO/IEC 11172-2 or ISO/IEC 14496-2 video
++                streamType = ATSParser::STREAMTYPE_MPEG2_VIDEO;
++            } else if (stream_id  == 0xbd) {
++                streamType = ATSParser::STREAMTYPE_AUDIO_AC3;
++            } else {
++                streamType = ATSParser::STREAMTYPE_RESERVED;
++            }
++
++            index = mTracks.add(
++                    stream_id, new Track(this, stream_id, streamType));
++        }
++
++        status_t err = OK;
++
++        if (index >= 0 && !mReverseScan) {
++            err =
++                mTracks.editValueAt(index)->appendPESData(
++                    PTS_DTS_flags, PTS, DTS, br.data(), dataLength);
++        }
++
++        br.skipBits(dataLength * 8);
++
++        if (err != OK) {
++            return n;  // no sufficeient data in PES packet...going for next pack
++        }
++    } else if (stream_id == 0xbe) {  // padding_stream
++        CHECK_NE(PES_packet_length, 0u);
++        br.skipBits(PES_packet_length * 8);
++    } else {
++        CHECK_NE(PES_packet_length, 0u);
++        br.skipBits(PES_packet_length * 8);
++    }
++
++    return n;
++}
++
+ ssize_t MPEG2PSExtractor::dequeuePES() {
+     if (mBuffer->size() < 6) {
+         return -EAGAIN;
+@@ -409,6 +659,14 @@ ssize_t MPEG2PSExtractor::dequeuePES() {
+             CHECK_EQ(br.getBits(1), 1u);
+ 
+             ALOGV("PTS = %llu", PTS);
++            if (mScanning)
++            {
++                if (PTS > 0 && mFirstPTS == 0)
++                    mFirstPTS = PTS;
++
++                if (PTS > 0 && mLastPTS == 0)
++                    mLastPTS = PTS;
++             }
+             // ALOGI("PTS = %.2f secs", PTS / 90000.0f);
+ 
+             optional_bytes_remaining -= 5;
+@@ -496,7 +754,9 @@ ssize_t MPEG2PSExtractor::dequeuePES() {
+             } else if ((stream_id & ~0x0f) == 0xe0) {
+                 // ISO/IEC 13818-2 or ISO/IEC 11172-2 or ISO/IEC 14496-2 video
+                 streamType = ATSParser::STREAMTYPE_MPEG2_VIDEO;
+-            } else {
++            } else if (stream_id  == 0xbd) {
++                streamType = ATSParser::STREAMTYPE_AUDIO_AC3;
++            }else {
+                 streamType = ATSParser::STREAMTYPE_RESERVED;
+             }
+ 
+@@ -506,7 +766,7 @@ ssize_t MPEG2PSExtractor::dequeuePES() {
+ 
+         status_t err = OK;
+ 
+-        if (index >= 0) {
++        if (index >= 0 && !mReverseScan) {
+             err =
+                 mTracks.editValueAt(index)->appendPESData(
+                     PTS_DTS_flags, PTS, DTS, br.data(), dataLength);
+@@ -527,6 +787,70 @@ ssize_t MPEG2PSExtractor::dequeuePES() {
+ 
+     return n;
+ }
++status_t MPEG2PSExtractor::scanpacketHeader() {
++    for(int i=0; i< mBuffer->size(); i++)
++    {
++        if (!memcmp("\x00\x00\x01\xba", mBuffer->data()+i, 4)) {
++            ALOGV("GOT Packet Header");
++            mBuffer->setRange(mBuffer->offset() + i, mBuffer->size()-i);
++            return OK;
++        }
++    }
++    return -EAGAIN;
++}
++
++ssize_t MPEG2PSExtractor::getDuration() {
++    Mutex::Autolock autoLock(mLock);
++
++    off64_t offset =0;
++    bool invalidmedia=false;
++    static const size_t kChunkSize = 4096;
++    ssize_t res=-EAGAIN;
++
++    sp<ABuffer> newBuffer = new ABuffer(kChunkSize);;
++    sp<ABuffer> oldBuffer = mBuffer;
++
++    ALOGV("First PTS = %lld", mFirstPTS);
++    if(mDataSource->getSize(&filesize) == OK)
++    {
++        ALOGV("File Size = %lld", filesize);
++    }
++    mLastPTS = 0;
++    mReverseScan = true;
++    offset = (filesize - kChunkSize) & ~(kChunkSize-1);
++    mBuffer = newBuffer;
++    for(int i=0;i<500;i++)
++    {
++        if(mLastPTS != 0)
++            break;
++        if(res == OK)
++           res = dequeueChunk();
++        if(res == -EAGAIN || res == -11)
++        {
++            mBuffer->setRange(0,mBuffer->capacity());
++            mDataSource->readAt(offset, mBuffer->data(),kChunkSize);
++            offset = offset - kChunkSize;
++            res = scanpacketHeader();
++        }
++    }
++
++    ALOGV("Last PTS = %lld", mLastPTS);
++    mReverseScan = false;
++    if(!invalidmedia)
++    {
++        mDuration = (mLastPTS - mFirstPTS) * 100 / 9;
++        ALOGV("Duration of File is %lld", mDuration);
++    } else {
++        mDuration = 0;
++    }
++    for(size_t i=0;i<mTracks.size();i++)
++    {
++        mTracks.editValueAt(i)->setDuration(mDuration);
++    }
++    mBuffer = oldBuffer;
++    newBuffer->setRange(0,0);
++    return OK;
++}
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+@@ -534,7 +858,12 @@ MPEG2PSExtractor::Track::Track(
+         MPEG2PSExtractor *extractor, unsigned stream_id, unsigned stream_type)
+     : mExtractor(extractor),
+       mStreamID(stream_id),
++      mTrackFirstPTS(0),
++      mTrackTypeID(0),
++      mTimeUs(0),
++      mTrackFirstPTSAvailable(false),
+       mStreamType(stream_type),
++      mSeekable(true),
+       mQueue(NULL) {
+     bool supported = true;
+     ElementaryStreamQueue::Mode mode;
+@@ -549,6 +878,12 @@ MPEG2PSExtractor::Track::Track(
+         case ATSParser::STREAMTYPE_MPEG1_AUDIO:
+         case ATSParser::STREAMTYPE_MPEG2_AUDIO:
+             mode = ElementaryStreamQueue::MPEG_AUDIO;
++            mSeekable = false;
++            break;
++        case ATSParser::STREAMTYPE_AUDIO_AC3:
++        case ATSParser::STREAMTYPE_AUDIO_EAC3:
++            mode = ElementaryStreamQueue::AC3_AUDIO;
++            mSeekable = false;
+             break;
+ 
+         case ATSParser::STREAMTYPE_MPEG1_VIDEO:
+@@ -567,6 +902,8 @@ MPEG2PSExtractor::Track::Track(
+ 
+     if (supported) {
+         mQueue = new ElementaryStreamQueue(mode);
++        if (mQueue != NULL)
++            mQueue->setPsExtractor(true);
+     } else {
+         ALOGI("unsupported stream ID 0x%02x", stream_id);
+     }
+@@ -593,12 +930,28 @@ status_t MPEG2PSExtractor::Track::stop() {
+     return mSource->stop();
+ }
+ 
++void MPEG2PSExtractor::Track::setDuration(int64_t dur) {
++    mDuration = dur;
++}
++status_t MPEG2PSExtractor::Track::flush() {
++    if (mSource == NULL) {
++        return NO_INIT;
++    }
++
++    mQueue->clear(true);
++    mExtractor->mBuffer->setRange(0, 0);
++
++    mSource->queueDiscontinuity( ATSParser::DISCONTINUITY_TIME, NULL);
++    return OK;
++}
++
+ sp<MetaData> MPEG2PSExtractor::Track::getFormat() {
+     if (mSource == NULL) {
+         return NULL;
+     }
+-
+-    return mSource->getFormat();
++    sp<MetaData> meta = mSource->getFormat();
++    meta->setInt64(kKeyDuration, mDuration);
++    return meta;
+ }
+ 
+ status_t MPEG2PSExtractor::Track::read(
+@@ -607,12 +960,24 @@ status_t MPEG2PSExtractor::Track::read(
+         return NO_INIT;
+     }
+ 
++    int32_t maxSearch = 0;
+     status_t finalResult;
++    int64_t seekTimeUs;
++    ReadOptions::SeekMode seekMode;
++
++    if (mSeekable && options && options->getSeekTo(&seekTimeUs, &seekMode)) {
++        mExtractor->seekTo(seekTimeUs);
++    }
++
+     while (!mSource->hasBufferAvailable(&finalResult)) {
+         if (finalResult != OK) {
+             return ERROR_END_OF_STREAM;
+         }
+ 
++        if (maxSearch > 500)               // if stream is corrupted like video is for 20 sec in 4 min stream , it will search  whole file for video frame.
++            return ERROR_END_OF_STREAM;    // so restricting it to a certain limit
++
++        maxSearch++;
+         status_t err = mExtractor->feedMore();
+ 
+         if (err != OK) {
+@@ -627,20 +992,40 @@ status_t MPEG2PSExtractor::Track::appendPESData(
+         unsigned PTS_DTS_flags,
+         uint64_t PTS, uint64_t DTS,
+         const uint8_t *data, size_t size) {
++        status_t err;
+     if (mQueue == NULL) {
+         return OK;
+     }
+ 
+-    int64_t timeUs;
+     if (PTS_DTS_flags == 2 || PTS_DTS_flags == 3) {
+-        timeUs = (PTS * 100) / 9;
+-    } else {
+-        timeUs = 0;
++        mTimeUs = (PTS * 100) / 9;
++
++        if (!mTrackFirstPTSAvailable || mTrackFirstPTS > mTimeUs) {
++            mTrackFirstPTS = mTimeUs;
++            mTrackFirstPTSAvailable = true;
++        }
++
++        mTimeUs = mTimeUs - mTrackFirstPTS;
+     }
+ 
+-    status_t err = mQueue->appendData(data, size, timeUs);
++    if (mStreamType == ATSParser::STREAMTYPE_AUDIO_AC3 && size > 4) {
++        unsigned trackTypeID = data[0];
++        if (mTrackTypeID == 0) {
++            mTrackTypeID = trackTypeID;
++        }
++
++        if (trackTypeID != mTrackTypeID) {
++            return OK;
++        }
++        //Need to remove redundent data for partial frame appending
++        err = mQueue->appendData(data + 4, size - 4, mTimeUs);
++    } else {
++        err = mQueue->appendData(data, size, mTimeUs);
++    }
+ 
+-    if (err != OK) {
++    if (err == ERROR_MALFORMED) {  // The packet may be a Invalid packet . Ignoring the error and going
++        return OK;                 // to the next packet
++    } else if (err != OK) {
+         return err;
+     }
+ 
+@@ -701,7 +1086,7 @@ bool SniffMPEG2PS(
+         return false;
+     }
+ 
+-    if (memcmp("\x00\x00\x01\xba", header, 4) || (header[4] >> 6) != 1) {
++   if (memcmp("\x00\x00\x01\xba", header, 4)) {             //|| (header[4] >> 6) != 1
+         return false;
+     }
+ 
+-- 
+1.7.1
+

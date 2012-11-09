@@ -1,0 +1,865 @@
+From 9e29848bb17136ea5d0d6ef70e1257e395fc3433 Mon Sep 17 00:00:00 2001
+From: Smita Gaikwad <smitag@nvidia.com>
+Date: Fri, 1 Jun 2012 09:13:03 -0400
+Subject: [PATCH 16/40] Add profiling option in AwesomePlayer.
+
+Add profiling option in AwesomePlayer that can be
+enabled through setprop method, for local AV
+playback.
+
+Bug 991874
+Bug 985143
+
+Change-Id: Ia43875c07554fa111987437068276e0bc15c4240
+Reviewed-on: http://git-psac/r/230
+Reviewed-by: Simone Willett <swillett@nvidia.com>
+Tested-by: Simone Willett <swillett@nvidia.com>
+
+StageFright: Changes profiling logic to use flags
+
+1. Clears the profiling mess with so many booleans floating
+and also adds cleaner logic to parse the properties.
+2. Adds option to bypass cache (NuCache)
+3. Integrates the fix to bypass cache for Ogg streams
+
+Bug 991874
+
+Change-Id: I5dee46b5fb9708971f92e9525083bf1aad749a41
+Reviewed-on: http://git-psac/r/301
+Reviewed-by: Rohan Somvanshi <rsomvanshi@nvidia.com>
+Tested-by: Rohan Somvanshi <rsomvanshi@nvidia.com>
+
+StageFright: Add Source Jitter profiling
+
+-Add profiling to check for source jitter
+
+Bug 975252
+Bug 1006842
+
+Change-Id: I892973aa5f70e606fb23eef03492cc6e5efeaf5a
+Reviewed-on: http://git-psac/r/351
+Reviewed-by: Suresh Choudhary <sureshc@nvidia.com>
+Tested-by: Yogesh Solanke <ysolanke@nvidia.com>
+Reviewed-by: Zhijun He <zhhe@nvidia.com>
+---
+ include/media/stagefright/DataSource.h       |   12 +-
+ media/libstagefright/Android.mk              |    1 +
+ media/libstagefright/AwesomePlayer.cpp       |  278 ++++++++++++++++++++++----
+ media/libstagefright/DataSource.cpp          |   20 ++-
+ media/libstagefright/include/AwesomePlayer.h |   32 +++-
+ media/libstagefright/include/jittertool.h    |   57 ++++++
+ media/libstagefright/jittertool.cpp          |  174 ++++++++++++++++
+ 7 files changed, 525 insertions(+), 49 deletions(-)
+ create mode 100644 media/libstagefright/include/jittertool.h
+ create mode 100644 media/libstagefright/jittertool.cpp
+
+diff --git a/include/media/stagefright/DataSource.h b/include/media/stagefright/DataSource.h
+index 5ea40c2..8c539ae 100644
+--- a/include/media/stagefright/DataSource.h
++++ b/include/media/stagefright/DataSource.h
+@@ -35,6 +35,15 @@ class String8;
+ 
+ class DataSource : public RefBase {
+ public:
++    enum ProfileFlags {
++        kNoAudio              = 1,
++        kNoAvsync             = 2,
++        kNoPreCache           = 4,
++        kNoRender             = 8,
++        kShowStats            = 16,
++        kShowJitter           = 32,
++    };
++
+     enum Flags {
+         kWantsPrefetching      = 1,
+         kStreamedFromLocalHost = 2,
+@@ -48,7 +57,8 @@ public:
+ 
+     static sp<DataSource> CreateCachedSourceFromURI(
+             const char *uri,
+-            const KeyedVector<String8, String8> *headers = NULL);
++            const KeyedVector<String8, String8> *headers = NULL,
++            uint64_t flags = 0);
+ 
+     DataSource() {}
+ 
+diff --git a/media/libstagefright/Android.mk b/media/libstagefright/Android.mk
+index 38e07c1..40b4fea 100644
+--- a/media/libstagefright/Android.mk
++++ b/media/libstagefright/Android.mk
+@@ -56,6 +56,7 @@ LOCAL_SRC_FILES:=                         \
+         WVMExtractor.cpp                  \
+         XINGSeeker.cpp                    \
+         avc_utils.cpp                     \
++        jittertool.cpp                    \
+         mp4/FragmentedMP4Parser.cpp       \
+         mp4/TrackFragment.cpp             \
+ 
+diff --git a/media/libstagefright/AwesomePlayer.cpp b/media/libstagefright/AwesomePlayer.cpp
+index e10820d..6b8adca 100644
+--- a/media/libstagefright/AwesomePlayer.cpp
++++ b/media/libstagefright/AwesomePlayer.cpp
+@@ -199,6 +199,11 @@ AwesomePlayer::AwesomePlayer()
+ 
+     DataSource::RegisterDefaultSniffers();
+ 
++#ifdef PROFILING
++    mProfileStats = (ProfileStats *) malloc (sizeof(ProfileStats));
++    memset(mProfileStats, 0, sizeof(ProfileStats));
++#endif
++
+     mVideoEvent = new AwesomeEvent(this, &AwesomePlayer::onVideoEvent);
+     mVideoEventPending = false;
+     mStreamDoneEvent = new AwesomeEvent(this, &AwesomePlayer::onStreamDone);
+@@ -220,12 +225,64 @@ AwesomePlayer::~AwesomePlayer() {
+     if (mQueueStarted) {
+         mQueue.stop();
+     }
++#ifdef PROFILING
++    free(mProfileStats);
++#endif
+ 
+     reset();
+ 
+     mClient.disconnect();
+ }
+ 
++#ifdef PROFILING
++void AwesomePlayer::setProfileFlags() {
++    FILE *fppref = NULL;
++    char Buff[32];
++    char value[PROPERTY_VALUE_MAX];
++
++    size_t kNumProfileFlags =
++        sizeof(kProfileProps) / sizeof(kProfileProps[0]);
++
++    if ((fppref=fopen("/data/data/com.automation/files/flagConfig","r"))==NULL) {
++        LOGD("Failed to open file, all profile flags have to set through setprop method.");
++        for (size_t i = 0; i < kNumProfileFlags; ++i) {
++             property_get(kProfileProps[i], value, NULL);
++             if (atoi(value)) {
++                 mProfileStats->mProfFlags |= 1 << i;
++             }
++        }
++        ALOGI("Profile flag is set to %lld", mProfileStats->mProfFlags);
++
++        if (mProfileStats->mProfFlags & DataSource::kShowStats) {
++            mProfileStats->printVideoStat = 1;
++            mProfileStats->printAudioStat = 1;
++        }
++    } else {
++        while (!feof(fppref)) {
++            fgets(Buff,32,fppref);
++            for (size_t i = 0; i < kNumProfileFlags; ++i) {
++                 if (strstr(Buff,kProfilePropsFile[i]) && !(mProfileStats->mProfFlags & (1 << i))) {
++                     mProfileStats->mProfFlags |= 1 << i;
++                 }
++            }
++            if (mProfileStats->mProfFlags & DataSource::kShowStats) {
++                mProfileStats->printVideoStat = 1;
++                mProfileStats->printAudioStat = 1;
++            }
++        }
++        fclose(fppref);
++    }
++
++    if ((mProfileStats->mProfFlags) &
++        (DataSource::kShowStats | DataSource::kShowJitter)) {
++        mProfileStats->pJitter = new JitterTool(100);
++        mProfileStats->pJitter->SetShow((mProfileStats->mProfFlags & DataSource::kShowJitter));
++        mProfileStats->pSrcJitter = new JitterTool(100);
++        mProfileStats->pSrcJitter->SetShow((mProfileStats->mProfFlags & DataSource::kShowJitter));
++    }
++}
++#endif
++
+ void AwesomePlayer::cancelPlayerEvents(bool keepNotifications) {
+     mQueue.cancelEvent(mVideoEvent->eventID());
+     mVideoEventPending = false;
+@@ -266,6 +323,9 @@ status_t AwesomePlayer::setDataSource_l(
+     reset_l();
+ 
+     mUri = uri;
++#ifdef PROFILING
++    setProfileFlags();
++#endif
+ 
+     if (headers) {
+         mUriHeaders = *headers;
+@@ -301,9 +361,21 @@ status_t AwesomePlayer::setDataSource(
+     Mutex::Autolock autoLock(mLock);
+ 
+     reset_l();
++#ifdef PROFILING
++    setProfileFlags();
++#endif
++    sp<DataSource> dataSource;
+ 
+-    sp<DataSource> fileSource = new FileSource(fd, offset, length);
+-    sp<DataSource> dataSource = new NuCachedSource2(fileSource);
++#ifdef PROFILING
++    if (mProfileStats->mProfFlags & DataSource::kNoPreCache) {
++        dataSource = new FileSource(fd, offset, length);
++    }
++    else
++#endif
++    {
++        sp<DataSource> fileSource = new FileSource(fd, offset, length);
++        dataSource = new NuCachedSource2(fileSource);
++    }
+ 
+     status_t err = dataSource->initCheck();
+ 
+@@ -417,6 +489,9 @@ status_t AwesomePlayer::setDataSource_l(const sp<MediaExtractor> &extractor) {
+             bool success = meta->findInt32(kKeyDisplayWidth, &displayWidth);
+             if (success) {
+                 success = meta->findInt32(kKeyDisplayHeight, &displayHeight);
++#ifdef PROFILING
++                meta->findInt32(kKeyFrameRate, &mProfileStats->videoFrameRate);
++#endif
+             }
+             if (success) {
+                 mDisplayWidth = displayWidth;
+@@ -431,10 +506,22 @@ status_t AwesomePlayer::setDataSource_l(const sp<MediaExtractor> &extractor) {
+                     &mStats.mTracks.editItemAt(mStats.mVideoTrackIndex);
+                 stat->mMIME = mime.string();
+             }
+-        } else if (!haveAudio && !strncasecmp(mime.string(), "audio/", 6)) {
++        } 
++#ifdef PROFILING
++        else if (!haveAudio && !(mProfileStats->mProfFlags & DataSource::kNoAudio)
++                 && !strncasecmp(mime.string(), "audio/", 6)) {
++#else
++        else if (!haveAudio && !strncasecmp(mime.string(), "audio/", 6)) {
++#endif
+             setAudioSource(extractor->getTrack(i));
+             haveAudio = true;
+             mActiveAudioTrackIndex = i;
++#ifdef PROFILING
++            meta->findInt32(kKeySampleRate, &mProfileStats->mInSamplerate);
++            meta->findInt32(kKeyChannelCount, &mProfileStats->mInChannels);
++            meta->findInt32(kKeyBitRate, &mProfileStats->mInBitrate);
++            meta->findInt64(kKeyDuration, &mProfileStats->mInDurationUs);
++#endif
+ 
+             {
+                 Mutex::Autolock autoLock(mStatsLock);
+@@ -1015,6 +1102,14 @@ status_t AwesomePlayer::startAudioPlayer_l(bool sendErrorNotification) {
+     }
+ 
+     modifyFlags(AUDIO_RUNNING, SET);
++#ifdef PROFILING
++    mProfileStats->audioStartTimeUs = ALooper::GetNowUs();
++    {
++        sp<MetaData> meta = mAudioSource->getFormat();
++        meta->findInt32(kKeySampleRate, &mProfileStats->mOutSamplerate);
++        meta->findInt32(kKeyChannelCount, &mProfileStats->mOutChannels);
++    }
++#endif
+ 
+     mWatchForAudioEOS = true;
+ 
+@@ -1090,6 +1185,12 @@ void AwesomePlayer::initRenderer_l() {
+         return;
+     }
+ 
++#ifdef PROFILING
++    if (mProfileStats->mProfFlags & DataSource::kNoRender) {
++        return;
++    }
++#endif
++
+     sp<MetaData> meta = mVideoSource->getFormat();
+ 
+     int32_t format;
+@@ -1720,6 +1821,15 @@ void AwesomePlayer::onVideoEvent() {
+     int64_t timeUs;
+     CHECK(mVideoBuffer->meta_data()->findInt64(kKeyTime, &timeUs));
+ 
++#ifdef PROFILING
++    if ((mProfileStats->mProfFlags) &
++        (DataSource::kShowStats | DataSource::kShowJitter) &&
++         (mProfileStats->pSrcJitter)) {
++            if(mLastVideoTimeUs != timeUs)
++                   mProfileStats->pSrcJitter->AddPoint(timeUs);
++    }
++#endif
++
+     mLastVideoTimeUs = timeUs;
+ 
+     if (mSeeking == SEEK_VIDEO_ONLY) {
+@@ -1756,6 +1866,11 @@ void AwesomePlayer::onVideoEvent() {
+ 
+     if (mFlags & FIRST_FRAME) {
+         modifyFlags(FIRST_FRAME, CLEAR);
++#ifdef PROFILING
++    if (!(mFlags & AUDIO_AT_EOS) && !(mFlags & VIDEO_AT_EOS)) {
++        mProfileStats->startTimeUs = ALooper::GetNowUs();
++    }
++#endif
+         mSinceLastDropped = 0;
+         mTimeSourceDeltaUs = ts->getRealTimeUs() - timeUs;
+     }
+@@ -1787,53 +1902,62 @@ void AwesomePlayer::onVideoEvent() {
+ 
+         ATRACE_INT("Video Lateness (ms)", latenessUs / 1E3);
+ 
+-        if (latenessUs > 500000ll
+-                && mAudioPlayer != NULL
+-                && mAudioPlayer->getMediaTimeMapping(
+-                    &realTimeUs, &mediaTimeUs)) {
+-            ALOGI("we're much too late (%.2f secs), video skipping ahead",
+-                 latenessUs / 1E6);
++#ifdef PROFILING
++        if (!(mProfileStats->mProfFlags & DataSource::kNoAvsync))
++#endif
++        {
++            if ((mExtractorFlags & MediaExtractor::CAN_SEEK)
++                    && latenessUs > 500000ll
++                    && mAudioPlayer != NULL
++                    && mAudioPlayer->getMediaTimeMapping(
++                        &realTimeUs, &mediaTimeUs)) {
++                LOGI("we're much too late (%.2f secs), video skipping ahead",
++                     latenessUs / 1E6);
+ 
+-            mVideoBuffer->release();
+-            mVideoBuffer = NULL;
++#ifdef PROFILING
++                mProfileStats->numLateSeek += 1;
++#endif
++                mVideoBuffer->release();
++                mVideoBuffer = NULL;
+ 
+-            mSeeking = SEEK_VIDEO_ONLY;
+-            mSeekTimeUs = mediaTimeUs;
++                mSeeking = SEEK_VIDEO_ONLY;
++                mSeekTimeUs = mediaTimeUs;
+ 
+-            postVideoEvent_l();
+-            return;
+-        }
++                postVideoEvent_l();
++                return;
++            }
+ 
+-        if (latenessUs > 40000) {
+-            // We're more than 40ms late.
+-            ALOGV("we're late by %lld us (%.2f secs)",
+-                 latenessUs, latenessUs / 1E6);
++            if (latenessUs > 40000) {
++                // We're more than 40ms late.
++                LOGV("we're late by %lld us (%.2f secs)",
++                latenessUs, latenessUs / 1E6);
+ 
+-            if (!(mFlags & SLOW_DECODER_HACK)
+-                    || mSinceLastDropped > FRAME_DROP_FREQ)
+-            {
+-                ALOGV("we're late by %lld us (%.2f secs) dropping "
+-                     "one after %d frames",
+-                     latenessUs, latenessUs / 1E6, mSinceLastDropped);
++                if (!(mFlags & SLOW_DECODER_HACK)
++                      || mSinceLastDropped > FRAME_DROP_FREQ)
++                {
++                    LOGV("we're late by %lld us (%.2f secs) dropping "
++                          "one after %d frames",
++                    latenessUs, latenessUs / 1E6, mSinceLastDropped);
+ 
+-                mSinceLastDropped = 0;
+-                mVideoBuffer->release();
+-                mVideoBuffer = NULL;
++                    mSinceLastDropped = 0;
++                    mVideoBuffer->release();
++                    mVideoBuffer = NULL;
+ 
+                 {
+                     Mutex::Autolock autoLock(mStatsLock);
+                     ++mStats.mNumVideoFramesDropped;
+                 }
+ 
+-                postVideoEvent_l();
+-                return;
++                    postVideoEvent_l();
++                    return;
++                }
+             }
+-        }
+ 
+-        if (latenessUs < -10000) {
+-            // We're more than 10ms early.
+-            postVideoEvent_l(10000);
+-            return;
++            if (latenessUs < -10000) {
++                // We're more than 10ms early.
++                postVideoEvent_l(10000);
++                return;
++            }
+         }
+     }
+ 
+@@ -1844,6 +1968,17 @@ void AwesomePlayer::onVideoEvent() {
+         initRenderer_l();
+     }
+ 
++#ifdef PROFILING
++    if (mVideoRenderer != NULL) {
++        mProfileStats->numRendFrame++;
++    }
++    if ((mProfileStats->mProfFlags) &
++        (DataSource::kShowStats | DataSource::kShowJitter) &&
++         (mProfileStats->pJitter)) {
++        mProfileStats->pJitter->AddPoint();
++    }
++#endif
++
+     if (mVideoRenderer != NULL) {
+         mSinceLastDropped++;
+         mVideoRenderer->render(mVideoBuffer);
+@@ -1862,6 +1997,13 @@ void AwesomePlayer::onVideoEvent() {
+         return;
+     }
+ 
++#ifdef PROFILING
++    if ((mProfileStats->mProfFlags) &
++        (DataSource::kShowStats | DataSource::kNoAvsync))
++        postVideoEvent_l(0);
++    else
++#endif
++
+     postVideoEvent_l();
+ }
+ 
+@@ -1882,6 +2024,57 @@ void AwesomePlayer::postStreamDoneEvent_l(status_t status) {
+     }
+     mStreamDoneEventPending = true;
+ 
++#ifdef PROFILING
++    uint32_t fpsNumFrames = (mProfileStats->mProfFlags & DataSource::kNoRender) ? ((int) mStats.mNumVideoFramesDecoded) : mProfileStats->numRendFrame;
++    if ((mProfileStats->mProfFlags & DataSource::kShowStats) && (mFlags & VIDEO_AT_EOS) && mProfileStats->printVideoStat) {
++        ALOGI("--------Video Statistics------------");
++        ALOGI("--------Video Duration = %lld sec", ((mDurationUs ) / 1000000));
++        ALOGI("--------Original FPS = %d", mProfileStats->videoFrameRate);
++        ALOGI("--------Avg playback fps = %.2f", fpsNumFrames * 1E6 / ((ALooper::GetNowUs() - mProfileStats->startTimeUs)));
++        ALOGI("--------Late seeks = %d", mProfileStats->numLateSeek);
++        ALOGI("--------Decoded Frames = %d", (int) mStats.mNumVideoFramesDecoded);
++        ALOGI("--------Dropped frames = %d", (int) mStats.mNumVideoFramesDropped);
++        ALOGI("--------Rendered frames = %d", mProfileStats->numRendFrame);
++
++        if (mProfileStats->pJitter && (mProfileStats->mProfFlags & DataSource::kShowJitter))
++        {
++            double fJitterAvg = 0, fJitterStd = 0, fJitterHighest = 0;
++            mProfileStats->pSrcJitter->GetAvgs(&fJitterStd, &fJitterAvg, &fJitterHighest);
++            ALOGI("--------Average Source jitter = %f uSec \n", fJitterStd);
++            ALOGI("--------Highest instantaneous Source jitter = %f uSec \n", fJitterHighest);
++            ALOGI("--------Mean time between frame(used in Source) = %f uSec \n", fJitterAvg);
++            fJitterAvg = 0; fJitterStd = 0; fJitterHighest = 0;
++            mProfileStats->pJitter->GetAvgs(&fJitterStd, &fJitterAvg, &fJitterHighest);
++            ALOGI("--------Average jitter = %f uSec \n", fJitterStd);
++            ALOGI("--------Highest instantaneous jitter = %f uSec \n", fJitterHighest);
++            ALOGI("--------Mean time between frame(used in jitter) = %f uSec \n", fJitterAvg);
++            delete mProfileStats->pJitter;
++            mProfileStats->pJitter = NULL;
++            delete mProfileStats->pSrcJitter;
++            mProfileStats->pSrcJitter = NULL;
++        }
++        mProfileStats->printVideoStat = 0;
++    }
++
++    if ((mProfileStats->mProfFlags & DataSource::kShowStats) && (mFlags & AUDIO_AT_EOS) && mProfileStats->printAudioStat) {
++        int64_t audioOutDurationUs = (ALooper::GetNowUs() - mProfileStats->audioStartTimeUs);
++        ALOGI("--------Audio Statistics------------");
++
++        ALOGI("--------BitRate = %d", mProfileStats->mInBitrate);
++        ALOGI("--------Input Channels = %d", mProfileStats->mInChannels);
++        ALOGI("--------Input Sampling Rate = %d\n", mProfileStats->mInSamplerate);
++        ALOGI("--------Input Duration = %lld min:%lld sec\n", ((mProfileStats->mInDurationUs / 60) / 1000000ll),
++                                                              ((mProfileStats->mInDurationUs/1000000ll) % 60));
++
++        ALOGI("--------Output Channels = %d", mProfileStats->mOutChannels);
++        ALOGI("--------Output Sampling Rate = %d", mProfileStats->mOutSamplerate);
++        ALOGI("--------Duration Played for = %lld min:%lld sec\n", ((audioOutDurationUs / 60) / 1000000ll),
++                                                                  ((audioOutDurationUs/1000000ll) % 60));
++        mProfileStats->printAudioStat = 0;
++    }
++
++#endif
++
+     mStreamDoneStatus = status;
+     mQueue.postEvent(mStreamDoneEvent);
+ }
+@@ -2152,7 +2345,18 @@ status_t AwesomePlayer::finishSetDataSource_l() {
+             }
+         }
+     } else {
+-        dataSource = DataSource::CreateFromURI(mUri.string(), &mUriHeaders);
++        if(!strcmp(".ogg",mUri.getPathExtension().string())) { //Avoid caching for ogg files
++            mProfileStats->mProfFlags |= DataSource::kNoPreCache;
++        }
++
++#ifdef PROFILING
++        if ((mProfileStats->mProfFlags & DataSource::kNoAvsync) ||
++            !(mProfileStats->mProfFlags & DataSource::kNoAudio)) { // For noAudio disabled and noAvs enabled, disable caching
++            mProfileStats->mProfFlags |= DataSource::kNoPreCache;
++        }
++#endif
++
++        dataSource = DataSource::CreateCachedSourceFromURI(mUri.string(), &mUriHeaders, mProfileStats->mProfFlags);
+     }
+ 
+     if (dataSource == NULL) {
+diff --git a/media/libstagefright/DataSource.cpp b/media/libstagefright/DataSource.cpp
+index 190eded..658ba88 100644
+--- a/media/libstagefright/DataSource.cpp
++++ b/media/libstagefright/DataSource.cpp
+@@ -141,13 +141,19 @@ sp<DataSource> DataSource::CreateFromURI(
+ }
+ 
+ sp<DataSource> DataSource::CreateCachedSourceFromURI(
+-        const char *uri, const KeyedVector<String8, String8> *headers) {
++        const char *uri, const KeyedVector<String8, String8> *headers,
++        uint64_t flags) {
++    bool isCached = (flags & kNoPreCache);
+     bool isWidevine = !strncasecmp("widevine://", uri, 11);
+ 
+     sp<DataSource> source;
+     if (!strncasecmp("file://", uri, 7)) {
+-        sp<DataSource> fileSource = new FileSource(uri + 7);
+-        source = new NuCachedSource2(fileSource);
++        if (isCached) {
++            sp<DataSource> fileSource = new FileSource(uri + 7);
++            source = new NuCachedSource2(fileSource);
++        } else {
++            source = new FileSource(uri + 7);
++        }
+     } else if (!strncasecmp("http://", uri, 7)
+             || !strncasecmp("https://", uri, 8)
+             || isWidevine) {
+@@ -189,8 +195,12 @@ sp<DataSource> DataSource::CreateCachedSourceFromURI(
+ #endif
+     } else {
+         // Assume it's a filename.
+-        sp<DataSource> fileSource = new FileSource(uri);
+-        source = new NuCachedSource2(fileSource);
++        if (isCached) {
++            sp<DataSource> fileSource = new FileSource(uri);
++            source = new NuCachedSource2(fileSource);
++        } else {
++            source = new FileSource(uri);
++        }
+     }
+ 
+     if (source == NULL || source->initCheck() != OK) {
+diff --git a/media/libstagefright/include/AwesomePlayer.h b/media/libstagefright/include/AwesomePlayer.h
+index 2c830a9..a4696af 100644
+--- a/media/libstagefright/include/AwesomePlayer.h
++++ b/media/libstagefright/include/AwesomePlayer.h
+@@ -18,6 +18,8 @@
+ 
+ #define AWESOME_PLAYER_H_
+ 
++#define PROFILING 1
++
+ #include "HTTPBase.h"
+ #include "TimedEventQueue.h"
+ 
+@@ -27,9 +29,31 @@
+ #include <media/stagefright/TimeSource.h>
+ #include <utils/threads.h>
+ #include <drm/DrmManagerClient.h>
++#include "jittertool.h"
+ 
+ namespace android {
+ 
++#ifdef PROFILING
++    // **CAUTION** Any change in the 2 tables below should be mirrored into ProfileFlags enum in DataSource.h
++    static const char *kProfileProps[] = {
++        "enable-noAud",
++        "enable-noAvs",
++        "enable-noCache",
++        "enable-noRend",
++        "enable-prof",
++        "enable-showJitter",
++    };
++
++    static const char *kProfilePropsFile[] = {
++        "noAudio",
++        "noAvsync",
++        "noCache",
++        "noRender",
++        "statFlag",
++        "showJitter",
++    };
++#endif
++
+ struct AudioPlayer;
+ struct DataSource;
+ struct MediaBuffer;
+@@ -344,14 +368,9 @@ private:
+     uint32_t mDataSourceFlags;
+ #ifdef PROFILING
+     struct ProfileStats{
++        uint64_t mProfFlags;//1 - noAudio, 2 - noAvsync, 4 - noPreCache, 8 - noRender, 16 - statFlag, 32 - showJitter
+         uint32_t numLateSeek;
+         uint32_t numRendFrame;
+-        uint32_t noAudio;
+-        uint32_t noAvsync;
+-        uint32_t noPreCache;
+-        uint32_t statFlag;
+-        uint32_t noRender;
+-        uint32_t showJitter;
+         uint32_t printVideoStat;
+         uint32_t printAudioStat;
+         int32_t videoFrameRate;
+@@ -367,6 +386,7 @@ private:
+         int64_t audioStartTimeUs;
+         int64_t mInDurationUs;
+         JitterTool *pJitter;
++        JitterTool *pSrcJitter;
+     };
+     ProfileStats *mProfileStats;
+ 
+diff --git a/media/libstagefright/include/jittertool.h b/media/libstagefright/include/jittertool.h
+new file mode 100644
+index 0000000..08ea9cc
+--- /dev/null
++++ b/media/libstagefright/include/jittertool.h
+@@ -0,0 +1,57 @@
++/*
++ * Copyright (C) 2011 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef JITTER_TOOL_H_
++#define JITTER_TOOL_H_
++
++#include <sys/types.h>
++#include <stdint.h>
++#include <utils/RefBase.h>
++
++namespace android {
++
++class JitterTool
++{
++public:
++    JitterTool(uint32_t nTicks);
++    ~JitterTool();
++    void AddPoint();
++    void AddPoint(uint64_t ts);
++    void SetShow(bool bShow);
++    void GetAvgs(double *pStdDev, double *pAvg,
++                              double *pHighest);
++    status_t initCheck() const;
++private:
++    void  AddEntry();
++    double nHightestJitter;
++
++    uint64_t *pTicks;
++    uint64_t nLastTime;
++
++    uint32_t nTicksMax;
++    uint32_t nTickCount;
++
++    status_t mInitCheck;
++
++    bool bShow;
++
++    Vector<double> fAvg;
++    Vector<double> fStdDev;
++
++};
++}
++#endif
++
+diff --git a/media/libstagefright/jittertool.cpp b/media/libstagefright/jittertool.cpp
+new file mode 100644
+index 0000000..f7ebe72
+--- /dev/null
++++ b/media/libstagefright/jittertool.cpp
+@@ -0,0 +1,174 @@
++/*
++ * Copyright (C) 2011 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++//#define LOG_NDEBUG 0
++#define LOG_TAG "JitterTool"
++#include <utils/Log.h>
++
++#include <cassert>
++#include <math.h>
++#include <media/stagefright/foundation/ALooper.h>
++
++#include "include/jittertool.h"
++
++namespace android {
++
++JitterTool::JitterTool(uint32_t nTicks)
++        :mInitCheck(NO_INIT),
++        pTicks(NULL),
++        nLastTime(0),
++        nTicksMax(nTicks),
++        nTickCount(0),
++        nHightestJitter(0),
++        bShow(false)
++{
++    assert(nTicks > 0);
++
++    pTicks = new uint64_t[nTicks];
++    if (!pTicks)
++    {
++        return;
++    }
++    mInitCheck = OK;
++    LOGV("%s[%d] out \n", __FUNCTION__, __LINE__);
++}
++
++JitterTool::~JitterTool()
++{
++    if (pTicks)
++        delete[] pTicks;
++    LOGV("%s[%d] out \n", __FUNCTION__, __LINE__);
++}
++
++status_t JitterTool::initCheck() const {
++    LOGV("%s[%d] mInitCheck %d out \n",
++        __FUNCTION__, __LINE__, mInitCheck);
++    return mInitCheck;
++}
++
++void JitterTool::AddPoint(uint64_t ts)
++{
++    uint64_t now = ts;
++
++    if (nLastTime == 0)
++    {
++        nLastTime = now;
++        return;
++    }
++    pTicks[nTickCount] = now - nLastTime;
++    nLastTime = now;
++    nTickCount++;
++
++    if (nTickCount < nTicksMax)
++        return;
++
++    AddEntry();
++    nTickCount = 0;
++}
++
++void JitterTool::AddPoint()
++{
++    uint64_t now = 0;
++
++    now = ALooper::GetNowUs();
++    if (nLastTime == 0)
++    {
++        nLastTime = now;
++        return;
++    }
++    pTicks[nTickCount] = now - nLastTime;
++    nLastTime = now;
++    nTickCount++;
++
++    if (nTickCount < nTicksMax)
++        return;
++
++    AddEntry();
++    nTickCount = 0;
++}
++
++void JitterTool::AddEntry()
++{
++    double localAvg = 0;
++    double localStdDev = 0;
++    uint32_t i;
++
++    for (i = 0; i < nTicksMax; i++)
++        localAvg += pTicks[i];
++    localAvg /= nTicksMax;
++
++    for (i = 0; i < nTicksMax; i++)
++        localStdDev += (localAvg - pTicks[i]) * (localAvg - pTicks[i]);
++    localStdDev = sqrt(localStdDev / nTicksMax);
++
++    if (bShow)
++        LOGV("Mean time between frames: %.2f  standard deviation: %.2f\n",
++                        localAvg, localStdDev);
++
++    fAvg.push(localAvg);
++    fStdDev.push(localStdDev);
++
++    if (nHightestJitter < localStdDev) {
++        nHightestJitter = localStdDev;
++    }
++}
++
++void JitterTool::SetShow(bool bShowTrace)
++{
++    bShow = bShowTrace;
++}
++
++void JitterTool::GetAvgs(double *pStdDev, double *pAvg,
++                          double *pHighest)
++{
++    assert(pStdDev);
++    assert(pAvg);
++    assert(pHighest);
++
++    uint32_t count = 0;
++    *pStdDev = 0;
++    *pAvg = 0;
++    *pHighest = 0;
++
++    *pHighest = nHightestJitter;
++
++    count = fAvg.getItemSize() - 1;
++    for (uint32_t i = 0; i < count; i++) {
++        *pAvg += fAvg.top();
++        fAvg.pop();
++    }
++
++    for (uint32_t i = 0; i < count; i++) {
++        *pStdDev += fStdDev.top();
++        fStdDev.pop();
++    }
++
++    *pAvg = *pAvg / count;
++    *pStdDev = *pStdDev /count;
++    if (!fAvg.isEmpty()) {
++        fAvg.clear();
++    }
++
++    if (!fStdDev.isEmpty()) {
++        fStdDev.clear();
++    }
++
++    LOGV("%s[%d] stddev %.2f avg %.2f highest %.2f \n",
++        __FUNCTION__, __LINE__, *pStdDev, *pAvg, *pHighest);
++
++}
++
++}  // namespace android
+-- 
+1.7.1
+

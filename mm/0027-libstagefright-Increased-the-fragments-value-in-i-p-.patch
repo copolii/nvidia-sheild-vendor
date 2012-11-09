@@ -1,0 +1,39 @@
+From 2acc0365bcea00c795e548cb9f36c7a9d5f03019 Mon Sep 17 00:00:00 2001
+From: manikanta kanamarlapudi <manikak@nvidia.com>
+Date: Thu, 19 Jul 2012 20:55:43 +0530
+Subject: [PATCH 27/40] libstagefright : Increased the fragments value in i/p buffer
+
+ It is assumed that the i/p buffer contains atmost 10 fragments.But
+this stream has 12 fragments in its first frame.so increasing the max
+fragments to 15
+
+bug 1008964
+
+Reviewed on http://git-master/r/#change,112092
+
+Change-Id: I3f631d811995db6baff866a3d05ce5b1e8d00297
+---
+ media/libstagefright/MPEG4Extractor.cpp |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/media/libstagefright/MPEG4Extractor.cpp b/media/libstagefright/MPEG4Extractor.cpp
+index 4d77a27..871941b 100644
+--- a/media/libstagefright/MPEG4Extractor.cpp
++++ b/media/libstagefright/MPEG4Extractor.cpp
+@@ -1178,11 +1178,11 @@ status_t MPEG4Extractor::parseChunk(off64_t *offset, int depth) {
+                 return err;
+             }
+ 
+-            // Assume that a given buffer only contains at most 10 fragments,
++            // Assume that a given buffer only contains at most 15 fragments,
+             // each fragment originally prefixed with a 2 byte length will
+             // have a 4 byte header (0x00 0x00 0x00 0x01) after conversion,
+             // and thus will grow by 2 bytes per fragment.
+-            mLastTrack->meta->setInt32(kKeyMaxInputSize, max_size + 10 * 2);
++            mLastTrack->meta->setInt32(kKeyMaxInputSize, max_size + 15 * 2);
+             *offset += chunk_size;
+ 
+             // Calculate average frame rate.
+-- 
+1.7.1
+

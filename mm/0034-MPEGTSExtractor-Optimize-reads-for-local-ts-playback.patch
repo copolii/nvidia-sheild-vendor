@@ -1,0 +1,107 @@
+From d57fca81429f06977554137fca6b18d79a0d6886 Mon Sep 17 00:00:00 2001
+From: Suresh Choudhary <sureshc@nvidia.com>
+Date: Fri, 14 Sep 2012 17:16:20 +0530
+Subject: [PATCH 34/40] MPEGTSExtractor: Optimize reads for local ts playback
+
+Changes to save CPU usage/power for playback from local
+files.
+
+Bug 1046914, 950446
+
+Change-Id: Iebb6d32f5e1b2528b3a7891e2d0da41bdd839258
+
+TSParser: Adds robustness in handling PSI sections
+
+Bug 1017554
+
+Change-Id: Icce1ff9c488b367bc0afc46cacc617475e849918
+---
+ media/libstagefright/mpeg2ts/ATSParser.cpp        |    6 ++++-
+ media/libstagefright/mpeg2ts/MPEG2TSExtractor.cpp |   27 +++++++++++++++++----
+ 2 files changed, 27 insertions(+), 6 deletions(-)
+
+diff --git a/media/libstagefright/mpeg2ts/ATSParser.cpp b/media/libstagefright/mpeg2ts/ATSParser.cpp
+index 6e948ef..bfdf4cf 100644
+--- a/media/libstagefright/mpeg2ts/ATSParser.cpp
++++ b/media/libstagefright/mpeg2ts/ATSParser.cpp
+@@ -1254,8 +1254,12 @@ status_t ATSParser::parsePID(
+         const sp<PSISection> &section = mPSISections.valueAt(sectionIndex);
+ 
+         if (payload_unit_start_indicator) {
+-            CHECK(section->isEmpty());
++            //Typical streams for ISDBT/DVB have multiple PAT packets,
++            //the followng change is needed for supporting those use-cases
+ 
++            if (PID != 0) {
++                CHECK(section->isEmpty());
++            }
+             unsigned skip = br->getBits(8);
+             br->skipBits(skip * 8);
+         }
+diff --git a/media/libstagefright/mpeg2ts/MPEG2TSExtractor.cpp b/media/libstagefright/mpeg2ts/MPEG2TSExtractor.cpp
+index cd4c3f0..7e914f1 100644
+--- a/media/libstagefright/mpeg2ts/MPEG2TSExtractor.cpp
++++ b/media/libstagefright/mpeg2ts/MPEG2TSExtractor.cpp
+@@ -36,6 +36,7 @@
+ 
+ namespace android {
+ 
++static const size_t NV_MAX_TS_READ_SIZE = 100;
+ static const size_t kMaxTSPacketSize = 192;
+ static const size_t kTSPacketSize = 188;
+ 
+@@ -231,6 +232,9 @@ void MPEG2TSExtractor::init() {
+         ALOGE("Duration of m2ts media is %lld", GetM2TSDuration());
+     }
+ 
++    bool isLocalPlayBack = mDataSource->flags() & DataSource::kIsLocalDataSource;
++    uint8_t numPacketsToReadAtTime = isLocalPlayBack?NV_MAX_TS_READ_SIZE:1;
++
+     while (feedMore() == OK) {
+         ATSParser::SourceType type;
+         if (haveAudio && haveVideo) {
+@@ -260,7 +264,8 @@ void MPEG2TSExtractor::init() {
+ 
+         // Number of ts packets to be parsed to determine type of streams
+         // Assuming 25000 packets is sufficient
+-        if (++numPacketsParsed > 25000) {
++        numPacketsParsed += numPacketsToReadAtTime;
++        if (numPacketsParsed > 25000) {
+             break;
+         }
+     }
+@@ -271,15 +276,27 @@ void MPEG2TSExtractor::init() {
+ status_t MPEG2TSExtractor::feedMore() {
+     Mutex::Autolock autoLock(mLock);
+ 
+-    uint8_t packet[kMaxTSPacketSize];
+-    ssize_t n = mDataSource->readAt(mOffset, packet, mParser->GetTsPacketLength());
++    status_t ret = OK;
++    uint8_t packet[kMaxTSPacketSize * NV_MAX_TS_READ_SIZE];
++    bool isLocalPlayBack = mDataSource->flags() & DataSource::kIsLocalDataSource;
++    uint8_t numPacketsToReadAtTime = isLocalPlayBack?NV_MAX_TS_READ_SIZE:1;
++    ssize_t n = mDataSource->readAt(mOffset, packet, mParser->GetTsPacketLength() * numPacketsToReadAtTime);
+ 
+-    if (n < mParser->GetTsPacketLength()) {
++    if (n < (mParser->GetTsPacketLength() * numPacketsToReadAtTime)) {
+          return (n < 0) ? (status_t)n : ERROR_END_OF_STREAM;
+     }
+ 
+     mOffset += n;
+-    return mParser->feedTSPacket(packet, mParser->GetTsPacketLength());
++    off64_t offset = 0;
++    ssize_t iter = n / mParser->GetTsPacketLength();
++    while (iter) {
++         ret = mParser->feedTSPacket(packet + offset, mParser->GetTsPacketLength());
++         if (ret != OK)
++           break;
++         iter--;
++         offset += mParser->GetTsPacketLength();
++    }
++    return ret;
+ }
+ 
+ void MPEG2TSExtractor::setLiveSession(const sp<LiveSession> &liveSession) {
+-- 
+1.7.1
+

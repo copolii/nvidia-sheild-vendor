@@ -1,0 +1,148 @@
+From 7cf51b4cf3f0924a129d9666e59ec7d3d6cf97c1 Mon Sep 17 00:00:00 2001
+From: Smita Gaikwad <smitag@nvidia.com>
+Date: Mon, 18 Jun 2012 08:57:26 -0400
+Subject: [PATCH 11/40] Implement PLAY start Range
+
+If we want to start a RTSP session from a non-zero value
+then we should send the RTSP PLAY request with that range.
+This CL implements that.
+
+Bug 927901
+
+Integration for following commit:
+http://git-master/r/76189
+
+Change-Id: I826f83a17b00bf2b2ac2c1398de9d24643b205bb
+Reviewed-on: http://git-psac/r/274
+Tested-by: Smita Gaikwad <smitag@nvidia.com>
+Reviewed-by: Aniruddha Chourasia <aniruddhac@nvidia.com>
+Reviewed-by: Parag Mehendale <pmehendale@nvidia.com>
+Reviewed-by: Zhijun He <zhhe@nvidia.com>
+---
+ .../libmediaplayerservice/nuplayer/RTSPSource.cpp  |   17 ++++++++++-------
+ media/libstagefright/rtsp/MyHandler.h              |   20 ++++++++++++++++++++
+ 2 files changed, 30 insertions(+), 7 deletions(-)
+
+diff --git a/media/libmediaplayerservice/nuplayer/RTSPSource.cpp b/media/libmediaplayerservice/nuplayer/RTSPSource.cpp
+index 5a7a785..5b2e456 100644
+--- a/media/libmediaplayerservice/nuplayer/RTSPSource.cpp
++++ b/media/libmediaplayerservice/nuplayer/RTSPSource.cpp
+@@ -203,6 +203,7 @@ status_t NuPlayer::RTSPSource::seekTo(int64_t seekTimeUs) {
+ 
+ void NuPlayer::RTSPSource::performSeek(int64_t seekTimeUs) {
+     if (mState != CONNECTED) {
++         mHandler->setPlayStartRange(seekTimeUs);
+         return;
+     }
+ 
+@@ -373,14 +374,16 @@ void NuPlayer::RTSPSource::onMessageReceived(const sp<AMessage> &msg) {
+ 
+         case MyHandler::kWhatSeekDiscontinuity:
+         {
+-            size_t trackIndex;
+-            CHECK(msg->findSize("trackIndex", &trackIndex));
+-            CHECK_LT(trackIndex, mTracks.size());
++            if ((mState == CONNECTED) || (mState == SEEKING)) {
++                size_t trackIndex;
++                CHECK(msg->findSize("trackIndex", &trackIndex));
++                CHECK_LT(trackIndex, mTracks.size());
+ 
+-            TrackInfo *info = &mTracks.editItemAt(trackIndex);
+-            sp<AnotherPacketSource> source = info->mSource;
+-            if (source != NULL) {
+-                source->queueDiscontinuity(ATSParser::DISCONTINUITY_SEEK, NULL);
++                TrackInfo *info = &mTracks.editItemAt(trackIndex);
++                sp<AnotherPacketSource> source = info->mSource;
++                if (source != NULL) {
++                    source->queueDiscontinuity(ATSParser::DISCONTINUITY_SEEK, NULL);
++                }
+             }
+ 
+             break;
+diff --git a/media/libstagefright/rtsp/MyHandler.h b/media/libstagefright/rtsp/MyHandler.h
+index deee30f..efa4fcb 100644
+--- a/media/libstagefright/rtsp/MyHandler.h
++++ b/media/libstagefright/rtsp/MyHandler.h
+@@ -126,6 +126,7 @@ struct MyHandler : public AHandler {
+           mNTPAnchorUs(-1),
+           mMediaAnchorUs(-1),
+           mLastMediaTimeUs(0),
++          mStartRangeUs(0),
+           mNumAccessUnitsReceived(0),
+           mCheckPending(false),
+           mCheckGeneration(0),
+@@ -134,6 +135,7 @@ struct MyHandler : public AHandler {
+           mReceivedFirstRTCPPacket(false),
+           mReceivedFirstRTPPacket(false),
+           mSeekable(false),
++          mPlayRequestSent(false),
+           mKeepAliveTimeoutUs(kDefaultKeepAliveTimeoutUs),
+           mKeepAliveGeneration(0) {
+         mNetLooper->setName("rtsp net");
+@@ -488,6 +490,7 @@ struct MyHandler : public AHandler {
+ 
+             case 'setu':
+             {
++                mPlayRequestSent = false;
+                 size_t index;
+                 CHECK(msg->findSize("index", &index));
+ 
+@@ -610,10 +613,14 @@ struct MyHandler : public AHandler {
+                     request.append(mSessionID);
+                     request.append("\r\n");
+ 
++                    request.append(
++                            StringPrintf(
++                                "Range: npt=%lld-\r\n", mStartRangeUs / 1000000ll));
+                     request.append("\r\n");
+ 
+                     sp<AMessage> reply = new AMessage('play', id());
+                     mConn->sendRequest(request.c_str(), reply);
++                    mPlayRequestSent = true;
+                 } else {
+                     sp<AMessage> reply = new AMessage('disc', id());
+                     mConn->disconnect(reply);
+@@ -731,6 +738,7 @@ struct MyHandler : public AHandler {
+                 mReceivedFirstRTCPPacket = false;
+                 mReceivedFirstRTPPacket = false;
+                 mSeekable = false;
++                mPlayRequestSent = false;
+ 
+                 sp<AMessage> reply = new AMessage('tear', id());
+ 
+@@ -1061,6 +1069,16 @@ struct MyHandler : public AHandler {
+         msg->post((mKeepAliveTimeoutUs * 9) / 10);
+     }
+ 
++    void setPlayStartRange(int64_t startRangeUs) {
++        mStartRangeUs = startRangeUs;
++        if (mPlayRequestSent) {
++            // PLAY request has been sent already.
++            // Perform a seek to the requested position.
++            mSeekable = true;
++            seek(startRangeUs);
++        }
++    }
++
+     void postAccessUnitTimeoutCheck() {
+         if (mCheckPending) {
+             return;
+@@ -1223,6 +1241,7 @@ private:
+     int64_t mNTPAnchorUs;
+     int64_t mMediaAnchorUs;
+     int64_t mLastMediaTimeUs;
++    int64_t mStartRangeUs;
+ 
+     int64_t mNumAccessUnitsReceived;
+     bool mCheckPending;
+@@ -1232,6 +1251,7 @@ private:
+     bool mReceivedFirstRTCPPacket;
+     bool mReceivedFirstRTPPacket;
+     bool mSeekable;
++    bool mPlayRequestSent;
+     int64_t mKeepAliveTimeoutUs;
+     int32_t mKeepAliveGeneration;
+ 
+-- 
+1.7.1
+

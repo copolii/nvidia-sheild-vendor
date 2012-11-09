@@ -1,0 +1,193 @@
+From 3879372e9258313076b3426d05b89d97cb48d5ac Mon Sep 17 00:00:00 2001
+From: Vick Yu <vyu@nvidia.com>
+Date: Fri, 31 Aug 2012 21:54:53 +0800
+Subject: [PATCH 36/40] [NuCachedSource2] Turn off cache if miss rate high
+
+For noninterleave A/V clip playback, cache
+mechanism won't benefit it. So this change
+add bypass feature and automatically turn
+off cache for high cache miss scenarios.
+
+bug 1041234
+
+Change-Id: Idcea1eeed3b8474197e5bef0842bedeed7e450e9
+---
+ include/media/stagefright/DataSource.h         |    2 +
+ media/libstagefright/AwesomePlayer.cpp         |    2 +
+ media/libstagefright/NuCachedSource2.cpp       |   53 ++++++++++++++++++++++-
+ media/libstagefright/include/NuCachedSource2.h |   11 +++++
+ 4 files changed, 65 insertions(+), 3 deletions(-)
+
+diff --git a/include/media/stagefright/DataSource.h b/include/media/stagefright/DataSource.h
+index f428e16..ede7a4d 100644
+--- a/include/media/stagefright/DataSource.h
++++ b/include/media/stagefright/DataSource.h
+@@ -109,6 +109,8 @@ public:
+ 
+     virtual String8 getMIMEType() const;
+ 
++    virtual void setBypassMode(bool bypass = false) {}
++
+ protected:
+     virtual ~DataSource() {}
+ 
+diff --git a/media/libstagefright/AwesomePlayer.cpp b/media/libstagefright/AwesomePlayer.cpp
+index cb4817b..21a4914 100644
+--- a/media/libstagefright/AwesomePlayer.cpp
++++ b/media/libstagefright/AwesomePlayer.cpp
+@@ -1935,6 +1935,8 @@ void AwesomePlayer::onVideoEvent() {
+         if (mSeeking != NO_SEEK) {
+             ALOGV("seeking to %lld us (%.2f secs)", mSeekTimeUs, mSeekTimeUs / 1E6);
+ 
++            if(mDataSourceFlags & DataSource::kIsLocalDataSource)
++                    mFileSource->setBypassMode(false);
+             options.setSeekTo(
+                     mSeekTimeUs,
+                     mSeeking == SEEK_VIDEO_ONLY
+diff --git a/media/libstagefright/NuCachedSource2.cpp b/media/libstagefright/NuCachedSource2.cpp
+index 4597fdf..c5204cd 100644
+--- a/media/libstagefright/NuCachedSource2.cpp
++++ b/media/libstagefright/NuCachedSource2.cpp
+@@ -198,7 +198,10 @@ NuCachedSource2::NuCachedSource2(
+       mHighwaterThresholdBytes(kDefaultHighWaterThreshold),
+       mLowwaterThresholdBytes(kDefaultLowWaterThreshold),
+       mKeepAliveIntervalUs(kDefaultKeepAliveIntervalUs),
+-      mDisconnectAtHighwatermark(disconnectAtHighwatermark) {
++      mDisconnectAtHighwatermark(disconnectAtHighwatermark),
++      mBypassNuCacheMode(false),
++      mReadCount(0),
++      mCacheMissCount(0) {
+     // We are NOT going to support disconnect-at-highwatermark indefinitely
+     // and we are not guaranteeing support for client-specified cache
+     // parameters. Both of these are temporary measures to solve a specific
+@@ -275,6 +278,16 @@ uint32_t NuCachedSource2::flags() {
+     return (flags | kIsCachingDataSource);
+ }
+ 
++void NuCachedSource2::setBypassMode(bool mode) {
++    if(flags() & kIsLocalDataSource) {
++        ALOGV("Setting Bypass mode to %d", mode);
++        Mutex::Autolock autoLock(mLock);
++        mBypassNuCacheMode = mode;
++        mReadCount = 0;
++        mCacheMissCount = 0;
++    }
++}
++
+ void NuCachedSource2::onMessageReceived(const sp<AMessage> &msg) {
+     switch (msg->what()) {
+         case kWhatFetchMore:
+@@ -289,6 +302,17 @@ void NuCachedSource2::onMessageReceived(const sp<AMessage> &msg) {
+             break;
+         }
+ 
++        case kWhatClear:
++        {
++            ALOGV("kWhatClear");
++            Mutex::Autolock autoLock(mLock);
++            mFetching = false;
++            mCacheOffset = 0;
++            size_t totalSize = mCache->totalSize();
++            CHECK_EQ(mCache->releaseFromStart(totalSize), totalSize);
++            break;
++        }
++
+         default:
+             TRESPASS();
+     }
+@@ -422,7 +446,8 @@ void NuCachedSource2::onFetch() {
+         delayUs = 100000ll;
+     }
+ 
+-    (new AMessage(kWhatFetchMore, mReflector->id()))->post(delayUs);
++    if(!mBypassNuCacheMode)
++        (new AMessage(kWhatFetchMore, mReflector->id()))->post(delayUs);
+ }
+ 
+ void NuCachedSource2::onRead(const sp<AMessage> &msg) {
+@@ -458,7 +483,8 @@ void NuCachedSource2::restartPrefetcherIfNecessary_l(
+         bool ignoreLowWaterThreshold, bool force) {
+     static const size_t kGrayArea = 6 * 1024 * 1024;
+ 
+-    if (mFetching || (mFinalStatus != OK && mNumRetriesLeft == 0)) {
++    if (mFetching || (mFinalStatus != OK && mNumRetriesLeft == 0)
++            || mBypassNuCacheMode) {
+         return;
+     }
+ 
+@@ -492,8 +518,18 @@ ssize_t NuCachedSource2::readAt(off64_t offset, void *data, size_t size) {
+ 
+     ALOGV("readAt offset %lld, size %d", offset, size);
+ 
++    // Check if Bypass mode is set
++    if (mBypassNuCacheMode) {
++        return mSource->readAt(offset, data, size);
++    }
++
+     Mutex::Autolock autoLock(mLock);
+ 
++    if(flags() & kIsLocalDataSource) {
++        ALOGV("mReadCount = %d, mCacheMissCount = %d", mReadCount, mCacheMissCount);
++        mReadCount++;
++    }
++
+     // If the request can be completely satisfied from the cache, do so.
+ 
+     if (offset >= mCacheOffset
+@@ -507,6 +543,17 @@ ssize_t NuCachedSource2::readAt(off64_t offset, void *data, size_t size) {
+         return size;
+     }
+ 
++    if(flags() & kIsLocalDataSource) {
++        mCacheMissCount++;
++        if (!mBypassNuCacheMode && kCacheMissCount < mCacheMissCount &&
++                kCacheThrashRatio > (mReadCount/mCacheMissCount)) {
++            mBypassNuCacheMode = true;
++            ssize_t result = mSource->readAt(offset, data, size);
++            (new AMessage(kWhatClear, mReflector->id()))->post();
++            return result;
++        }
++    }
++
+     sp<AMessage> msg = new AMessage(kWhatRead, mReflector->id());
+     msg->setInt64("offset", offset);
+     msg->setPointer("data", data);
+diff --git a/media/libstagefright/include/NuCachedSource2.h b/media/libstagefright/include/NuCachedSource2.h
+index 7b2c3bc..14cc2c4 100644
+--- a/media/libstagefright/include/NuCachedSource2.h
++++ b/media/libstagefright/include/NuCachedSource2.h
+@@ -66,6 +66,7 @@ struct NuCachedSource2 : public DataSource {
+             String8 *cacheConfig,
+             bool *disconnectAtHighwatermark);
+ 
++    virtual void setBypassMode(bool bypass = false);
+ protected:
+     virtual ~NuCachedSource2();
+ 
+@@ -85,6 +86,7 @@ private:
+     enum {
+         kWhatFetchMore  = 'fetc',
+         kWhatRead       = 'read',
++        kWhatClear      = 'clea',
+     };
+ 
+     enum {
+@@ -118,6 +120,15 @@ private:
+ 
+     bool mDisconnectAtHighwatermark;
+ 
++    bool mBypassNuCacheMode;
++    enum {
++        kCacheMissCount     = 50,
++        kCacheThrashRatio   = 10,
++    };
++
++    int32_t mReadCount;
++    int32_t mCacheMissCount;
++
+     virtual void onFirstRef();
+     void onMessageReceived(const sp<AMessage> &msg);
+     void onFetch();
+-- 
+1.7.1
+

@@ -1,0 +1,48 @@
+From 3b08059d2103729dd91b02f279aba0a952497760 Mon Sep 17 00:00:00 2001
+From: Dane Liu <danel@nvidia.com>
+Date: Tue, 2 Oct 2012 10:34:44 +0800
+Subject: [PATCH 4/6] mpeg-ps: search for next packet start code
+
+In some mpeg-ps files, there might be padding bytes between packets.
+Skip the padding bytes and search for the next packet start code.
+
+bug 1056684
+
+Change-Id: Ic5919591b024f098e796e40fe2fb8a83475fc351
+Reviewed-on: http://git-master/r/140827
+Reviewed-by: Automatic_Commit_Validation_User
+Tested-by: Dane Liu <danel@nvidia.com>
+Reviewed-by: Manikanta Kanamarlapudi <manikak@nvidia.com>
+Reviewed-by: Vick Yu <vyu@nvidia.com>
+---
+ media/libstagefright/mpeg2ts/MPEG2PSExtractor.cpp |   13 +++++++++++--
+ 1 files changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/media/libstagefright/mpeg2ts/MPEG2PSExtractor.cpp b/media/libstagefright/mpeg2ts/MPEG2PSExtractor.cpp
+index 197a33c..6d73d4b 100644
+--- a/media/libstagefright/mpeg2ts/MPEG2PSExtractor.cpp
++++ b/media/libstagefright/mpeg2ts/MPEG2PSExtractor.cpp
+@@ -258,9 +258,18 @@ status_t MPEG2PSExtractor::dequeueChunk() {
+         }
+     }
+ 
+-    if (memcmp("\x00\x00\x01", mBuffer->data(), 3)) {
+-        mBuffer->setRange(0, 0);
++    while(memcmp("\x00\x00\x01", mBuffer->data(), 3)) {
++        if(memcmp("\x00", mBuffer->data(), 1)) { // padding bytes are all zeros
++            // not padding byte; go to next chunk
++            mBuffer->setRange(0, 0);
+             return -EAGAIN;
++        } else {
++            // skip padding byte
++            mBuffer->setRange(mBuffer->offset() + 1, mBuffer->size() - 1);
++            if (mBuffer->size() < 4) {
++                return -EAGAIN;
++            }
++        }
+     }
+ 
+     unsigned chunkType = mBuffer->data()[3];
+-- 
+1.7.1
+

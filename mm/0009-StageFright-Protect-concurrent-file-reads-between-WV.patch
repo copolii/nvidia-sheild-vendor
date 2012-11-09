@@ -1,0 +1,40 @@
+From 6c8f7f33c9ec8edbfac7ea10eb8a3eaea3559e87 Mon Sep 17 00:00:00 2001
+From: Suresh Choudhary <sureshc@nvidia.com>
+Date: Sat, 23 Jun 2012 04:20:20 +0530
+Subject: [PATCH 09/40] StageFright: Protect concurrent file reads between WV engine and FileSource.
+
+- WV DRM tries to read from the file by creating a duplicate FD.
+- This was setting the file position to a different location and
+  filesource was providing the data from that position.
+- Added a lock to protect the file read from WV engine.
+
+Bug 991874
+
+Reviewed-On: http://git-master/r/#change,92864
+(cherry picked from aa0d035de6685b5bb29dec20f632e4452ad8448e)
+
+Change-Id: I107a75b829f8e5e1294797ddbeb2f9bbb4cef5d4
+Reviewed-on: http://git-psac/r/304
+Tested-by: Suresh Choudhary <sureshc@nvidia.com>
+Reviewed-by: Zhijun He <zhhe@nvidia.com>
+Reviewed-by: Yogesh Solanke <ysolanke@nvidia.com>
+---
+ media/libstagefright/FileSource.cpp |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/media/libstagefright/FileSource.cpp b/media/libstagefright/FileSource.cpp
+index a7ca3da..e510ab9 100644
+--- a/media/libstagefright/FileSource.cpp
++++ b/media/libstagefright/FileSource.cpp
+@@ -128,6 +128,8 @@ status_t FileSource::getSize(off64_t *size) {
+ }
+ 
+ sp<DecryptHandle> FileSource::DrmInitialization(const char *mime) {
++    Mutex::Autolock autoLock(mLock);
++
+     if (mDrmManagerClient == NULL) {
+         mDrmManagerClient = new DrmManagerClient();
+     }
+-- 
+1.7.1
+

@@ -1,0 +1,37 @@
+From 096e5d464d0ee82b20a8369aea01e1c960d887cd Mon Sep 17 00:00:00 2001
+From: Smita Gaikwad <smitag@nvidia.com>
+Date: Sat, 14 Jul 2012 07:19:17 -0400
+Subject: [PATCH 37/40]  [NuCachedSource2]Add delay b/w continuous fetches.
+
+In NuCachedSource2 when prefetcher restarts it continuously
+issues fetches and hence keeps busy loop running. During this
+parser has to wait and hence takes more time for raeding causing
+framedrop due to lateness. Added delay of 0.5 msec b/w successive
+fetches to resolve the problem.
+
+Bug 1005986
+
+Reviewed on: http://git-master/r/116444
+(cherry picked from commit 00571e7ed482946bc1558267c80645fd10ece6ff)
+
+Change-Id: Ic1a95534b1c242b659a911ffc12eb4081b2b623f
+---
+ media/libstagefright/NuCachedSource2.cpp |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/media/libstagefright/NuCachedSource2.cpp b/media/libstagefright/NuCachedSource2.cpp
+index c5204cd..4eff59a 100644
+--- a/media/libstagefright/NuCachedSource2.cpp
++++ b/media/libstagefright/NuCachedSource2.cpp
+@@ -440,7 +440,7 @@ void NuCachedSource2::onFetch() {
+             // We failed this time and will try again in 3 seconds.
+             delayUs = 3000000ll;
+         } else {
+-            delayUs = 0;
++            delayUs = 500; //0.5 msec delay b/w continuous fetches
+         }
+     } else {
+         delayUs = 100000ll;
+-- 
+1.7.1
+

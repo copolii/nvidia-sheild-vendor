@@ -1,0 +1,813 @@
+From c4bc7b8af836f3254bbc18542b404b87bf3c5475 Mon Sep 17 00:00:00 2001
+From: Suresh Choudhary <sureshc@nvidia.com>
+Date: Mon, 29 Oct 2012 14:32:22 +0530
+Subject: [PATCH 05/40] StageFright: MPEG-TS integrations to Android J
+
+Stability & Perf fixes from pre Android-J development for mpeg-ts
+format.
+
+Integrations for following commits:
+http://git-master/r/72609
+http://git-master/r/71942
+http://git-master/r/70299
+http://git-master/r/69201
+http://git-master/r/68151
+http://git-master/r/67680
+http://git-master/r/67304
+http://git-master/r/66676
+http://git-master/r/65474
+
+Change-Id: Iece57dadc582b7adc82c07680f3ec00f5aa34f56
+Reviewed-on: http://git-psac/r/256
+Reviewed-by: Lokesh Pathak <lpathak@nvidia.com>
+Tested-by: Lokesh Pathak <lpathak@nvidia.com>
+---
+ media/libstagefright/AwesomePlayer.cpp            |    4 +
+ media/libstagefright/OMXCodec.cpp                 |    9 +-
+ media/libstagefright/avc_utils.cpp                |    4 +-
+ media/libstagefright/mpeg2ts/ATSParser.cpp        |  173 ++++++++++++++++---
+ media/libstagefright/mpeg2ts/ATSParser.h          |    5 +
+ media/libstagefright/mpeg2ts/ESQueue.cpp          |  196 ++++++++++-----------
+ media/libstagefright/mpeg2ts/ESQueue.h            |    3 +
+ media/libstagefright/mpeg2ts/MPEG2TSExtractor.cpp |   61 +++++--
+ 8 files changed, 308 insertions(+), 147 deletions(-)
+
+diff --git a/media/libstagefright/AwesomePlayer.cpp b/media/libstagefright/AwesomePlayer.cpp
+index d49ded8..87e4886 100644
+--- a/media/libstagefright/AwesomePlayer.cpp
++++ b/media/libstagefright/AwesomePlayer.cpp
+@@ -1645,6 +1645,10 @@ void AwesomePlayer::onVideoEvent() {
+                         initRenderer_l();
+                     }
+                     continue;
++                }  else if (err == INFO_DISCONTINUITY) {
++                    // Currently we are ignoring this discontinuity
++                    // coming from TS Parser
++                    continue;
+                 }
+ 
+                 // So video playback is complete, but we may still have
+diff --git a/media/libstagefright/OMXCodec.cpp b/media/libstagefright/OMXCodec.cpp
+index 4a80c1a..fdeb7fa 100755
+--- a/media/libstagefright/OMXCodec.cpp
++++ b/media/libstagefright/OMXCodec.cpp
+@@ -361,10 +361,6 @@ sp<MediaSource> OMXCodec::Create(
+             err = codec->configureCodec(meta);
+ 
+             if (err == OK) {
+-                if (!strcmp("OMX.Nvidia.mpeg2v.decode", componentName)) {
+-                    codec->mFlags |= kOnlySubmitOneInputBufferAtOneTime;
+-                }
+-
+                 return codec;
+             }
+ 
+@@ -3061,6 +3057,11 @@ bool OMXCodec::drainInputBuffer(BufferInfo *info) {
+             err = mSource->read(&srcBuffer);
+         }
+ 
++        if (err == INFO_DISCONTINUITY) {
++            // currently ignore this
++            continue;
++        }
++
+         if (err != OK) {
+             signalEOS = true;
+             mFinalStatus = err;
+diff --git a/media/libstagefright/avc_utils.cpp b/media/libstagefright/avc_utils.cpp
+index a141752..b28a9f0 100644
+--- a/media/libstagefright/avc_utils.cpp
++++ b/media/libstagefright/avc_utils.cpp
+@@ -60,7 +60,9 @@ void FindAVCDimensions(
+         parseUE(&br);  // bit_depth_luma_minus8
+         parseUE(&br);  // bit_depth_chroma_minus8
+         br.skipBits(1);  // qpprime_y_zero_transform_bypass_flag
+-        CHECK_EQ(br.getBits(1), 0u);  // seq_scaling_matrix_present_flag
++        // relaxing the following check as nvidia avc decoder supports
++        // sequence scaling and peak scaling
++        br.getBits(1);  // seq_scaling_matrix_present_flag
+     }
+ 
+     parseUE(&br);  // log2_max_frame_num_minus4
+diff --git a/media/libstagefright/mpeg2ts/ATSParser.cpp b/media/libstagefright/mpeg2ts/ATSParser.cpp
+index 27c7bf4..4924a1d 100644
+--- a/media/libstagefright/mpeg2ts/ATSParser.cpp
++++ b/media/libstagefright/mpeg2ts/ATSParser.cpp
+@@ -86,6 +86,8 @@ private:
+     ATSParser *mParser;
+     unsigned mProgramNumber;
+     unsigned mProgramMapPID;
++    bool     mTransition;
++    unsigned mNextVidPid;
+     KeyedVector<unsigned, sp<Stream> > mStreams;
+     bool mFirstPTSValid;
+     uint64_t mFirstPTS;
+@@ -177,7 +179,9 @@ ATSParser::Program::Program(
+       mProgramNumber(programNumber),
+       mProgramMapPID(programMapPID),
+       mFirstPTSValid(false),
+-      mFirstPTS(0) {
++      mFirstPTS(0),
++      mTransition(false),
++      mNextVidPid(0) {
+     ALOGV("new program number %u", programNumber);
+ }
+ 
+@@ -203,6 +207,15 @@ bool ATSParser::Program::parsePID(
+     ssize_t index = mStreams.indexOfKey(pid);
+     if (index < 0) {
+         return false;
++    } else if (mTransition && (mNextVidPid == pid)) {
++          sp<AMessage> extra;
++          ALOGE("Sending discontinuity for mpeg2 stream for ISDBT mode format change");
++
++          mStreams.editValueAt(index)->signalDiscontinuity(
++                                      DISCONTINUITY_FORMATCHANGE, extra);
++
++          mStreams.editValueAt(index)->setPID(mNextVidPid);
++          mTransition = false;
+     }
+ 
+     *err = mStreams.editValueAt(index)->parse(
+@@ -232,7 +245,12 @@ struct StreamInfo {
+ status_t ATSParser::Program::parseProgramMap(ABitReader *br) {
+     unsigned table_id = br->getBits(8);
+     ALOGV("  table_id = %u", table_id);
+-    CHECK_EQ(table_id, 0x02u);
++    if (table_id != 0x02u) {
++        // This happens in typical DVB-T streams where PMT spans across multiple
++        // TS packets,ignoring as it does not harm
++        ALOGV("Bogus PMT packet, ignoring");
++        return OK;
++    }
+ 
+     unsigned section_syntax_indicator = br->getBits(1);
+     ALOGV("  section_syntax_indicator = %u", section_syntax_indicator);
+@@ -272,8 +290,24 @@ status_t ATSParser::Program::parseProgramMap(ABitReader *br) {
+     // final CRC.
+     size_t infoBytesRemaining = section_length - 9 - program_info_length - 4;
+ 
++    if (infoBytesRemaining > (br->numBitsLeft() / 8)) {
++        ALOGV("TBD: Warning! the PMT continues in next ts packet");
++        infoBytesRemaining = (br->numBitsLeft() / 8);
++    }
++#define MY_CHECK_EQ(a, b) \
++    if ((a) != (b)) { \
++        ALOGV("Warning: PMT error, skipping"); \
++        break; \
++    }
++
++#define MY_CHECK_GE(a, b) \
++    if ((a) < (b)) { \
++        ALOGV("Warning: PMT error, skipping"); \
++        break; \
++    }
++
+     while (infoBytesRemaining > 0) {
+-        CHECK_GE(infoBytesRemaining, 5u);
++        MY_CHECK_GE(infoBytesRemaining, 5u);
+ 
+         unsigned streamType = br->getBits(8);
+         ALOGV("    stream_type = 0x%02x", streamType);
+@@ -287,27 +321,41 @@ status_t ATSParser::Program::parseProgramMap(ABitReader *br) {
+ 
+         unsigned ES_info_length = br->getBits(12);
+         ALOGV("    ES_info_length = %u", ES_info_length);
+-        CHECK_EQ(ES_info_length & 0xc00, 0u);
++        MY_CHECK_EQ(ES_info_length & 0xc00, 0u);
+ 
+-        CHECK_GE(infoBytesRemaining - 5, ES_info_length);
++        MY_CHECK_GE(infoBytesRemaining - 5, ES_info_length);
+ 
+ #if 0
+         br->skipBits(ES_info_length * 8);  // skip descriptors
+ #else
+         unsigned info_bytes_remaining = ES_info_length;
+-        while (info_bytes_remaining >= 2) {
+-            MY_LOGV("      tag = 0x%02x", br->getBits(8));
+-
+-            unsigned descLength = br->getBits(8);
+-            ALOGV("      len = %u", descLength);
+-
+-            CHECK_GE(info_bytes_remaining, 2 + descLength);
+-
+-            br->skipBits(descLength * 8);
+-
+-            info_bytes_remaining -= descLength + 2;
++        /* if the length of descriptor is more than data available
++        * ignore this descriptor , typically happens for ISDBT/DVB-T streams where
++        * PMT spans across multiple ts packets
++        * reference links:
++        * http://gstreamer.freedesktop.org/data/coverage/lcov
++        * /gst-plugins-bad/gst/mpegdemux/gstmpegdesc.c.gcov.html
++        * https://source.ridgerun.net/svn/leopardboarddm365/sdk
++        * /trunk/fs/apps/live555/src/liveMedia/MPEG2IndexFromTransportStream.cpp
++        */
++        if (ES_info_length * 8 <= br->numBitsLeft()) {
++            while (info_bytes_remaining >= 2) {
++                MY_LOGV("      tag = 0x%02x", br->getBits(8));
++
++                unsigned descLength = br->getBits(8);
++                ALOGV("      len = %u", descLength);
++
++                MY_CHECK_GE(info_bytes_remaining, 2 + descLength);
++
++                br->skipBits(descLength * 8);
++
++                info_bytes_remaining -= descLength + 2;
++            }
++            MY_CHECK_EQ(info_bytes_remaining, 0u);
++        }
++        else {
++            br->skipBits(br->numBitsLeft());
+         }
+-        CHECK_EQ(info_bytes_remaining, 0u);
+ #endif
+ 
+         StreamInfo info;
+@@ -318,8 +366,16 @@ status_t ATSParser::Program::parseProgramMap(ABitReader *br) {
+         infoBytesRemaining -= 5 + ES_info_length;
+     }
+ 
+-    CHECK_EQ(infoBytesRemaining, 0u);
+-    MY_LOGV("  CRC = 0x%08x", br->getBits(32));
++    if (infoBytesRemaining != 0u) {
++        ALOGV("Ignoring trailing bits in PMT ES descriptors");
++        br->skipBits(br->numBitsLeft());
++    }
++    // Again for ISDBT/DVB-T Streams where PMT in this packet is incomplete,
++    // ignore CRC in such a case
++    if (br->numBitsLeft() == 32)
++        MY_LOGV("  CRC = 0x%08x", br->getBits(32));
++    else
++        ALOGV("No CRC found in PMT, br->numBitsLeft() is %d", br->numBitsLeft());
+ 
+     bool PIDsChanged = false;
+     for (size_t i = 0; i < infos.size(); ++i) {
+@@ -332,6 +388,34 @@ status_t ATSParser::Program::parseProgramMap(ABitReader *br) {
+             PIDsChanged = true;
+             break;
+         }
++
++        if (index < 0) {
++            // New PID came, first check if we already have a stream handling the
++            // same type, send EOS for the old stream as currently we
++            // are not handling format/resolution change. TBD
++            for (size_t i = 0; i < mStreams.size(); ++i) {
++                if(info.mType == mStreams.editValueAt(i)->type()) {
++                    sp<AMessage> extra;
++                    ALOGV(" FATAL: Stream data type was already handled");
++                    // signal discontinuity for old stream if of type mpeg2 video
++                    if (((info.mType == 0x01) || (info.mType == 0x02) || (info.mType == 0x1b)) &&
++                        ((mStreams.editValueAt(i)->type() == 0x01) ||
++                         (mStreams.editValueAt(i)->type() == 0x02) ||
++                         (mStreams.editValueAt(i)->type() == 0x1b))) {
++                         // Handle the new PID with same stream-source
++                         mStreams.add(info.mPID, mStreams.editValueAt(i));
++                         mTransition = true;
++                         mNextVidPid = info.mPID;
++                    } else if ((info.mType == 0x0f) && (mStreams.editValueAt(i)->type() == 0x0f)) {
++                         sp<Stream> newstream = mStreams.valueAt(i);
++                         mStreams.removeItem(mStreams.editValueAt(i)->pid());
++                         mStreams.add(info.mPID, newstream);
++                         newstream->setPID(info.mPID);
++                    }
++                }
++            }
++
++        }
+     }
+ 
+     if (PIDsChanged) {
+@@ -777,11 +861,19 @@ status_t ATSParser::Stream::parsePES(ABitReader *br) {
+                 ALOGE("PES packet does not carry enough data to contain "
+                      "payload. (numBitsLeft = %d, required = %d)",
+                      br->numBitsLeft(), dataLength * 8);
++                //Skip this packet
++                br->skipBits(br->numBitsLeft());
++                return OK;
++            }
+ 
+-                return ERROR_MALFORMED;
++            //CHECK_GE(br->numBitsLeft(), dataLength * 8);
++            if(br->numBitsLeft() < (dataLength * 8))
++            {
++                //Skip this packet
++                br->skipBits(br->numBitsLeft());
++                return OK;
+             }
+ 
+-            CHECK_GE(br->numBitsLeft(), dataLength * 8);
+ 
+             onPayloadData(
+                     PTS_DTS_flags, PTS, DTS, br->data(), dataLength);
+@@ -812,12 +904,21 @@ status_t ATSParser::Stream::flush() {
+     if (mBuffer->size() == 0) {
+         return OK;
+     }
++    uint8_t *ptr = mBuffer->data();
++    status_t err = OK;
+ 
+     ALOGV("flushing stream 0x%04x size = %d", mElementaryPID, mBuffer->size());
+ 
+     ABitReader br(mBuffer->data(), mBuffer->size());
+-
+-    status_t err = parsePES(&br);
++    // For dvb support check if the stream is actual PES or
++    // some other DVB stream messages like DBB/DSM-CC
++    if (ptr[0] == 0x00 && ptr[1] == 0x00 && ptr[2] == 0x01) {
++        err = parsePES(&br);
++    }
++    else {
++        ALOGV("Skipping DVB specific messages now");
++        br.skipBits(mBuffer->size() * 8);
++    }
+ 
+     mBuffer->setRange(0, 0);
+ 
+@@ -898,15 +999,28 @@ ATSParser::ATSParser(uint32_t flags)
+       mNumTSPacketsParsed(0),
+       mNumPCRs(0) {
+     mPSISections.add(0 /* PID */, new PSISection);
++	tsPacketLen = kTSPacketSize;
+ }
+ 
+ ATSParser::~ATSParser() {
+ }
+ 
++void ATSParser::SetTsPacketLength(ssize_t len) {
++    tsPacketLen = len;
++}
++
++ssize_t ATSParser::GetTsPacketLength() {
++    return tsPacketLen;
++}
++
+ status_t ATSParser::feedTSPacket(const void *data, size_t size) {
+-    CHECK_EQ(size, kTSPacketSize);
++    CHECK_EQ(size, GetTsPacketLength());
+ 
+     ABitReader br((const uint8_t *)data, kTSPacketSize);
++    if (GetTsPacketLength() == 192) {
++        ALOGV("Blue Ray/M2TS content");
++        br.skipBits(32);
++    }
+     return parseTS(&br);
+ }
+ 
+@@ -1137,7 +1251,12 @@ status_t ATSParser::parseTS(ABitReader *br) {
+     unsigned sync_byte = br->getBits(8);
+     CHECK_EQ(sync_byte, 0x47u);
+ 
+-    MY_LOGV("transport_error_indicator = %u", br->getBits(1));
++    unsigned transport_error_indicator = br->getBits(1);
++    if (transport_error_indicator) {
++        ALOGI("transport_error_indicator is set, ignoring packet");
++        br->skipBits(br->numBitsLeft());
++        return OK;
++    }
+ 
+     unsigned payload_unit_start_indicator = br->getBits(1);
+     ALOGV("payload_unit_start_indicator = %u", payload_unit_start_indicator);
+@@ -1146,6 +1265,10 @@ status_t ATSParser::parseTS(ABitReader *br) {
+ 
+     unsigned PID = br->getBits(13);
+     ALOGV("PID = 0x%04x", PID);
++    if (PID == 0x1FFF) {
++        ALOGV("Found NULL Packet, Ignoring");
++        return OK;
++    }
+ 
+     MY_LOGV("transport_scrambling_control = %u", br->getBits(2));
+ 
+diff --git a/media/libstagefright/mpeg2ts/ATSParser.h b/media/libstagefright/mpeg2ts/ATSParser.h
+index 5ccbab7..69c564d 100644
+--- a/media/libstagefright/mpeg2ts/ATSParser.h
++++ b/media/libstagefright/mpeg2ts/ATSParser.h
+@@ -77,6 +77,10 @@ struct ATSParser : public RefBase {
+ 
+     bool PTSTimeDeltaEstablished();
+ 
++    void SetTsPacketLength(ssize_t len);
++
++    ssize_t GetTsPacketLength();
++
+     enum {
+         // From ISO/IEC 13818-1: 2000 (E), Table 2-29
+         STREAMTYPE_RESERVED             = 0x00,
+@@ -96,6 +100,7 @@ private:
+     struct Program;
+     struct Stream;
+     struct PSISection;
++    ssize_t tsPacketLen;
+ 
+     uint32_t mFlags;
+     Vector<sp<Program> > mPrograms;
+diff --git a/media/libstagefright/mpeg2ts/ESQueue.cpp b/media/libstagefright/mpeg2ts/ESQueue.cpp
+index e58e9bf..1f8ba91 100644
+--- a/media/libstagefright/mpeg2ts/ESQueue.cpp
++++ b/media/libstagefright/mpeg2ts/ESQueue.cpp
+@@ -35,7 +35,10 @@ namespace android {
+ 
+ ElementaryStreamQueue::ElementaryStreamQueue(Mode mode, uint32_t flags)
+     : mMode(mode),
+-      mFlags(flags) {
++      mFlags(flags),
++      mvideoHeight(480),
++      mvideoWidth(640),
++      bseqHdrSent(false) {
+ }
+ 
+ sp<MetaData> ElementaryStreamQueue::getFormat() {
+@@ -48,12 +51,34 @@ void ElementaryStreamQueue::clear(bool clearFormat) {
+     }
+ 
+     mRangeInfos.clear();
++    bseqHdrSent = false;
+ 
+     if (clearFormat) {
+         mFormat.clear();
+     }
+ }
+ 
++static bool IsSeeminglyValidMPEG2SeqHeader(const uint8_t *ptr, size_t size, uint16_t& width, uint16_t& height) {
++
++    if (size < 7)
++        return false;
++
++    if ((ptr[0] == 0x00) && (ptr[1] == 0x00) && (ptr[2] == 0x01) && (ptr[3] == 0xB3))
++    {
++        uint16_t VideoWidth = (ptr[4] << 4)  | (ptr[5] & 0xF0);
++        uint16_t VideoHeight = ((ptr[5] & 0x0F) << 8) | (ptr[6]);
++        if ((width != VideoWidth) ||
++           (height != VideoHeight))
++        {
++            width = VideoWidth;
++            height = VideoHeight;
++        }
++        return true;
++    }
++
++    return false;
++}
++
+ static bool IsSeeminglyValidADTSHeader(const uint8_t *ptr, size_t size) {
+     if (size < 3) {
+         // Not enough data to verify header.
+@@ -78,6 +103,12 @@ static bool IsSeeminglyValidADTSHeader(const uint8_t *ptr, size_t size) {
+         return false;
+     }
+ 
++    // Check the aac_frame_length also as some ts packets have no valid aac frames
++    unsigned aac_frame_length = (((uint16_t)(ptr[3] & 0x3)) << 11)
++            | (((uint16_t)ptr[4]) << 3) | (ptr[5] >> 5);
++    if (aac_frame_length == 0)
++       return false;
++
+     return true;
+ }
+ 
+@@ -123,7 +154,6 @@ status_t ElementaryStreamQueue::appendData(
+     if (mBuffer == NULL || mBuffer->size() == 0) {
+         switch (mMode) {
+             case H264:
+-            case MPEG_VIDEO:
+             {
+ #if 0
+                 if (size < 4 || memcmp("\x00\x00\x00\x01", data, 4)) {
+@@ -156,6 +186,20 @@ status_t ElementaryStreamQueue::appendData(
+                 break;
+             }
+ 
++            case MPEG_VIDEO:
++            {
++                uint8_t *ptr = (uint8_t *)data;
++                //Ignoring the error from the below function call currently as
++                // nvidia mpeg2 decoder can discard video frames till it received a
++                // valid sequence header
++                if ((IsSeeminglyValidMPEG2SeqHeader(&ptr[0], size,mvideoWidth, mvideoHeight)))
++                    bseqHdrSent = true;
++                else if (!bseqHdrSent)
++                    return ERROR_MALFORMED;
++
++                break;
++            }
++
+             case MPEG4_VIDEO:
+             {
+ #if 0
+@@ -339,7 +383,13 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAAC() {
+ 
+         // adts_fixed_header
+ 
+-        CHECK_EQ(bits.getBits(12), 0xfffu);
++        if (bits.getBits(12) !=  0xfffu) {
++            ALOGV("Bad ADTS sync header, skipping");
++            // clear the buffer so that bogus aac packets are cleaned
++            mBuffer->setRange(0, 0);
++            return NULL;
++        }
++
+         bits.skipBits(3);  // ID, layer
+         bool protection_absent = bits.getBits(1) != 0;
+ 
+@@ -349,7 +399,9 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAAC() {
+             unsigned sampling_freq_index = bits.getBits(4);
+             bits.getBits(1);  // private_bit
+             unsigned channel_configuration = bits.getBits(3);
+-            CHECK_NE(channel_configuration, 0u);
++            //CHECK_NE(channel_configuration, 0u);
++            if (channel_configuration == 0)
++                ALOGE("Invalid channel configuration, ignoring for decoder to decide");
+             bits.skipBits(2);  // original_copy, home
+ 
+             mFormat = MakeAACCodecSpecificData(
+@@ -359,8 +411,9 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAAC() {
+ 
+             int32_t sampleRate;
+             int32_t numChannels;
+-            CHECK(mFormat->findInt32(kKeySampleRate, &sampleRate));
+-            CHECK(mFormat->findInt32(kKeyChannelCount, &numChannels));
++            // Lets rely on decoder to find the stream configuration
++            mFormat->findInt32(kKeySampleRate, &sampleRate);
++            mFormat->findInt32(kKeyChannelCount, &numChannels);
+ 
+             ALOGI("found AAC codec config (%d Hz, %d channels)",
+                  sampleRate, numChannels);
+@@ -551,6 +604,17 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitH264() {
+ 
+             if (mFormat == NULL) {
+                 mFormat = MakeAVCCodecSpecificData(accessUnit);
++                if(mFormat  != NULL){
++                    int32_t width, height;
++
++                    mFormat->findInt32(kKeyWidth, &width);
++                    mFormat->findInt32(kKeyHeight, &height);
++
++                    if((width <= 0) || (height<= 0)){
++                        mFormat->setInt32(kKeyWidth, 640);
++                        mFormat->setInt32(kKeyHeight, 480);
++                    }
++                }
+             }
+ 
+             return accessUnit;
+@@ -673,110 +737,32 @@ static sp<ABuffer> MakeMPEGVideoESDS(const sp<ABuffer> &csd) {
+ }
+ 
+ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitMPEGVideo() {
+-    const uint8_t *data = mBuffer->data();
+-    size_t size = mBuffer->size();
++    size_t auSize = mBuffer->size();
+ 
+-    bool sawPictureStart = false;
+-    int pprevStartCode = -1;
+-    int prevStartCode = -1;
+-    int currentStartCode = -1;
+-
+-    size_t offset = 0;
+-    while (offset + 3 < size) {
+-        if (memcmp(&data[offset], "\x00\x00\x01", 3)) {
+-            ++offset;
+-            continue;
+-        }
+-
+-        pprevStartCode = prevStartCode;
+-        prevStartCode = currentStartCode;
+-        currentStartCode = data[offset + 3];
+-
+-        if (currentStartCode == 0xb3 && mFormat == NULL) {
+-            memmove(mBuffer->data(), mBuffer->data() + offset, size - offset);
+-            size -= offset;
+-            (void)fetchTimestamp(offset);
+-            offset = 0;
+-            mBuffer->setRange(0, size);
+-        }
+-
+-        if ((prevStartCode == 0xb3 && currentStartCode != 0xb5)
+-                || (pprevStartCode == 0xb3 && prevStartCode == 0xb5)) {
+-            // seqHeader without/with extension
+-
+-            if (mFormat == NULL) {
+-                CHECK_GE(size, 7u);
+-
+-                unsigned width =
+-                    (data[4] << 4) | data[5] >> 4;
+-
+-                unsigned height =
+-                    ((data[5] & 0x0f) << 8) | data[6];
+-
+-                mFormat = new MetaData;
+-                mFormat->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_MPEG2);
+-                mFormat->setInt32(kKeyWidth, width);
+-                mFormat->setInt32(kKeyHeight, height);
+-
+-                ALOGI("found MPEG2 video codec config (%d x %d)", width, height);
+-
+-                sp<ABuffer> csd = new ABuffer(offset);
+-                memcpy(csd->data(), data, offset);
+-
+-                memmove(mBuffer->data(),
+-                        mBuffer->data() + offset,
+-                        mBuffer->size() - offset);
+-
+-                mBuffer->setRange(0, mBuffer->size() - offset);
+-                size -= offset;
+-                (void)fetchTimestamp(offset);
+-                offset = 0;
+-
+-                // hexdump(csd->data(), csd->size());
+-
+-                sp<ABuffer> esds = MakeMPEGVideoESDS(csd);
+-                mFormat->setData(
+-                        kKeyESDS, kTypeESDS, esds->data(), esds->size());
+-
+-                return NULL;
+-            }
+-        }
+-
+-        if (mFormat != NULL && currentStartCode == 0x00) {
+-            // Picture start
+-
+-            if (!sawPictureStart) {
+-                sawPictureStart = true;
+-            } else {
+-                sp<ABuffer> accessUnit = new ABuffer(offset);
+-                memcpy(accessUnit->data(), data, offset);
+-
+-                memmove(mBuffer->data(),
+-                        mBuffer->data() + offset,
+-                        mBuffer->size() - offset);
+-
+-                mBuffer->setRange(0, mBuffer->size() - offset);
+-
+-                int64_t timeUs = fetchTimestamp(offset);
+-                CHECK_GE(timeUs, 0ll);
+-
+-                offset = 0;
+-
+-                accessUnit->meta()->setInt64("timeUs", timeUs);
+-
+-                ALOGV("returning MPEG video access unit at time %lld us",
+-                      timeUs);
++    if (mFormat == NULL) {
++        //Create codec spefic data
++        mFormat = new MetaData;
++        mFormat->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_MPEG2);
++        ALOGV("Setting Mimetype as MEDIA_MIME_TYPE_VIDEO_MPEG2");
++        ALOGV("Width is %d, Height is %d", mvideoWidth, mvideoHeight);
++        mFormat->setInt32(kKeyWidth, mvideoWidth);
++        mFormat->setInt32(kKeyHeight, mvideoHeight);
++    }
+ 
+-                // hexdump(accessUnit->data(), accessUnit->size());
++    if (auSize == 0)
++        return NULL;
+ 
+-                return accessUnit;
+-            }
+-        }
++    int64_t timeUs = fetchTimestamp(auSize);
++    sp<ABuffer> accessUnit = new ABuffer(auSize);
++    memcpy(accessUnit->data(), mBuffer->data(), auSize);
++    mBuffer->setRange(0, 0);
+ 
+-        ++offset;
++    if (timeUs >= 0) {
++        accessUnit->meta()->setInt64("timeUs", timeUs);
++    } else {
++        ALOGW("no time for MPEG2 access unit");
+     }
+-
+-    return NULL;
++    return accessUnit;
+ }
+ 
+ static ssize_t getNextChunkSize(
+diff --git a/media/libstagefright/mpeg2ts/ESQueue.h b/media/libstagefright/mpeg2ts/ESQueue.h
+index 72aa2e7..4e24254 100644
+--- a/media/libstagefright/mpeg2ts/ESQueue.h
++++ b/media/libstagefright/mpeg2ts/ESQueue.h
+@@ -58,6 +58,9 @@ private:
+ 
+     Mode mMode;
+     uint32_t mFlags;
++    uint16_t mvideoWidth;
++    uint16_t mvideoHeight;
++    bool     bseqHdrSent;
+ 
+     sp<ABuffer> mBuffer;
+     List<RangeInfo> mRangeInfos;
+diff --git a/media/libstagefright/mpeg2ts/MPEG2TSExtractor.cpp b/media/libstagefright/mpeg2ts/MPEG2TSExtractor.cpp
+index e1589b4..ee3dd70 100644
+--- a/media/libstagefright/mpeg2ts/MPEG2TSExtractor.cpp
++++ b/media/libstagefright/mpeg2ts/MPEG2TSExtractor.cpp
+@@ -35,6 +35,7 @@
+ 
+ namespace android {
+ 
++static const size_t kMaxTSPacketSize = 192;
+ static const size_t kTSPacketSize = 188;
+ 
+ struct MPEG2TSSource : public MediaSource {
+@@ -167,6 +168,26 @@ void MPEG2TSExtractor::init() {
+     bool haveVideo = false;
+     int numPacketsParsed = 0;
+ 
++    if ((mParser->GetTsPacketLength() != kTSPacketSize ||  mParser->GetTsPacketLength() != kMaxTSPacketSize))
++    {
++        ALOGV("Setting the TS Packet Size");
++        mParser->SetTsPacketLength(kTSPacketSize);
++        char header[5];
++        if (mDataSource->readAt( 0,  header, 5) == 5)
++        //Check if it is m2ts or normal ts
++        {
++             if (*header == 0x47)
++             {
++                 mParser->SetTsPacketLength(kTSPacketSize);
++             }
++             else if (*(header + 4) == 0x47)
++             {
++                 mParser->SetTsPacketLength(kMaxTSPacketSize);
++             }
++        }
++        ALOGV("Set the TS packet size as %d", mParser->GetTsPacketLength());
++    }
++
+     while (feedMore() == OK) {
+         ATSParser::SourceType type;
+         if (haveAudio && haveVideo) {
+@@ -194,7 +215,9 @@ void MPEG2TSExtractor::init() {
+             }
+         }
+ 
+-        if (++numPacketsParsed > 10000) {
++        // Number of ts packets to be parsed to determine type of streams
++        // Assuming 25000 packets is sufficient
++        if (++numPacketsParsed > 25000) {
+             break;
+         }
+     }
+@@ -205,15 +228,15 @@ void MPEG2TSExtractor::init() {
+ status_t MPEG2TSExtractor::feedMore() {
+     Mutex::Autolock autoLock(mLock);
+ 
+-    uint8_t packet[kTSPacketSize];
+-    ssize_t n = mDataSource->readAt(mOffset, packet, kTSPacketSize);
++    uint8_t packet[kMaxTSPacketSize];
++    ssize_t n = mDataSource->readAt(mOffset, packet, mParser->GetTsPacketLength());
+ 
+-    if (n < (ssize_t)kTSPacketSize) {
+-        return (n < 0) ? (status_t)n : ERROR_END_OF_STREAM;
++    if (n < mParser->GetTsPacketLength()) {
++         return (n < 0) ? (status_t)n : ERROR_END_OF_STREAM;
+     }
+ 
+     mOffset += n;
+-    return mParser->feedTSPacket(packet, kTSPacketSize);
++    return mParser->feedTSPacket(packet, mParser->GetTsPacketLength());
+ }
+ 
+ void MPEG2TSExtractor::setLiveSession(const sp<LiveSession> &liveSession) {
+@@ -249,18 +272,32 @@ uint32_t MPEG2TSExtractor::flags() const {
+ bool SniffMPEG2TS(
+         const sp<DataSource> &source, String8 *mimeType, float *confidence,
+         sp<AMessage> *) {
++    bool success = false;
++    size_t tspacketlen = kTSPacketSize;
+     for (int i = 0; i < 5; ++i) {
+-        char header;
+-        if (source->readAt(kTSPacketSize * i, &header, 1) != 1
+-                || header != 0x47) {
+-            return false;
++        char header[5];
++        //Check if it is m2ts or normal ts
++        if (source->readAt(tspacketlen * i, header, 5) == 5) {
++            if(*header == 0x47) {
++                 ALOGV("Normal TS content keeping kTSPacketSize as %d", tspacketlen);
++                 success = true;
++            } else if(*(header + 4) == 0x47) {
++                 tspacketlen = kMaxTSPacketSize;
++                 ALOGV("M2TS Blųe Ray Content keeping kTSPacketSize as %d", tspacketlen);
++                 success = true;
++            } else {
++                ALOGV("Unrecognised TS Content");
++                return success;
++            }
++        } else {
++            ALOGV("Unrecognised TS Content");
++            return success;
+         }
+     }
+-
+     *confidence = 0.1f;
+     mimeType->setTo(MEDIA_MIMETYPE_CONTAINER_MPEG2TS);
+ 
+-    return true;
++    return success;
+ }
+ 
+ }  // namespace android
+-- 
+1.7.1
+

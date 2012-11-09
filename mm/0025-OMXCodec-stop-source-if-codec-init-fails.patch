@@ -1,0 +1,700 @@
+From 8b4591d99d1229c6f7551c3df9e4df0d7d76eed4 Mon Sep 17 00:00:00 2001
+From: vikasr <vikasr@nvidia.com>
+Date: Fri, 13 Jul 2012 16:13:25 -0700
+Subject: [PATCH 25/40] OMXCodec: stop source if codec init fails
+
+If codec initialization fails, it leaves source(camera) active.
+
+bug 869271
+bug 913640
+
+Reviewed-on: http://git-master/r/71635
+(cherry picked from commit ffb6d5ba24853b74e354b0a31008944c680a0e4f)
+
+Change-Id: I71a05f2f07f642383c6293cf222b6a372e107a23
+
+OMXCodec: Handle error during reconfiguring
+
+If and error occurs during reconfiguring then
+free all the buffers on input and output port.
+If we dont do this then OMX_CommandStateSet to
+OMX_StateIdle will never happen and it will
+result in ANR at the application level.
+Reference to this CL is taken from CL
+http://git-master/r/#change,46698 and few error
+handling is added.
+
+Bug 907873
+
+Reviewed on http://git-psac/r/#change,286
+
+Change-Id: I6ef407ec122c5aad70e8c7cf7c3e7a524cdaf3d5
+
+OMXCodec: Free all the buffers in Error state.
+
+For Idle state, it allocates buffer but, does not free when
+error comes.
+
+Original Author: Saket Bafna <sbafna@nvidia.com>
+
+bug: 814523
+Reviewed-on: http://git-master/r/#change,42898
+
+frameworks/base: Fix crash in OMXCodec in race condition
+
+Fix crash when mpeg2 profile/level is unsupported due to race
+between OMXError and PortSettingsChanged event
+
+Original Author: Suresh Choudhary <sureshc@nvidia.com>
+
+Bug 862358
+Reviewed-on: http://git-master/r/#change,46677
+
+Change-Id: I68ecaec8c02b19edac93913dab1f1877186a68ff
+Reviewed-on: http://git-psac/r/342
+Tested-by: Parag Mehendale <pmehendale@nvidia.com>
+GVS: Gerrit_Virtual_Submit
+Reviewed-by: Zhijun He <zhhe@nvidia.com>
+
+OMXCodec: Discard port settings changed event if not in executing state
+
+Added change to discard port settings changed event instead of an assert
+if not in executing state,as state may be changed by stop()
+
+Original Author : Surajit Podder.
+
+Bug 964027
+Reviewed-on: http://git-master/r/94822
+
+Stagefright: Set Max encoder freq for non-realtime encoding
+
+Whenever there is need to have max capability encoding
+such as non-real time like transcoding, set to max clock
+for encoder.
+BUG 944657
+Reviewed-on : http://git-master/r/94513
+
+recordvideo: Set MPE frequency to max
+Set MPE frequency to maximum for recordvideo app.
+
+original author: Nilesh Dhamare
+
+Bug 970621
+Reviewed-on: http://git-master/r/98445
+
+libstagefright : signalling semaphore to wait for Bufferfilled while DRC
+
+Original Author: manikanta kanamarlapudi <manikak@nvidia.com>
+
+bug 919273
+Reviewed-on: http://git-master/r/71873
+
+Change-Id: I1396d82575cc2e1da1720558dbe3a722fa671653
+Reviewed-on: http://git-psac/r/333
+Tested-by: Parag Mehendale <pmehendale@nvidia.com>
+Reviewed-by: Yogesh Solanke <ysolanke@nvidia.com>
+Reviewed-by: Zhijun He <zhhe@nvidia.com>
+
+AudioPlayer: handle dynamic change in audio format
+
+Re-open audio sink when audio format (rate, channels) change
+
+Reviewed-on: http://git-master/r/46079
+(cherry picked from commit 92bd07294d2197c048ba1bd309bf3101e5df8e05)
+
+Bug 991874
+
+Change-Id: I95c81b1204a48c1888674cdb93441e8de1b73965
+Reviewed-on: http://git-psac/r/324
+Tested-by: Yogesh Agrawal <yagrawal@nvidia.com>
+Reviewed-by: Dhiraj Nadgouda <dnadgouda@nvidia.com>
+Reviewed-by: Yogesh Solanke <ysolanke@nvidia.com>
+Reviewed-by: Parag Mehendale <pmehendale@nvidia.com>
+Reviewed-by: Zhijun He <zhhe@nvidia.com>
+
+StageFright: Enables sample rate, num channels from audio dec
+
+Adds logic to use the sample rate, number of channels coming from
+audio decoder to be actually used. It was not being 'used' earlier.
+
+Reviewed-on: http://git-master/r/64716
+(cherry picked from commit 58c55eac964ed108cb0e9244556e503354033617)
+
+Reviewed-on: http://git-master/r/74310
+(cherry picked from commit f00a41c101b7bd6e59243120925f29d90b231314)
+
+Change-Id: Iadc07267bebe0b847e1df645f5f034a82cbd6815
+Reviewed-on: http://git-psac/r/283
+Tested-by: Suresh Choudhary <sureshc@nvidia.com>
+Reviewed-by: Zhijun He <zhhe@nvidia.com>
+Reviewed-by: Yogesh Solanke <ysolanke@nvidia.com>
+---
+ cmds/stagefright/recordvideo.cpp        |    1 +
+ include/media/stagefright/AudioPlayer.h |    9 ++
+ include/media/stagefright/OMXCodec.h    |    2 +
+ media/libstagefright/AudioPlayer.cpp    |  166 +++++++++++++++++++++++++++++++
+ media/libstagefright/OMXCodec.cpp       |  126 ++++++++++++++++++++++--
+ 5 files changed, 296 insertions(+), 8 deletions(-)
+ mode change 100755 => 100644 media/libstagefright/OMXCodec.cpp
+
+diff --git a/cmds/stagefright/recordvideo.cpp b/cmds/stagefright/recordvideo.cpp
+index e02f111..159ffda 100644
+--- a/cmds/stagefright/recordvideo.cpp
++++ b/cmds/stagefright/recordvideo.cpp
+@@ -277,6 +277,7 @@ int main(int argc, char **argv) {
+     enc_meta->setInt32(kKeySliceHeight, height);
+     enc_meta->setInt32(kKeyIFramesInterval, iFramesIntervalSeconds);
+     enc_meta->setInt32(kKeyColorFormat, colorFormat);
++    enc_meta->setInt32(kKeyNotRealTime, true);
+     if (level != -1) {
+         enc_meta->setInt32(kKeyVideoLevel, level);
+     }
+diff --git a/include/media/stagefright/AudioPlayer.h b/include/media/stagefright/AudioPlayer.h
+index f5dfd85..9504b54 100644
+--- a/include/media/stagefright/AudioPlayer.h
++++ b/include/media/stagefright/AudioPlayer.h
+@@ -18,6 +18,8 @@
+ 
+ #define AUDIO_PLAYER_H_
+ 
++#include "include/TimedEventQueue.h"
++
+ #include <media/MediaPlayerInterface.h>
+ #include <media/stagefright/MediaBuffer.h>
+ #include <media/stagefright/TimeSource.h>
+@@ -121,6 +123,13 @@ private:
+ 
+     uint32_t getNumFramesPendingPlayout() const;
+ 
++    void onPortSettingsChangedEvent();
++
++    TimedEventQueue mQueue;
++    bool mQueueStarted;
++    sp<TimedEventQueue::Event> mPortSettingsChangedEvent;
++    bool mPortSettingsChangedEventPending;
++
+     AudioPlayer(const AudioPlayer &);
+     AudioPlayer &operator=(const AudioPlayer &);
+ };
+diff --git a/include/media/stagefright/OMXCodec.h b/include/media/stagefright/OMXCodec.h
+index 842aad3..c4ad82b 100644
+--- a/include/media/stagefright/OMXCodec.h
++++ b/include/media/stagefright/OMXCodec.h
+@@ -196,6 +196,7 @@ private:
+     sp<MemoryDealer> mDealer[2];
+ 
+     State mState;
++    State mLastState;
+     Vector<BufferInfo> mPortBuffers[2];
+     PortStatus mPortStatus[2];
+     bool mInitialBufferSubmit;
+@@ -220,6 +221,7 @@ private:
+     Condition mAsyncCompletion;
+ 
+     bool mPaused;
++    bool mErrWhileRecon;
+ 
+     sp<ANativeWindow> mNativeWindow;
+ 
+diff --git a/media/libstagefright/AudioPlayer.cpp b/media/libstagefright/AudioPlayer.cpp
+index 90a7cb9..2ca2b9d 100644
+--- a/media/libstagefright/AudioPlayer.cpp
++++ b/media/libstagefright/AudioPlayer.cpp
+@@ -32,6 +32,30 @@
+ 
+ namespace android {
+ 
++struct AudioPlayerEvent : public TimedEventQueue::Event {
++    AudioPlayerEvent(
++            AudioPlayer *player,
++            void (AudioPlayer::*method)())
++        : mAudioPlayer(player),
++          mMethod(method) {
++    }
++
++protected:
++    virtual ~AudioPlayerEvent() {}
++
++    virtual void fire(TimedEventQueue *queue, int64_t /* now_us */) {
++       (mAudioPlayer->*mMethod)();
++    }
++
++private:
++    AudioPlayer *mAudioPlayer;
++    void (AudioPlayer::*mMethod)();
++
++    AudioPlayerEvent(const AudioPlayerEvent &);
++    AudioPlayerEvent &operator=(const AudioPlayerEvent &);
++};
++
++
+ AudioPlayer::AudioPlayer(
+         const sp<MediaPlayerBase::AudioSink> &audioSink,
+         bool allowDeepBuffering,
+@@ -58,12 +82,20 @@ AudioPlayer::AudioPlayer(
+       mAllowDeepBuffering(allowDeepBuffering),
+       mObserver(observer),
+       mPinnedTimeUs(-1ll) {
++
++    mPortSettingsChangedEvent = new AudioPlayerEvent(this, &AudioPlayer::onPortSettingsChangedEvent);
++    mPortSettingsChangedEventPending = false;
++    mQueueStarted = false;
++
+ }
+ 
+ AudioPlayer::~AudioPlayer() {
+     if (mStarted) {
+         reset();
+     }
++    if (mQueueStarted) {
++        mQueue.stop();
++    }
+ }
+ 
+ void AudioPlayer::setSource(const sp<MediaSource> &source) {
+@@ -84,6 +116,11 @@ status_t AudioPlayer::start(bool sourceAlreadyStarted) {
+         }
+     }
+ 
++    if (!mQueueStarted) {
++        mQueue.start();
++        mQueueStarted = true;
++    }
++
+     // We allow an optional INFO_FORMAT_CHANGED at the very beginning
+     // of playback, if there is one, getFormat below will retrieve the
+     // updated format, if there isn't, we'll stash away the valid buffer
+@@ -365,6 +402,116 @@ uint32_t AudioPlayer::getNumFramesPendingPlayout() const {
+     return mNumFramesPlayed - numFramesPlayedOut;
+ }
+ 
++void AudioPlayer::onPortSettingsChangedEvent() {
++    status_t err = OK;
++    sp<MetaData> format;
++    bool success;
++
++   ALOGV("onPortSettingsChangedEvent");
++
++    Mutex::Autolock autoLock(mLock);
++
++    if (!mPortSettingsChangedEventPending) {
++        goto onPortSettingsChangedEvent_exit;
++    }
++
++    // close exisiting playback
++    if (mAudioSink.get() != NULL) {
++        mAudioSink->stop();
++        mAudioSink->close();
++    } else {
++        mAudioTrack->stop();
++        delete mAudioTrack;
++        mAudioTrack = NULL;
++    }
++
++    // open new
++    format = mSource->getFormat();
++    const char *mime;
++    success = format->findCString(kKeyMIMEType, &mime);
++    CHECK(success);
++    CHECK(!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_RAW)); //need to check
++
++    success = format->findInt32(kKeySampleRate, &mSampleRate);
++    CHECK(success);
++
++    int32_t numChannels, channelMask;
++    success = format->findInt32(kKeyChannelCount, &numChannels);
++    CHECK(success);
++
++    if(!format->findInt32(kKeyChannelMask, &channelMask)) {
++        // log only when there's a risk of ambiguity of channel mask selection
++        ALOGI_IF(numChannels > 2,
++             "source format didn't specify channel mask, using (%d) channel order", numChannels);
++        channelMask = CHANNEL_MASK_USE_CHANNEL_ORDER;
++    }
++
++    ALOGV("New sample rate %d channels %d", mSampleRate, numChannels);
++
++    if (mAudioSink.get() != NULL) {
++        err = mAudioSink->open(
++                 mSampleRate, numChannels, channelMask, AUDIO_FORMAT_PCM_16_BIT,
++                 DEFAULT_AUDIOSINK_BUFFERCOUNT,
++                 &AudioPlayer::AudioSinkCallback,
++                 this,
++                 (mAllowDeepBuffering ?
++                          AUDIO_OUTPUT_FLAG_DEEP_BUFFER :
++                          AUDIO_OUTPUT_FLAG_NONE));
++
++        if (err != OK) {
++            ALOGE("mAudioSink->open error : %d", err);
++            goto onPortSettingsChangedEvent_exit;
++        }
++
++        mLatencyUs = (int64_t)mAudioSink->latency() * 1000;
++        mFrameSize = mAudioSink->frameSize();
++
++        mAudioSink->start();
++    } else {
++        // playing to an AudioTrack, set up mask if necessary
++        audio_channel_mask_t audioMask = channelMask == CHANNEL_MASK_USE_CHANNEL_ORDER ?
++                          audio_channel_out_mask_from_count(numChannels) : channelMask;
++        if (0 == audioMask) {
++            goto onPortSettingsChangedEvent_exit;
++        }
++
++        mAudioTrack = new AudioTrack(
++                   AUDIO_STREAM_MUSIC, mSampleRate, AUDIO_FORMAT_PCM_16_BIT, audioMask,
++                   0, AUDIO_OUTPUT_FLAG_NONE, &AudioCallback, this, 0);
++
++        if ((err = mAudioTrack->initCheck()) != OK) {
++            ALOGE("AudioTrack error : %d", err);
++            delete mAudioTrack;
++            mAudioTrack = NULL;
++            goto onPortSettingsChangedEvent_exit;
++        }
++
++        mLatencyUs = (int64_t)mAudioTrack->latency() * 1000;
++        mFrameSize = mAudioTrack->frameSize();
++
++        mAudioTrack->start();
++    }
++
++    mStarted = true;
++    mPinnedTimeUs = -1ll;
++
++    mPortSettingsChangedEventPending = false;
++
++onPortSettingsChangedEvent_exit:
++
++    if (err != OK) {
++        if (mObserver && !mReachedEOS) {
++            mObserver->postAudioEOS();
++        }
++
++        mReachedEOS = true;
++        mFinalStatus = err;
++    }
++
++    mPortSettingsChangedEventPending = false;
++    return;
++}
++
+ size_t AudioPlayer::fillBuffer(void *data, size_t size) {
+     if (mNumFramesPlayed == 0) {
+         ALOGV("AudioCallback");
+@@ -377,6 +524,14 @@ size_t AudioPlayer::fillBuffer(void *data, size_t size) {
+     bool postSeekComplete = false;
+     bool postEOS = false;
+     int64_t postEOSDelayUs = 0;
++    bool postPortSettingsChanged = false;
++
++    if (true == mPortSettingsChangedEventPending) {
++        LOGV("Waiting for reconfig to finish... filling zeros");
++        memset(data, 0, size);
++
++        return size;
++    }
+ 
+     size_t size_done = 0;
+     size_t size_remaining = size;
+@@ -422,6 +577,12 @@ size_t AudioPlayer::fillBuffer(void *data, size_t size) {
+                 err = mSource->read(&mInputBuffer, &options);
+             }
+ 
++            if (err == INFO_FORMAT_CHANGED) {
++                LOGV("INFO_FORMAT_CHANGED");
++                postPortSettingsChanged = true;
++                break;
++            }
++
+             // Technically INFO_DICONTINUITY is not an error
+             if (err == INFO_DISCONTINUITY) {
+                // Ignore this error
+@@ -529,6 +690,11 @@ size_t AudioPlayer::fillBuffer(void *data, size_t size) {
+         }
+     }
+ 
++   if (postPortSettingsChanged) {
++        mPortSettingsChangedEventPending = true;
++        mQueue.postEvent(mPortSettingsChangedEvent);
++    }
++
+     if (postEOS) {
+         mObserver->postAudioEOS(postEOSDelayUs);
+     }
+diff --git a/media/libstagefright/OMXCodec.cpp b/media/libstagefright/OMXCodec.cpp
+old mode 100755
+new mode 100644
+index 70dbae0..4eab0af
+--- a/media/libstagefright/OMXCodec.cpp
++++ b/media/libstagefright/OMXCodec.cpp
+@@ -41,6 +41,7 @@
+ 
+ #include <OMX_Audio.h>
+ #include <OMX_Component.h>
++#include <NVOMX_IndexExtensions.h>
+ 
+ #include "include/avc_utils.h"
+ 
+@@ -796,13 +797,14 @@ status_t OMXCodec::isColorFormatSupported(
+ void OMXCodec::setVideoInputFormat(
+         const char *mime, const sp<MetaData>& meta) {
+ 
+-    int32_t width, height, frameRate, bitRate, stride, sliceHeight;
++    int32_t width, height, frameRate, bitRate, stride, sliceHeight, setMaxClock=0;
+     bool success = meta->findInt32(kKeyWidth, &width);
+     success = success && meta->findInt32(kKeyHeight, &height);
+     success = success && meta->findInt32(kKeyFrameRate, &frameRate);
+     success = success && meta->findInt32(kKeyBitRate, &bitRate);
+     success = success && meta->findInt32(kKeyStride, &stride);
+     success = success && meta->findInt32(kKeySliceHeight, &sliceHeight);
++    meta->findInt32(kKeyNotRealTime, &setMaxClock);
+     CHECK(success);
+     CHECK(stride != 0);
+ 
+@@ -882,6 +884,32 @@ void OMXCodec::setVideoInputFormat(
+             mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+     CHECK_EQ(err, (status_t)OK);
+ 
++    if (!strncmp(mComponentName, "OMX.Nvidia.", 11))
++    {
++        OMX_INDEXTYPE index;
++        err= mOMX->getExtensionIndex(
++        mNode,
++        "OMX.Nvidia.index.param.encmaxclock",
++        &index);
++
++        if (err != OK) {
++            LOGW("getExtensionIndex API failed \n");
++        }
++        else
++        {
++            OMX_CONFIG_BOOLEANTYPE nClock;
++            if (setMaxClock)
++                nClock.bEnabled = OMX_TRUE;
++            else
++                nClock.bEnabled = OMX_FALSE;
++            err = mOMX->setConfig(mNode, index, &nClock, sizeof(nClock));
++
++            if (err != OK) {
++                CHECK_EQ(err, (status_t)OK);
++            }
++        }
++    }
++
+     /////////////////// Codec-specific ////////////////////////
+     switch (compressionFormat) {
+         case OMX_VIDEO_CodingMPEG4:
+@@ -1354,6 +1382,7 @@ OMXCodec::OMXCodec(
+       mSource(source),
+       mCodecSpecificDataIndex(0),
+       mState(LOADED),
++      mLastState(DEAD),
+       mInitialBufferSubmit(true),
+       mSignalledEOS(false),
+       mNoMoreOutputData(false),
+@@ -1368,6 +1397,7 @@ OMXCodec::OMXCodec(
+       mSkipCutBuffer(NULL),
+       mLeftOverBuffer(NULL),
+       mPaused(false),
++      mErrWhileRecon(false),
+       mNativeWindow(
+               (!strncmp(componentName, "OMX.google.", 11))
+                         ? NULL : nativeWindow) {
+@@ -1462,17 +1492,22 @@ void OMXCodec::setComponentRole() {
+ }
+ 
+ OMXCodec::~OMXCodec() {
++
+     mSource.clear();
+ 
+     CHECK(mState == LOADED || mState == ERROR || mState == LOADED_TO_IDLE);
+ 
+     status_t err = mOMX->freeNode(mNode);
+-    CHECK_EQ(err, (status_t)OK);
++    if (!mErrWhileRecon) {
++        CHECK_EQ(err, (status_t)OK);
++        mErrWhileRecon = false;
++    }
+ 
+     mNode = NULL;
+     setState(DEAD);
+ 
+     clearCodecSpecificData();
++    mLastState = DEAD;
+ 
+     free(mComponentName);
+     mComponentName = NULL;
+@@ -1509,7 +1544,17 @@ status_t OMXCodec::init() {
+         mAsyncCompletion.wait(mLock);
+     }
+ 
+-    return mState == ERROR ? UNKNOWN_ERROR : OK;
++    if (mState == ERROR)
++    {
++        err = freeBuffersOnPort(kPortIndexInput);
++        CHECK_EQ(err, (status_t)OK);
++
++        err = freeBuffersOnPort(kPortIndexOutput);
++        CHECK_EQ(err, (status_t)OK);
++        return UNKNOWN_ERROR;
++    }
++
++    return OK;
+ }
+ 
+ // static
+@@ -2098,6 +2143,10 @@ int64_t OMXCodec::getDecodingTimeUs() {
+ }
+ 
+ void OMXCodec::on_message(const omx_message &msg) {
++    if (mErrWhileRecon) {
++        setState(ERROR);
++    }
++
+     if (mState == ERROR) {
+         /*
+          * only drop EVENT messages, EBD and FBD are still
+@@ -2472,6 +2521,15 @@ void OMXCodec::onEvent(OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2) {
+                         }
+                     }
+                 }
++            } else if (data1 == kPortIndexOutput
++                    && data2 == OMX_IndexParamAudioPcm) {
++
++                 sp<MetaData> oldOutputFormat = mOutputFormat;
++                 initOutputFormat(mSource->getFormat());
++
++                 if (formatHasNotablyChanged(oldOutputFormat, mOutputFormat)) {
++                     mOutputPortSettingsHaveChanged = true;
++                 }
+             }
+             break;
+         }
+@@ -2821,11 +2879,24 @@ status_t OMXCodec::freeBuffer(OMX_U32 portIndex, size_t bufIndex) {
+ void OMXCodec::onPortSettingsChanged(OMX_U32 portIndex) {
+     CODEC_LOGV("PORT_SETTINGS_CHANGED(%ld)", portIndex);
+ 
++    // In case we have already got ERROR, do not proceed
++    if (mState == ERROR)
++        return;
++
+     if((mBuffersWithRenderer == 1) && (mPortSettingsEvent & PORT_SETTINGS_DELAYED)) {
++
++        if(mState != EXECUTING) {
++            CODEC_LOGE("Discarding onPortSettingsChanged event");
++            return;
++        }
++
+         mEventPortIndex = portIndex;
+-        CHECK_EQ((int)mState, (int)EXECUTING);
+         CHECK_EQ(portIndex, (OMX_U32)kPortIndexOutput);
+         setState(RECONFIGURING);
++
++        if (mFilledBuffers.empty())
++            mBufferFilled.signal();
++
+         return;
+     } else {
+         if(mState != RECONFIGURING) {
+@@ -3300,6 +3371,9 @@ void OMXCodec::fillOutputBuffer(IOMX::buffer_id buffer) {
+ }
+ 
+ void OMXCodec::setState(State newState) {
++    if(mState != newState) {
++        mLastState = mState;
++    }
+     mState = newState;
+     mAsyncCompletion.signal();
+ 
+@@ -3692,6 +3766,7 @@ status_t OMXCodec::start(MetaData *meta) {
+     mTargetTimeUs = -1;
+     mFilledBuffers.clear();
+     mPaused = false;
++    mErrWhileRecon = false;
+ 
+     status_t err;
+     if (mIsEncoder) {
+@@ -3717,11 +3792,16 @@ status_t OMXCodec::start(MetaData *meta) {
+         CODEC_LOGE("source failed to start: %d", err);
+         return err;
+     }
+-    return init();
++    err = init();
++    if (err!=OK)
++        mSource->stop();
++
++    return err;
+ }
+ 
+ status_t OMXCodec::stop() {
+-    CODEC_LOGV("stop mState=%d", mState);
++    CODEC_LOGV("stop mState = %d mLastState = %d", mState,mLastState);
++
+     Mutex::Autolock autoLock(mLock);
+     status_t err = stopOmxComponent_l();
+     mSource->stop();
+@@ -3738,6 +3818,7 @@ status_t OMXCodec::stopOmxComponent_l() {
+     }
+ 
+     bool isError = false;
++    mErrWhileRecon = false;
+     switch (mState) {
+         case LOADED:
+             break;
+@@ -3761,6 +3842,26 @@ status_t OMXCodec::stopOmxComponent_l() {
+                 setState(LOADED);
+                 break;
+             } else {
++                if (mLastState == RECONFIGURING){
++                    mErrWhileRecon = true;
++                   // We explicitely free all input and output port buffers in this state.
++                   // If we dont do this OMX_CommandStateSet to OMX_StateIdle will never happen.
++                   Vector<BufferInfo> *buffers = &mPortBuffers[kPortIndexInput];
++                   size_t i = 0;
++                   while (i < buffers->size()) {
++                        status_t err = freeBuffer(kPortIndexInput, i);
++                        CHECK_EQ(err, (status_t)OK);
++                        ++i;
++                   }
++                   buffers = &mPortBuffers[kPortIndexOutput];
++                   i = 0;
++                   while (i < buffers->size()) {
++                        status_t err = freeBuffer(kPortIndexOutput, i);
++                        CHECK_EQ(err, (status_t)OK);
++                        ++i;
++                   }
++                }
++
+                 OMX_STATETYPE state = OMX_StateInvalid;
+                 status_t err = mOMX->getState(mNode, &state);
+                 CHECK_EQ(err, (status_t)OK);
+@@ -3796,8 +3897,13 @@ status_t OMXCodec::stopOmxComponent_l() {
+                     onCmdComplete(OMX_CommandFlush, kPortIndexOutput);
+                 }
+             } else {
+-                mPortStatus[kPortIndexInput] = SHUTTING_DOWN;
+-                mPortStatus[kPortIndexOutput] = SHUTTING_DOWN;
++                if (mErrWhileRecon) {
++                       mPortStatus[kPortIndexInput] = DISABLING;
++                       mPortStatus[kPortIndexOutput] = DISABLING;
++                } else {
++                    mPortStatus[kPortIndexInput] = SHUTTING_DOWN;
++                    mPortStatus[kPortIndexOutput] = SHUTTING_DOWN;
++                }
+ 
+                 status_t err =
+                     mOMX->sendCommand(mNode, OMX_CommandStateSet, OMX_StateIdle);
+@@ -3943,6 +4049,10 @@ status_t OMXCodec::read(
+         }
+     }
+ 
++    if (mPortSettingsEvent & PORT_SETTINGS_DELAYED) {
++        return INFO_FORMAT_CHANGED;
++    }
++
+     if (mState == ERROR) {
+         return UNKNOWN_ERROR;
+     }
+-- 
+1.7.1
+

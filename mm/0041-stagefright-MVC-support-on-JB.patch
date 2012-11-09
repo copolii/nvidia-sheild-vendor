@@ -1,0 +1,776 @@
+From d5473bd979cba5753dd62d4a96f294813860bb8e Mon Sep 17 00:00:00 2001
+From: Smita Gaikwad <smitag@nvidia.com>
+Date: Tue, 6 Nov 2012 07:16:20 -0500
+Subject: [PATCH] stagefright: MVC support on JB
+
+o Enable MVC in mp4 extractor
+  Reviewed-on: http://git-master/r/#change,52600
+o Add support for mvc specific atoms in mpeg writer
+  Reviewed-on: http://git-master/r/#change,73716
+o configuring the block by setting the MVC attribute from
+  framework.
+
+Bug 930608
+
+Change-Id: Ifbf06114e09b48fd99f6626bbcd5895ff2c364e2
+---
+ include/media/stagefright/MetaData.h          |    3 +
+ include/media/stagefright/OMXCodec.h          |    1 +
+ media/libstagefright/MPEG4Extractor.cpp       |  175 +++++++++++++++++++++++
+ media/libstagefright/MPEG4Writer.cpp          |  188 ++++++++++++++++++++++++-
+ media/libstagefright/OMXCodec.cpp             |   51 +++++++
+ media/libstagefright/include/MPEG4Extractor.h |   78 ++++++++++
+ 6 files changed, 493 insertions(+), 3 deletions(-)
+ mode change 100755 => 100644 media/libstagefright/MPEG4Writer.cpp
+
+diff --git a/include/media/stagefright/MetaData.h b/include/media/stagefright/MetaData.h
+index 2534416..6532e28 100644
+--- a/include/media/stagefright/MetaData.h
++++ b/include/media/stagefright/MetaData.h
+@@ -160,6 +160,8 @@ enum {
+     kKeyCryptoIV          = 'cryI',  // uint8_t[16]
+     kKeyCryptoMode        = 'cryM',  // int32_t
+     kKeyHeader            = 'hder', //// represents header
++    kKeyMVCC              = 'mvcc',
++    kKeyIsMVC             = 'imvc',
+ };
+ 
+ enum {
+@@ -167,6 +169,7 @@ enum {
+     kTypeAVCC        = 'avcc',
+     kTypeD263        = 'd263',
+     kTypeHeader      = 'hder',
++    kTypeMVCC        = 'mvcc',
+ };
+ 
+ class MetaData : public RefBase {
+diff --git a/include/media/stagefright/OMXCodec.h b/include/media/stagefright/OMXCodec.h
+index c4ad82b..26f8c84 100644
+--- a/include/media/stagefright/OMXCodec.h
++++ b/include/media/stagefright/OMXCodec.h
+@@ -222,6 +222,7 @@ private:
+ 
+     bool mPaused;
+     bool mErrWhileRecon;
++    bool mIsMvc;
+ 
+     sp<ANativeWindow> mNativeWindow;
+ 
+diff --git a/media/libstagefright/MPEG4Extractor.cpp b/media/libstagefright/MPEG4Extractor.cpp
+index 8d5717a..d917865 100644
+--- a/media/libstagefright/MPEG4Extractor.cpp
++++ b/media/libstagefright/MPEG4Extractor.cpp
+@@ -266,6 +266,9 @@ static const char *FourCC2MIME(uint32_t fourcc) {
+             return NULL;
+     }
+ }
++static inline unsigned U24_AT_LFUNC(const uint8_t *ptr) {
++    return ((ptr[0] & 0xFF) << 16) | ((ptr[1] & 0xFF) << 8 ) | (ptr[2] & 0xFF);
++}
+ 
+ MPEG4Extractor::MPEG4Extractor(const sp<DataSource> &source)
+     : mDataSource(source),
+@@ -274,6 +277,7 @@ MPEG4Extractor::MPEG4Extractor(const sp<DataSource> &source)
+       mFirstTrack(NULL),
+       mLastTrack(NULL),
+       mFileMetaData(new MetaData),
++      mAtomMvci(NULL),
+       mFirstSINF(NULL),
+       mIsDrm(false),
+       mStreamDurationUs(0),
+@@ -289,6 +293,11 @@ MPEG4Extractor::~MPEG4Extractor() {
+         track = next;
+     }
+     mFirstTrack = mLastTrack = NULL;
++    if (NULL != mAtomMvci) {
++        delete mAtomMvci;
++        mAtomMvci = NULL;
++    }
++
+ 
+     SINF *sinf = mFirstSINF;
+     while (sinf) {
+@@ -1583,6 +1592,172 @@ status_t MPEG4Extractor::parseChunk(off64_t *offset, int depth) {
+             }
+             break;
+         }
++        //MVC
++        case FOURCC('m','v','c','i'):
++        {
++            off_t stop_offset = *offset + chunk_size;
++            uint8_t buffer[4];
++            if (mDataSource->readAt(
++                        data_offset, buffer,4) < 4) {
++                return ERROR_IO;
++            }
++            if (NULL == mAtomMvci) {
++                mAtomMvci = new AtomMvci();
++            }
++            mAtomMvci->version = (uint8_t)buffer[0];
++            mAtomMvci->flag    =  U24_AT_LFUNC(&buffer[1]);
++            *offset = data_offset + 4;
++            while (*offset < stop_offset) {
++                status_t err = parseChunk(offset, depth + 1);
++                if (err != OK) {
++                    return err;
++                }
++            }
++            if (*offset != stop_offset) {
++                return ERROR_MALFORMED;
++            }
++            break;
++        }
++        case FOURCC('m','v','c','g'):
++        {
++            off_t stop_offset = *offset + chunk_size;
++            //parse the required items...
++            int32_t more = 0;
++
++            uint8_t buffer[11];
++            if (mDataSource->readAt(
++                        data_offset, buffer,11) < 11) {
++                return ERROR_IO;
++            }
++            if (NULL == mAtomMvci) { //we dont have one, create now!
++                mAtomMvci = new AtomMvci();
++            }
++            if (NULL == mAtomMvci->m_AtomMvGB) {
++                mAtomMvci->m_AtomMvGB = new AtomMvGB;
++            }
++            AtomMvGB *pmvcg = mAtomMvci->m_AtomMvGB;
++            pmvcg->version = (uint8_t)buffer[0];
++            pmvcg->flag = U24_AT_LFUNC(&buffer[1]);
++            pmvcg->multiview_group_id = U32_AT(&buffer[4]);
++            pmvcg->num_entries = (buffer[8] << 8) | buffer[9];
++            more = pmvcg->num_entries * ((8 + 6 + 10) / 8);
++            *offset = data_offset + 11 ;
++            for (int i=0; i<pmvcg->num_entries; i++) {
++                uint8_t lbuf[3];
++                if (mDataSource->readAt(*offset, lbuf, 3) < 3) {
++                    return ERROR_IO;
++                }
++                *offset += 3;
++                AtomMvGB::entryinfo ei;
++                ei.entry_type = (uint8_t)lbuf[0];
++                ei.output_view_id = (( lbuf[1] & 0x03 ) << 8) | lbuf[2];
++
++                pmvcg->m_entries.push(ei);
++            }
++            while (*offset < stop_offset) {
++                status_t err = parseChunk(offset, depth + 1);
++                if (err != OK) {
++                    return err;
++                }
++            }
++            if (*offset != stop_offset) {
++                return ERROR_MALFORMED;
++            }
++            break;
++        }
++
++        case FOURCC('v','w','i','d'):
++        {
++            if (NULL == mAtomMvci) { //we dont have one, create now!
++                mAtomMvci = new AtomMvci();
++            }
++            if (NULL == mAtomMvci->m_vwid) {
++                mAtomMvci->m_vwid = new ViewIdentifierBox;
++            }
++            ViewIdentifierBox *pVWID = mAtomMvci->m_vwid ;
++            off_t stop_offset = *offset + chunk_size;
++            int32_t more = 0;
++            uint8_t buffer[7];
++            if (mDataSource->readAt( data_offset, buffer,7) < 7) {
++                return ERROR_IO;
++            }
++            *offset = data_offset +  7;
++            pVWID->version = (uint8_t)buffer[0];
++            pVWID->flag = U24_AT_LFUNC(&buffer[1]);
++            uint8_t temp = (uint8_t) buffer[4];
++            pVWID->min_temporal_id = temp & 0x38;
++            pVWID->max_temporal_id = temp & 0x07;
++            pVWID->num_views = (buffer[5] << 8 | buffer[6]);
++
++            uint16_t nof_of_ref_views = 0;
++            for (int i=0; i < pVWID->num_views; i++) {
++                uint8_t buf[6];
++                if (mDataSource->readAt( *offset, buf,6) < 6) {
++                    return ERROR_IO;
++                }
++                *offset += 6;
++                ViewIdentifierBox::aView *pav = new ViewIdentifierBox::aView;
++                pav->myId = i ; //
++                pav->view_id = ((buf[0] & 0x03) << 8) | buf[1];
++                pav->VOIdx = ((buf[2] & 0x03) << 8) | buf[3];;
++                pav->view_type = buf[4] & 0x03;
++                pav->num_ref_views = ((buf[4] & 0x03) << 8) | buf[5];;
++                pVWID->viewsList.add(pav);
++                nof_of_ref_views += pav->num_ref_views;
++            }
++            uint8_t *bufx = new uint8_t[nof_of_ref_views * 2];
++            if (mDataSource->readAt( *offset, bufx,(nof_of_ref_views * 2)) < (nof_of_ref_views * 2)) {
++                    delete [] bufx;
++                    return ERROR_IO;
++            }
++
++            *offset += (nof_of_ref_views * 2);
++            int k =0;
++            for (int i = 0; i< pVWID->num_views;i++ ) {
++                ViewIdentifierBox::aView *pav = pVWID->viewsList.itemAt(i);
++                for (int j = 0; j < pav->num_ref_views ; j++) {
++                    pav->ref_view_id_list.add( ((bufx[k*2] & 0x03) << 8) | bufx[k * 2 + 1] );
++                    k++;
++                }
++            }
++            delete [] bufx;
++            if (*offset != stop_offset) {
++                ALOGI("ERROR ERROR :--- vwid atom hit - parse end *offset:%ld  stop_offset:%ld\n",*offset,stop_offset);
++                //return ERROR_MALFORMED;
++            }
++            *offset = stop_offset;
++            break;
++        }
++
++        case FOURCC('m','v','c','C'):
++        {
++            char buffer[256 * 2];
++            if (chunk_data_size > (off_t)sizeof(buffer)) {
++                ALOGI("mvcc: chunk_data_size > (off_t)sizeof(buffer) - failed: %ld  %ld \n",chunk_data_size, (off_t)sizeof(buffer));
++                return ERROR_BUFFER_TOO_SMALL;
++            }
++
++            if (mDataSource->readAt(
++                        data_offset, buffer, chunk_data_size) < chunk_data_size) {
++                ALOGI("mvcc coulnt able to read chunk_data_size \n");
++                return ERROR_IO;
++            }
++            /*  TODO: enable this, when mvcc-h264 decoder part is done */
++                    mLastTrack->meta->setData(
++                    kKeyMVCC, kTypeMVCC, buffer, chunk_data_size);
++
++            *offset += chunk_size;
++            break;
++        }
++
++        case FOURCC('m','v','r','a'):
++        case FOURCC('v','w','d','i'):
++        {
++            //currently we dont have any info - on this atoms
++            *offset += chunk_size;
++            break;
++
++        }
+ 
+         case FOURCC('-', '-', '-', '-'):
+         {
+diff --git a/media/libstagefright/MPEG4Writer.cpp b/media/libstagefright/MPEG4Writer.cpp
+old mode 100755
+new mode 100644
+index a19f2a7..1bf24f7
+--- a/media/libstagefright/MPEG4Writer.cpp
++++ b/media/libstagefright/MPEG4Writer.cpp
+@@ -46,6 +46,7 @@ static const int64_t kMinStreamableFileSizeInBytes = 5 * 1024 * 1024;
+ static const int64_t kMax32BitFileSize = 0x007fffffffLL;
+ static const uint8_t kNalUnitTypeSeqParamSet = 0x07;
+ static const uint8_t kNalUnitTypePicParamSet = 0x08;
++static const uint8_t kNalUnitTypeSubSeqParamSet = 0x0f;
+ static const int64_t kInitialDelayTimeUs     = 700000LL;
+ 
+ class MPEG4Writer::Track {
+@@ -206,6 +207,7 @@ private:
+     volatile bool mResumed;
+     volatile bool mStarted;
+     bool mIsAvc;
++    bool mIsMvc;
+     bool mIsAudio;
+     bool mIsMPEG4;
+     int32_t mTrackId;
+@@ -244,6 +246,7 @@ private:
+         const uint8_t *mData;
+     };
+     List<AVCParamSet> mSeqParamSets;
++    List<AVCParamSet> mSubSeqParamSets;
+     List<AVCParamSet> mPicParamSets;
+     uint8_t mProfileIdc;
+     uint8_t mProfileCompatible;
+@@ -251,6 +254,8 @@ private:
+ 
+     void *mCodecSpecificData;
+     size_t mCodecSpecificDataSize;
++    void *mMvcCodecSpecificData;
++    size_t mMvcCodecSpecificDataSize;
+     bool mGotAllCodecSpecificData;
+     bool mTrackingProgressStatus;
+ 
+@@ -275,6 +280,7 @@ private:
+     status_t makeAVCCodecSpecificData(const uint8_t *data, size_t size);
+     status_t copyAVCCodecSpecificData(const uint8_t *data, size_t size);
+     status_t parseAVCCodecSpecificData(const uint8_t *data, size_t size);
++    status_t makeMVCCodecSpecificData();
+ 
+     // Track authoring progress status
+     void trackProgressStatus(int64_t timeUs, status_t err = OK);
+@@ -313,6 +319,9 @@ private:
+     void writeD263Box();
+     void writePaspBox();
+     void writeAvccBox();
++    void writeVwidBox();
++    void writeMvccBox();
++    void writeMvciBox();
+     void writeUrlBox();
+     void writeDrefBox();
+     void writeDinfBox();
+@@ -1251,9 +1260,12 @@ MPEG4Writer::Track::Track(
+       mCttsTableEntries(new ListTableEntries<uint32_t>(1000, 2)),
+       mCodecSpecificData(NULL),
+       mCodecSpecificDataSize(0),
++      mMvcCodecSpecificData(NULL),
++      mMvcCodecSpecificDataSize(0),
+       mGotAllCodecSpecificData(false),
+       mReachedEOS(false),
+-      mRotation(0) {
++      mRotation(0),
++      mIsMvc(false) {
+     getCodecSpecificDataFromInputFormatIfPossible();
+ 
+     const char *mime;
+@@ -1404,6 +1416,11 @@ MPEG4Writer::Track::~Track() {
+         free(mCodecSpecificData);
+         mCodecSpecificData = NULL;
+     }
++
++    if (mMvcCodecSpecificData != NULL) {
++        free(mMvcCodecSpecificData);
++        mMvcCodecSpecificData = NULL;
++    }
+ }
+ 
+ void MPEG4Writer::Track::initTrackingProgressStatus(MetaData *params) {
+@@ -1729,7 +1746,8 @@ const uint8_t *MPEG4Writer::Track::parseParamSet(
+ 
+     ALOGV("parseParamSet");
+     CHECK(type == kNalUnitTypeSeqParamSet ||
+-          type == kNalUnitTypePicParamSet);
++          type == kNalUnitTypePicParamSet ||
++          type == kNalUnitTypeSubSeqParamSet);
+ 
+     const uint8_t *nextStartCode = findNextStartCode(data, length);
+     *paramSetLen = nextStartCode - data;
+@@ -1757,6 +1775,8 @@ const uint8_t *MPEG4Writer::Track::parseParamSet(
+             }
+         }
+         mSeqParamSets.push_back(paramSet);
++    } else if(type == kNalUnitTypeSubSeqParamSet) {
++        mSubSeqParamSets.push_back(paramSet);
+     } else {
+         mPicParamSets.push_back(paramSet);
+     }
+@@ -1795,6 +1815,7 @@ status_t MPEG4Writer::Track::parseAVCCodecSpecificData(
+     size_t bytesLeft = size;
+     size_t paramSetLen = 0;
+     mCodecSpecificDataSize = 0;
++    mMvcCodecSpecificDataSize = 0;
+     while (bytesLeft > 4 && !memcmp("\x00\x00\x00\x01", tmp, 4)) {
+         getNalUnitType(*(tmp + 4), &type);
+         if (type == kNalUnitTypeSeqParamSet) {
+@@ -1806,6 +1827,13 @@ status_t MPEG4Writer::Track::parseAVCCodecSpecificData(
+                 gotSps = true;
+             }
+             nextStartCode = parseParamSet(tmp + 4, bytesLeft - 4, type, &paramSetLen);
++       } else if (type == kNalUnitTypeSubSeqParamSet) {
++            CHECK(mIsMvc);
++            if (!gotSps) {
++                ALOGE("SPS must come before Subset SPS");
++                return ERROR_MALFORMED;
++            }
++            nextStartCode = parseParamSet(tmp + 4, bytesLeft - 4, type, &paramSetLen);
+         } else if (type == kNalUnitTypePicParamSet) {
+             if (!gotSps) {
+                 ALOGE("SPS must come before PPS");
+@@ -1827,7 +1855,19 @@ status_t MPEG4Writer::Track::parseAVCCodecSpecificData(
+         // Move on to find the next parameter set
+         bytesLeft -= nextStartCode - tmp;
+         tmp = nextStartCode;
+-        mCodecSpecificDataSize += (2 + paramSetLen);
++        //For MVC, add main SPS,PPS to avcc atom and all SPS,PPS to mvcc atom
++        if(mIsMvc) {
++            if((type == kNalUnitTypeSubSeqParamSet) ||
++               (type == kNalUnitTypePicParamSet &&
++                mPicParamSets.size() > 1)) {
++                mMvcCodecSpecificDataSize += (2 + paramSetLen);
++            } else {
++                mMvcCodecSpecificDataSize += (2 + paramSetLen);
++                mCodecSpecificDataSize += (2 + paramSetLen);
++            }
++        } else {
++            mCodecSpecificDataSize += (2 + paramSetLen);
++        }
+     }
+ 
+     {
+@@ -1926,6 +1966,91 @@ status_t MPEG4Writer::Track::makeAVCCodecSpecificData(
+         memcpy(&header[2], it->mData, seqParamSetLength);
+         header += (2 + seqParamSetLength);
+     }
++    if(!mIsMvc)
++    {
++        // 8-bit nPictureParameterSets
++        int nPictureParamSets = mPicParamSets.size();
++        header[0] = nPictureParamSets;
++        header += 1;
++        for (List<AVCParamSet>::iterator it = mPicParamSets.begin();
++        it != mPicParamSets.end(); ++it) {
++        // 16-bit picture parameter set length
++        uint16_t picParamSetLength = it->mLength;
++        header[0] = picParamSetLength >> 8;
++        header[1] = picParamSetLength & 0xff;
++
++        // PPS Nal unit (picture parameter set length bytes)
++        memcpy(&header[2], it->mData, picParamSetLength);
++        header += (2 + picParamSetLength);
++        }
++    } else {
++        CHECK_EQ(mPicParamSets.size(), 2);
++        header[0] = 1;
++        header += 1;
++        List<AVCParamSet>::iterator it = mPicParamSets.begin();
++        // 16-bit picture parameter set length
++        uint16_t picParamSetLength = it->mLength;
++        header[0] = picParamSetLength >> 8;
++        header[1] = picParamSetLength & 0xff;
++
++        // PPS Nal unit (picture parameter set length bytes)
++        memcpy(&header[2], it->mData, picParamSetLength);
++        header += (2 + picParamSetLength);
++    }
++    return OK;
++}
++
++status_t MPEG4Writer::Track::makeMVCCodecSpecificData() {
++
++    if (mMvcCodecSpecificData != NULL) {
++        LOGE("Already have mvc-codec specific data");
++        return ERROR_MALFORMED;
++    }
++
++    // ISO 14496-15: AVC file format
++    mMvcCodecSpecificDataSize += 7;  // 7 more bytes in the header
++    mMvcCodecSpecificData = malloc(mMvcCodecSpecificDataSize);
++    uint8_t *header = (uint8_t *)mMvcCodecSpecificData;
++    header[0] = 1;                     // version
++    header[1] = mProfileIdc;           // profile indication
++    header[2] = mProfileCompatible;    // profile compatibility
++    header[3] = mLevelIdc;
++
++    // complete_representation = 1, explicit_au_track = 1
++    // 4-bit '1111' followed by 2-bit to lengthSizeMinuusOne
++    if (mOwner->useNalLengthFour()) {
++        header[4] = 0xfc | 3;    // length size == 4 bytes
++    } else {
++        header[4] = 0xfc | 1;    // length size == 2 bytes
++    }
++
++    // 1-bit '0' followed by 7-bit numSequenceParameterSets
++    int nSequenceParamSets = mSeqParamSets.size() + mSubSeqParamSets.size();
++    header[5] = nSequenceParamSets;
++    header += 6;
++    for (List<AVCParamSet>::iterator it = mSeqParamSets.begin();
++    it != mSeqParamSets.end(); ++it) {
++        // 16-bit sequence parameter set length
++        uint16_t seqParamSetLength = it->mLength;
++        header[0] = seqParamSetLength >> 8;
++        header[1] = seqParamSetLength & 0xff;
++
++        // SPS NAL unit (sequence parameter length bytes)
++        memcpy(&header[2], it->mData, seqParamSetLength);
++        header += (2 + seqParamSetLength);
++    }
++
++    for (List<AVCParamSet>::iterator it = mSubSeqParamSets.begin();
++    it != mSubSeqParamSets.end(); ++it) {
++        // 16-bit subset sequence parameter set length
++        uint16_t subSeqParamSetLength = it->mLength;
++        header[0] = subSeqParamSetLength >> 8;
++        header[1] = subSeqParamSetLength & 0xff;
++
++        // subset-SPS NAL unit (subset sequence parameter length bytes)
++        memcpy(&header[2], it->mData, subSeqParamSetLength);
++        header += (2 + subSeqParamSetLength);
++    }
+ 
+     // 8-bit nPictureParameterSets
+     int nPictureParamSets = mPicParamSets.size();
+@@ -2019,11 +2144,17 @@ status_t MPEG4Writer::Track::threadEntry() {
+                 && isCodecConfig) {
+ 
+             if (mIsAvc) {
++                int32_t isMvc;
++                if(buffer->meta_data()->findInt32(kKeyIsMVC, &isMvc) && isMvc)
++                    mIsMvc = true;
++
+                 status_t err = makeAVCCodecSpecificData(
+                         (const uint8_t *)buffer->data()
+                             + buffer->range_offset(),
+                         buffer->range_length());
+                 CHECK_EQ((status_t)OK, err);
++                if(mIsMvc)
++                    makeMVCCodecSpecificData();
+             } else if (mIsMPEG4) {
+                 mCodecSpecificDataSize = buffer->range_length();
+                 mCodecSpecificData = malloc(mCodecSpecificDataSize);
+@@ -2494,6 +2625,9 @@ void MPEG4Writer::Track::writeTrackHeader(bool use32BitOffset) {
+                     writeVmhdBox();
+                 }
+                 writeDinfBox();
++                if(mIsMvc) {
++                    writeMvciBox();
++                }
+                 writeStblBox(use32BitOffset);
+             mOwner->endBox();  // minf
+         mOwner->endBox();  // mdia
+@@ -2569,6 +2703,10 @@ void MPEG4Writer::Track::writeVideoFourCCBox() {
+         writeD263Box();
+     } else if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_AVC, mime)) {
+         writeAvccBox();
++        if(mIsMvc) {
++            writeVwidBox();
++            writeMvccBox();
++        }
+     }
+ 
+     writePaspBox();
+@@ -2828,6 +2966,50 @@ void MPEG4Writer::Track::writeAvccBox() {
+     mOwner->endBox();  // avcC
+ }
+ 
++void MPEG4Writer::Track::writeMvccBox() {
++    CHECK(mMvcCodecSpecificData);
++    CHECK(mMvcCodecSpecificDataSize >= 5);
++    uint8_t *ptr = (uint8_t *)mMvcCodecSpecificData;
++    ptr[4] = (ptr[4] & 0xfc) | (mOwner->useNalLengthFour() ? 3 : 1);
++    mOwner->beginBox("mvcC");
++    mOwner->write(mMvcCodecSpecificData, mMvcCodecSpecificDataSize);
++    mOwner->endBox();  // mvcC
++}
++
++void MPEG4Writer::Track::writeMvciBox() {
++    CHECK(mIsMvc);
++    mOwner->beginBox("mvci");
++    mOwner->writeInt32(0);    // version=0, flags=0
++    mOwner->beginBox("mvcg");
++    mOwner->writeInt32(0);    // version=0, flags=0
++    mOwner->writeInt32(0);    // multiview_group_id = 0
++    mOwner->writeInt16(0x02); // num_entries=2
++    mOwner->writeInt8(0);     // reserved=0
++    mOwner->writeInt8(2);     // entry_type=2
++    mOwner->writeInt16(0);    // reserved1=0,output_view_id=0
++    mOwner->writeInt8(2);     // entry_type=2
++    mOwner->writeInt16(0);    // reserved1=0,output_view_id=0
++    mOwner->endBox();         // mvcg
++    mOwner->endBox();         // mvci
++}
++
++void MPEG4Writer::Track::writeVwidBox() {
++    CHECK(mIsMvc);
++    mOwner->beginBox("vwid");
++    mOwner->writeInt32(0);    // version=0, flags=0
++    mOwner->writeInt8(0);     // reserved6 : 0, min_temporal_id : 0, max_temporal_id : 0
++    mOwner->writeInt16(0x02); // num_views : 2
++    // View 0
++    mOwner->writeInt16(0);    // reserved1 : 0, view_id[0] : 0
++    mOwner->writeInt16(0);    // reserved2 : 0, view_order_index : 0
++    mOwner->writeInt16(0x0400); // reserved3 : 0, base_view_type : 1, num_ref_views : 0
++    // View 1
++    mOwner->writeInt16(0x01); // reserved1 : 0, view_id[0] : 1
++    mOwner->writeInt16(0x01); // reserved2 : 0, view_order_index : 1
++    mOwner->writeInt16(0x00); // reserved3 : 0, base_view_type : 0, num_ref_views : 0
++    mOwner->endBox();  // vwid
++}
++
+ void MPEG4Writer::Track::writeD263Box() {
+     mOwner->beginBox("d263");
+     mOwner->writeInt32(0);  // vendor
+diff --git a/media/libstagefright/OMXCodec.cpp b/media/libstagefright/OMXCodec.cpp
+index 4d5464b..958fbc9 100644
+--- a/media/libstagefright/OMXCodec.cpp
++++ b/media/libstagefright/OMXCodec.cpp
+@@ -524,8 +524,26 @@ status_t OMXCodec::configureCodec(const sp<MetaData> &meta) {
+             CHECK(meta->findData(kKeyVorbisBooks, &type, &data, &size));
+             addCodecSpecificData(data, size);
+         }
++
++        // always try this!
++        if (meta->findData(kTypeMVCC, &type, &data, &size)) {
++            // Parse the AVCDecoderConfigurationRecord
++            ALOGE("kTypeMVCC is called \n");
++            const uint8_t *ptr = (const uint8_t *)data;
++            if (ptr == NULL || size < 7) {
++                ALOGV("Skipcodecdata- kKeyAVCC ERRROR: ptr= %x - size = %d", ptr, size);
++                goto skipcodecdata;
++            }
++            unsigned profile, level;
++            status_t err = parseAVCCodecSpecificData(data, size, &profile, &level);
++            if (OK != err) {
++                return err;
++            }
++            mIsMvc = true;
++        }
+     }
+ 
++skipcodecdata:
+     int32_t bitRate = 0;
+     if (mIsEncoder) {
+         CHECK(meta->findInt32(kKeyBitRate, &bitRate));
+@@ -1408,6 +1426,7 @@ OMXCodec::OMXCodec(
+       mLeftOverBuffer(NULL),
+       mPaused(false),
+       mErrWhileRecon(false),
++      mIsMvc(false),
+       mNativeWindow(
+               (!strncmp(componentName, "OMX.google.", 11))
+                         ? NULL : nativeWindow) {
+@@ -2315,6 +2334,10 @@ void OMXCodec::on_message(const omx_message &msg) {
+                     isCodecSpecific = true;
+                 }
+ 
++                if (msg.u.extended_buffer_data.flags & OMX_BUFFERFLAG_MVC) {
++                    buffer->meta_data()->setInt32(kKeyIsMVC, true);
++                }
++
+                 if (isGraphicBuffer || mQuirks & kOutputBuffersAreUnreadable) {
+                     buffer->meta_data()->setInt32(kKeyIsUnreadable, true);
+                 }
+@@ -3990,6 +4013,34 @@ status_t OMXCodec::read(
+             mPaused = false;
+         }
+ 
++        if (mIsMvc) {
++            OMX_INDEXTYPE index;
++            NVX_CONFIG_VIDEO_MVC_INFO StitchInfo;
++
++            status_t error = mOMX->getExtensionIndex(
++                                   mNode,
++                                   "OMX.Nvidia.index.config.videomvcinfo",
++                                   &index);
++
++            if (error != OK) {
++                return error;
++            }
++            error = mOMX->getConfig(mNode, index, &StitchInfo, sizeof(StitchInfo));
++            if (error != OK) {
++                CODEC_LOGE("getConfig('OMX.Nvidia.index.config.videomvcinfo') "
++                "returned error 0x%08x", error);
++                return error;
++            }
++            StitchInfo.stitch_MVCViews_Flag = OMX_TRUE;
++            error = mOMX->setConfig(mNode, index, &StitchInfo, sizeof(StitchInfo));
++
++            if (error != OK) {
++                CODEC_LOGE("setConfig('OMX.Nvidia.index.config.videomvcinfo') "
++                "returned error 0x%08x", error);
++                return error;
++            }
++        }
++
+         drainInputBuffers();
+ 
+         if (mState == EXECUTING) {
+diff --git a/media/libstagefright/include/MPEG4Extractor.h b/media/libstagefright/include/MPEG4Extractor.h
+index 8577128..e4a1a62 100644
+--- a/media/libstagefright/include/MPEG4Extractor.h
++++ b/media/libstagefright/include/MPEG4Extractor.h
+@@ -29,6 +29,83 @@ class DataSource;
+ class SampleTable;
+ class String8;
+ 
++/////////////////
++//MVC code !!!
++
++struct AtomMvGB {
++    uint32_t size;
++    char type[4];
++    uint8_t version;
++    uint32_t flag;
++    uint32_t multiview_group_id;
++    uint16_t num_entries;
++    struct entryinfo {
++        uint8_t  entry_type;
++        uint16_t output_view_id;
++    };
++    Vector<entryinfo> m_entries;
++};
++
++//vwid //>>ViewIdentifierBox
++struct ViewIdentifierBox {
++    uint32_t size;
++    char type[4];
++    uint8_t version;
++    uint32_t flag;
++
++    uint8_t min_temporal_id;
++    uint8_t max_temporal_id;
++    uint16_t num_views;
++    struct aView {
++        int myId;
++        uint16_t view_id;
++        uint16_t VOIdx;
++        uint8_t view_type;
++        uint16_t num_ref_views;
++        Vector<uint16_t> ref_view_id_list;
++    };
++    Vector<aView*> viewsList;
++};
++
++class AtomMvci{
++public:
++    uint32_t size;
++    uint_t type;
++    uint8_t version;
++    uint32_t flag;
++    struct AtomMvGB *m_AtomMvGB;
++    struct ViewIdentifierBox *m_vwid;
++
++public:
++    AtomMvci()
++    :size(0),type(0), version(0),flag(0),
++    m_AtomMvGB(NULL),
++    m_vwid(NULL)
++    {
++    }
++
++    ~AtomMvci() {
++        if(m_AtomMvGB != NULL) {
++            delete m_AtomMvGB;
++            m_AtomMvGB = NULL;
++        }
++
++        if(m_vwid != NULL) {
++            for (int i = 0; i< m_vwid->num_views;i++ ) {
++                free(m_vwid->viewsList.itemAt(i));
++            }
++            delete m_vwid;
++            m_vwid = NULL;
++        }
++    }
++
++    AtomMvci(const AtomMvci &);
++    AtomMvci &operator=(const AtomMvci &);
++    //returns true - if one of mvc related atom and parsed succ
++    //returns false -if not of one of mvc atom OR some error occured in parsing
++    bool ParseAndPopulate(status_t &pstatus);
++};
++
+ class MPEG4Extractor : public MediaExtractor {
+ public:
+     // Extractor assumes ownership of "source".
+@@ -67,6 +144,7 @@ private:
+ 
+     sp<MetaData> mFileMetaData;
+ 
++    AtomMvci *mAtomMvci; // MVC
+     Vector<uint32_t> mPath;
+     String8 mLastCommentMean;
+     String8 mLastCommentName;
+-- 
+1.7.4.1
+

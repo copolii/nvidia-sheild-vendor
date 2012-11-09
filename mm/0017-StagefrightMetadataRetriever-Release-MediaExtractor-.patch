@@ -1,0 +1,143 @@
+From 4c929f4a6eeb7f0c8fc20df023782bca44401a03 Mon Sep 17 00:00:00 2001
+From: Parag Mehendale <pmehendale@nvidia.com>
+Date: Tue, 3 Jul 2012 16:31:47 +0530
+Subject: [PATCH 17/40] StagefrightMetadataRetriever: Release MediaExtractor after retrieving metadata for audio only files
+
+Original Author: Surajit Podder <spodder@nvidia.com>
+
+Bug 855598
+Reviewed-on: http://git-master/r/47732
+
+stagefright : Thumbnail generation issue
+
+Original Author: Yogesh Agrawal <yagrawal@nvidia.com>
+
+Fix for bug : 847447
+Reviewed on: http://git-master/r/41208
+
+StagefrightMetadataRetriever: Stability while parsing metadata
+
+Original Author: Surajit Podder <spodder@nvidia.com>
+
+Change-Id: I3c6b456fb7169a30e9b6974ea568ef3c68c1e155
+Reviewed-on: http://git-master/r/#change,49272
+Reviewed-on: http://git-psac/r/343
+Tested-by: Parag Mehendale <pmehendale@nvidia.com>
+GVS: Gerrit_Virtual_Submit
+Reviewed-by: Zhijun He <zhhe@nvidia.com>
+---
+ .../StagefrightMetadataRetriever.cpp               |   65 +++++++++++++++++---
+ 1 files changed, 56 insertions(+), 9 deletions(-)
+
+diff --git a/media/libstagefright/StagefrightMetadataRetriever.cpp b/media/libstagefright/StagefrightMetadataRetriever.cpp
+index 4e23b94..ecc6d10 100644
+--- a/media/libstagefright/StagefrightMetadataRetriever.cpp
++++ b/media/libstagefright/StagefrightMetadataRetriever.cpp
+@@ -393,19 +393,32 @@ VideoFrame *StagefrightMetadataRetriever::getFrameAtTime(
+                         timeUs, option);
+     }
+ 
++    //seek to 0 if thumnail extraction fails
++    if (frame == NULL) {
++        frame = extractVideoFrameWithCodecFlags(
++                &mClient, trackMeta, source, OMXCodec::kPreferSoftwareCodecs,
++                0, option);
++
++        if (frame == NULL) {
++            LOGV("Software decoder failed to extract thumbnail, "
++                 "trying hardware decoder.");
++
++            frame = extractVideoFrameWithCodecFlags(&mClient, trackMeta, source, 0,
++                            0, option);
++        }
++    }
+     return frame;
+ }
+ 
+ MediaAlbumArt *StagefrightMetadataRetriever::extractAlbumArt() {
+     ALOGV("extractAlbumArt (extractor: %s)", mExtractor.get() != NULL ? "YES" : "NO");
+ 
+-    if (mExtractor == NULL) {
+-        return NULL;
+-    }
+-
+     if (!mParsedMetaData) {
+-        parseMetaData();
+ 
++        if (mExtractor == NULL)
++            return NULL;
++
++        parseMetaData();
+         mParsedMetaData = true;
+     }
+ 
+@@ -417,13 +430,13 @@ MediaAlbumArt *StagefrightMetadataRetriever::extractAlbumArt() {
+ }
+ 
+ const char *StagefrightMetadataRetriever::extractMetadata(int keyCode) {
+-    if (mExtractor == NULL) {
+-        return NULL;
+-    }
+ 
+     if (!mParsedMetaData) {
+-        parseMetaData();
+ 
++        if (mExtractor == NULL)
++            return NULL;
++
++        parseMetaData();
+         mParsedMetaData = true;
+     }
+ 
+@@ -436,7 +449,31 @@ const char *StagefrightMetadataRetriever::extractMetadata(int keyCode) {
+     return strdup(mMetaData.valueAt(index).string());
+ }
+ 
++static bool checkFileValidity(sp<MediaExtractor> &extractor)
++{
++    //Make sure we have file mime type and atleast one track with metadata
++    const char *trackMIME;
++    sp<MetaData> meta = extractor->getMetaData();
++    if (meta->findCString(kKeyMIMEType,&trackMIME))
++    {
++        for(int i = 0; i < extractor->countTracks(); i++)
++        {
++            sp<MetaData> trackMeta = extractor->getTrackMetaData(i);
++            if(trackMeta != NULL)
++                return true;
++        }
++    }
++    return false;
++}
++
+ void StagefrightMetadataRetriever::parseMetaData() {
++
++    if(!checkFileValidity(mExtractor))
++    {
++        LOGE("Corrupt file! cannot extract metadata");
++        return;
++    }
++
+     sp<MetaData> meta = mExtractor->getMetaData();
+ 
+     if (meta == NULL) {
+@@ -630,6 +667,16 @@ void StagefrightMetadataRetriever::parseMetaData() {
+     if (mExtractor->getDrmFlag()) {
+         mMetaData.add(METADATA_KEY_IS_DRM, String8("1"));
+     }
++
++    if(mExtractor->countTracks() == 1)
++    {
++        sp<MetaData> trackMeta = mExtractor->getTrackMetaData(0);
++        const char *trackMIME;
++        CHECK(trackMeta->findCString(kKeyMIMEType, &trackMIME));
++        if (!strncasecmp("audio/", trackMIME, 6)) {
++            mExtractor.clear();
++        }
++    }
+ }
+ 
+ }  // namespace android
+-- 
+1.7.1
+

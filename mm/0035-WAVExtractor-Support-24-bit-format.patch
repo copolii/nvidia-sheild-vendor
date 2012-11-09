@@ -1,0 +1,58 @@
+From 89e1e66b5f1f466e68afc53b22dd1cf81198176c Mon Sep 17 00:00:00 2001
+From: Yogesh Agrawal <yagrawal@nvidia.com>
+Date: Wed, 25 Jul 2012 19:24:13 +0530
+Subject: [PATCH 35/40] WAVExtractor: Support 24 bit format
+
+Support for 24 bit audio is not handeled properly. As a result
+there is a lot of noise while playing the wave file.
+
+Bug 1019213
+
+Reviewed On http://git-master/r/#change,43012
+Cherry-picked from ea6d28dac1a7e0aa58bfe61daa87c9234fc7c97b
+
+Change-Id: I6c0b29c036181a37874c31d1b418453b58aa3693
+---
+ media/libstagefright/WAVExtractor.cpp |   19 ++++++++++++++++---
+ 1 files changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/media/libstagefright/WAVExtractor.cpp b/media/libstagefright/WAVExtractor.cpp
+index a38400b..830ed5d 100644
+--- a/media/libstagefright/WAVExtractor.cpp
++++ b/media/libstagefright/WAVExtractor.cpp
+@@ -312,7 +312,7 @@ status_t WAVExtractor::init() {
+     return NO_INIT;
+ }
+ 
+-const size_t WAVSource::kMaxFrameSize = 32768;
++const size_t WAVSource::kMaxFrameSize = 49152;
+ 
+ WAVSource::WAVSource(
+         const sp<DataSource> &dataSource,
+@@ -401,8 +401,21 @@ status_t WAVSource::read(
+         return err;
+     }
+ 
+-    size_t maxBytesToRead =
+-        mBitsPerSample == 8 ? kMaxFrameSize / 2 : kMaxFrameSize;
++   size_t maxBytesToRead;
++   switch (mBitsPerSample) {
++      case 8:
++          maxBytesToRead = kMaxFrameSize / 3;
++          break;
++      case 16:
++          maxBytesToRead = (kMaxFrameSize / 3)*2;
++          break;
++      case 24:
++          maxBytesToRead = kMaxFrameSize;
++          break;
++      default:
++          LOGE("ERROR :: INVALID or NOT SUPPORTED bits per sample - %d",mBitsPerSample);
++          return ERROR_UNSUPPORTED;
++    }
+ 
+     size_t maxBytesAvailable =
+         (mCurrentPos - mOffset >= (off64_t)mSize)
+-- 
+1.7.1
+

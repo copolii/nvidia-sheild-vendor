@@ -1,0 +1,275 @@
+From 73ae640ec7218dc967e8e9ee2b631cb7bbd2215d Mon Sep 17 00:00:00 2001
+From: Aniruddha C <aniruddhac@nvidia.com>
+Date: Wed, 11 Jul 2012 15:58:43 +0530
+Subject: [PATCH 20/40] Integrate Streaming KPI to JB
+
+Integrate streaming KPI as in the CL http://git-master/r/#change,65693.
+
+Change-Id: I237bb5817834d623f54562d735cb4c31ba35a491
+---
+ media/libstagefright/AwesomePlayer.cpp         |   56 +++++++++++++++++++++--
+ media/libstagefright/HTTPBase.cpp              |   30 ++++++++++++-
+ media/libstagefright/NuCachedSource2.cpp       |   13 ++++++
+ media/libstagefright/include/AwesomePlayer.h   |    4 ++
+ media/libstagefright/include/HTTPBase.h        |    4 ++
+ media/libstagefright/include/NuCachedSource2.h |    1 +
+ 6 files changed, 101 insertions(+), 7 deletions(-)
+
+diff --git a/media/libstagefright/AwesomePlayer.cpp b/media/libstagefright/AwesomePlayer.cpp
+index fb70b67..2525477 100644
+--- a/media/libstagefright/AwesomePlayer.cpp
++++ b/media/libstagefright/AwesomePlayer.cpp
+@@ -816,6 +816,9 @@ void AwesomePlayer::onBufferingUpdate() {
+             }
+             if (mFlags & PREPARING) {
+                 ALOGV("cache has reached EOS, prepare is done.");
++#ifdef PROFILING
++                mProfileStats->mHighWaterMarkTimeUs = ALooper::GetNowUs();
++#endif
+                 finishAsyncPrepare_l();
+             }
+         } else {
+@@ -838,6 +841,9 @@ void AwesomePlayer::onBufferingUpdate() {
+                         && (cachedDataRemaining < kLowWaterMarkBytes)) {
+                     ALOGI("cache is running low (< %d) , pausing.",
+                          kLowWaterMarkBytes);
++#ifdef PROFILING
++                    ++mProfileStats->mNoOfPauses;
++#endif
+                     modifyFlags(CACHE_UNDERRUN, SET);
+                     pause_l();
+                     ensureCacheIsFetching_l();
+@@ -892,11 +898,16 @@ void AwesomePlayer::onBufferingUpdate() {
+         if ((mFlags & PLAYING) && !eos
+                 && (cachedDurationUs < kLowWaterMarkUs)) {
+             modifyFlags(CACHE_UNDERRUN, SET);
+-            ALOGI("cache is running low (%.2f secs) , pausing.",
+-                  cachedDurationUs / 1E6);
+-            pause_l();
+-            ensureCacheIsFetching_l();
+-            sendCacheStats();
++            if (mWVMExtractor == NULL) {
++                ALOGI("cache is running low (%.2f secs) , pausing.",
++                      cachedDurationUs / 1E6);
++#ifdef PROFILING
++                ++mProfileStats->mNoOfPauses;
++#endif
++                pause_l();
++                ensureCacheIsFetching_l();
++                sendCacheStats();
++            }
+             notifyListener_l(MEDIA_INFO, MEDIA_INFO_BUFFERING_START);
+         } else if (eos || cachedDurationUs > kHighWaterMarkUs) {
+             if (mFlags & CACHE_UNDERRUN) {
+@@ -908,6 +919,9 @@ void AwesomePlayer::onBufferingUpdate() {
+                 ALOGV("cache has filled up (%.2f secs), prepare is done",
+                      cachedDurationUs / 1E6);
+                 finishAsyncPrepare_l();
++#ifdef PROFILING
++                mProfileStats->mHighWaterMarkTimeUs = ALooper::GetNowUs();
++#endif
+             }
+         }
+     }
+@@ -2108,10 +2122,39 @@ void AwesomePlayer::postStreamDoneEvent_l(status_t status) {
+         ALOGI("--------Dropped frames = %d", (int) mStats.mNumVideoFramesDropped);
+         ALOGI("--------Rendered frames = %d", mProfileStats->numRendFrame);
+ 
++        ALOGI("--------Streaming Statistics------------");
++        int64_t bufferingLatencyUs = 0;
++
++        if (mProfileStats->mHighWaterMarkTimeUs != 0) {
++            bufferingLatencyUs = mProfileStats->mHighWaterMarkTimeUs - mProfileStats->mBufStartTimeUs;
++        }
++        ALOGI("--------Buffering Latency = %.2f secs", bufferingLatencyUs / 1E6);
++        ALOGI("--------Number of Pauses due to Cache Underrun = %d", mProfileStats->mNoOfPauses);
++
++        int64_t absolutePlayTimeUs = ALooper::GetNowUs() - mProfileStats->startTimeUs;
++        int64_t totDurationOfPauseUs = 0;
++
++        if (mProfileStats->mNoOfPauses > 0) {
++            totDurationOfPauseUs = absolutePlayTimeUs - mDurationUs;
++        }
++        ALOGI("--------Total Duration of Pause = %.2f secs", totDurationOfPauseUs / 1E6);
++        ALOGI("--------Absolute Playback time = %.2f secs", absolutePlayTimeUs / 1E6);
++
++        if (mCachedSource != NULL) {
++            int32_t kbps = 0;
++            status_t err = mCachedSource->getAvgBandwidthForSession(&kbps);
++            if (err == OK) {
++                ALOGI("--------Average Estimated bandwidth was %d kbps", kbps);
++            } else {
++                ALOGI("--------Average Estimated bandwidth was Unknown");
++            }
++        }
++
+         if (mProfileStats->pJitter && (mProfileStats->mProfFlags & DataSource::kShowJitter))
+         {
+             double fJitterAvg = 0, fJitterStd = 0, fJitterHighest = 0;
+             mProfileStats->pSrcJitter->GetAvgs(&fJitterStd, &fJitterAvg, &fJitterHighest);
++            ALOGI("--------Jitter Statistics------------");
+             ALOGI("--------Average Source jitter = %f uSec \n", fJitterStd);
+             ALOGI("--------Highest instantaneous Source jitter = %f uSec \n", fJitterHighest);
+             ALOGI("--------Mean time between frame(used in Source) = %f uSec \n", fJitterAvg);
+@@ -2293,6 +2336,9 @@ status_t AwesomePlayer::finishSetDataSource_l() {
+     if (!strncasecmp("http://", mUri.string(), 7)
+             || !strncasecmp("https://", mUri.string(), 8)
+             || isWidevineStreaming) {
++#ifdef PROFILING
++        mProfileStats->mBufStartTimeUs = ALooper::GetNowUs();
++#endif
+         mConnectingDataSource = HTTPBase::Create(
+                 (mFlags & INCOGNITO)
+                     ? HTTPBase::kFlagIncognito
+diff --git a/media/libstagefright/HTTPBase.cpp b/media/libstagefright/HTTPBase.cpp
+index 40bfc55..299adc0 100644
+--- a/media/libstagefright/HTTPBase.cpp
++++ b/media/libstagefright/HTTPBase.cpp
+@@ -16,6 +16,9 @@
+ 
+ //#define LOG_NDEBUG 0
+ #define LOG_TAG "HTTPBase"
++
++#define PROFILING
++
+ #include <utils/Log.h>
+ 
+ #include "include/HTTPBase.h"
+@@ -38,7 +41,8 @@ HTTPBase::HTTPBase()
+       mTotalTransferBytes(0),
+       mPrevBandwidthMeasureTimeUs(0),
+       mPrevEstimatedBandWidthKbps(0),
+-      mBandWidthCollectFreqMs(5000),
++      mBandWidthCollectFreqMs(2000),
++      mNumEstBwHistoryItems(0),
+       mUIDValid(false),
+       mUID(0) {
+ }
+@@ -69,7 +73,7 @@ void HTTPBase::addBandwidthMeasurement(
+     mTotalTransferBytes += numBytes;
+ 
+     mBandwidthHistory.push_back(entry);
+-    if (++mNumBandwidthHistoryItems > 100) {
++    if (++mNumBandwidthHistoryItems > 50) {
+         BandwidthEntry *entry = &*mBandwidthHistory.begin();
+         mTotalTransferTimeUs -= entry->mDelayUs;
+         mTotalTransferBytes -= entry->mNumBytes;
+@@ -83,6 +87,11 @@ void HTTPBase::addBandwidthMeasurement(
+             if (mPrevBandwidthMeasureTimeUs != 0) {
+                 mPrevEstimatedBandWidthKbps =
+                     (mTotalTransferBytes * 8E3 / mTotalTransferTimeUs);
++
++                ALOGW("estimated avg bandwidth is %d kbps in the past %lld us",
++                    mPrevEstimatedBandWidthKbps, timeNowUs - mPrevBandwidthMeasureTimeUs);
++                mEstBandwidthHistory.push_back(mPrevEstimatedBandWidthKbps);
++                mNumEstBwHistoryItems++;
+             }
+             mPrevBandwidthMeasureTimeUs = timeNowUs;
+         }
+@@ -108,6 +117,23 @@ status_t HTTPBase::getEstimatedBandwidthKbps(int32_t *kbps) {
+     return OK;
+ }
+ 
++status_t HTTPBase::getAvgBandwidthForSession(int32_t *kbps) {
++#ifdef PROFILING
++    Mutex::Autolock autoLock(mLock);
++
++    *kbps = 0;
++    int32_t totBwHistory = 0;
++    List<int32_t>::iterator iter;
++    for (iter = mEstBandwidthHistory.begin(); iter != mEstBandwidthHistory.end(); iter++) {
++        totBwHistory += *iter;
++    }
++    if (mNumEstBwHistoryItems > 0) {
++        *kbps = (int32_t)(totBwHistory / mNumEstBwHistoryItems);
++    }
++#endif
++    return OK;
++}
++
+ status_t HTTPBase::setBandwidthStatCollectFreq(int32_t freqMs) {
+     Mutex::Autolock autoLock(mLock);
+ 
+diff --git a/media/libstagefright/NuCachedSource2.cpp b/media/libstagefright/NuCachedSource2.cpp
+index 8dd7b56..b22019a 100644
+--- a/media/libstagefright/NuCachedSource2.cpp
++++ b/media/libstagefright/NuCachedSource2.cpp
+@@ -16,6 +16,9 @@
+ 
+ //#define LOG_NDEBUG 0
+ #define LOG_TAG "NuCachedSource2"
++
++#define PROFILING
++
+ #include <utils/Log.h>
+ 
+ #include "include/NuCachedSource2.h"
+@@ -240,6 +243,16 @@ status_t NuCachedSource2::getEstimatedBandwidthKbps(int32_t *kbps) {
+     return ERROR_UNSUPPORTED;
+ }
+ 
++status_t NuCachedSource2::getAvgBandwidthForSession(int32_t *kbps) {
++#ifdef PROFILING
++    if (mSource->flags() & kIsHTTPBasedSource) {
++        HTTPBase* source = static_cast<HTTPBase *>(mSource.get());
++        return source->getAvgBandwidthForSession(kbps);
++    }
++#endif
++    return ERROR_UNSUPPORTED;
++}
++
+ status_t NuCachedSource2::setCacheStatCollectFreq(int32_t freqMs) {
+     if (mSource->flags() & kIsHTTPBasedSource) {
+         HTTPBase *source = static_cast<HTTPBase *>(mSource.get());
+diff --git a/media/libstagefright/include/AwesomePlayer.h b/media/libstagefright/include/AwesomePlayer.h
+index d873320..fe6c529 100644
+--- a/media/libstagefright/include/AwesomePlayer.h
++++ b/media/libstagefright/include/AwesomePlayer.h
+@@ -392,6 +392,10 @@ private:
+         int64_t startTimeUs;
+         int64_t audioStartTimeUs;
+         int64_t mInDurationUs;
++        int64_t mHighWaterMarkTimeUs;
++        int64_t mBufStartTimeUs;
++        int32_t mNoOfPauses;
++
+         JitterTool *pJitter;
+         JitterTool *pSrcJitter;
+     };
+diff --git a/media/libstagefright/include/HTTPBase.h b/media/libstagefright/include/HTTPBase.h
+index b8e10f7..833c505 100644
+--- a/media/libstagefright/include/HTTPBase.h
++++ b/media/libstagefright/include/HTTPBase.h
+@@ -46,6 +46,8 @@ struct HTTPBase : public DataSource {
+ 
+     virtual status_t getEstimatedBandwidthKbps(int32_t *kbps);
+ 
++    virtual status_t getAvgBandwidthForSession(int32_t *kbps);
++
+     virtual status_t setBandwidthStatCollectFreq(int32_t freqMs);
+ 
+     void setUID(uid_t uid);
+@@ -80,6 +82,8 @@ private:
+     int64_t mPrevBandwidthMeasureTimeUs;
+     int32_t mPrevEstimatedBandWidthKbps;
+     int32_t mBandWidthCollectFreqMs;
++    List<int32_t> mEstBandwidthHistory;
++    size_t mNumEstBwHistoryItems;
+ 
+     bool mUIDValid;
+     uid_t mUID;
+diff --git a/media/libstagefright/include/NuCachedSource2.h b/media/libstagefright/include/NuCachedSource2.h
+index 9605380..12d6bb9 100644
+--- a/media/libstagefright/include/NuCachedSource2.h
++++ b/media/libstagefright/include/NuCachedSource2.h
+@@ -57,6 +57,7 @@ struct NuCachedSource2 : public DataSource {
+     // data source is HTTP-based; otherwise, ERROR_UNSUPPORTED
+     // is returned.
+     status_t getEstimatedBandwidthKbps(int32_t *kbps);
++    status_t getAvgBandwidthForSession(int32_t *kbps);
+     status_t setCacheStatCollectFreq(int32_t freqMs);
+ 
+     static void RemoveCacheSpecificHeaders(
+-- 
+1.7.1
+

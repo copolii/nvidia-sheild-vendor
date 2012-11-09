@@ -1,0 +1,48 @@
+From 8a01ff323808eba845e12b2e07a7a78414c3f191 Mon Sep 17 00:00:00 2001
+From: manikanta kanamarlapudi <manikak@nvidia.com>
+Date: Tue, 14 Aug 2012 11:55:44 +0530
+Subject: [PATCH 29/40] fix for crash in SimplePlayer
+
+SimplePlayer is trying to allocate graphic buffers for audio decoder
+also by sending surface texture object while configuring the codec.
+changed the logic for audio decoder.
+
+bug 1018461
+
+Change-Id: Id3774dbd13738a9cd4e2d9f522fbfb20c6edcded
+---
+ cmds/stagefright/SimplePlayer.cpp |   18 +++++++++++++-----
+ 1 files changed, 13 insertions(+), 5 deletions(-)
+
+diff --git a/cmds/stagefright/SimplePlayer.cpp b/cmds/stagefright/SimplePlayer.cpp
+index 7636906..29d23be 100644
+--- a/cmds/stagefright/SimplePlayer.cpp
++++ b/cmds/stagefright/SimplePlayer.cpp
+@@ -318,11 +318,19 @@ status_t SimplePlayer::onPrepare() {
+ 
+         CHECK(state->mCodec != NULL);
+ 
+-        err = state->mCodec->configure(
+-                format,
+-                mNativeWindow->getSurfaceTextureClient(),
+-                NULL /* crypto */,
+-                0 /* flags */);
++        if (!strncasecmp(mime.c_str(), "video/", 6)) {
++            err = state->mCodec->configure(
++                    format,
++                    mNativeWindow->getSurfaceTextureClient(),
++                    NULL /* crypto */,
++                    0 /* flags */);
++        } else if (!strncasecmp(mime.c_str(), "audio/", 6)) {
++            err = state->mCodec->configure(
++                    format,
++                    NULL,
++                    NULL /* crypto */,
++                    0 /* flags */);
++        }
+ 
+         CHECK_EQ(err, (status_t)OK);
+ 
+-- 
+1.7.1
+

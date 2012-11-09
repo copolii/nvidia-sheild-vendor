@@ -1,0 +1,39 @@
+From 87ab5571e8cc7a565d474fa4a4c09aa5c1ef8406 Mon Sep 17 00:00:00 2001
+From: Aniruddha C <aniruddhac@nvidia.com>
+Date: Wed, 25 Jul 2012 18:54:13 +0530
+Subject: [PATCH 22/40] Revert "For an RTSP live stream we won't map rtp time to normal play time,"
+
+This reverts commit c9d1696d214d2175327067ccc1991bcb36976404.
+
+Bug 981048
+
+Change-Id: I22fb5c42b7f84c3399f7142de0a9c42dba64da69
+---
+ .../libmediaplayerservice/nuplayer/RTSPSource.cpp  |   11 ++++++++---
+ 1 files changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/media/libmediaplayerservice/nuplayer/RTSPSource.cpp b/media/libmediaplayerservice/nuplayer/RTSPSource.cpp
+index ba31f28..98b3953 100644
+--- a/media/libmediaplayerservice/nuplayer/RTSPSource.cpp
++++ b/media/libmediaplayerservice/nuplayer/RTSPSource.cpp
+@@ -369,9 +369,14 @@ void NuPlayer::RTSPSource::onMessageReceived(const sp<AMessage> &msg) {
+ 
+                 if (!info->mNPTMappingValid) {
+                     // This is a live stream, we didn't receive any normal
+-                    // playtime mapping. We won't map to npt time.
+-                    source->queueAccessUnit(accessUnit);
+-                    break;
++                    // playtime mapping. Assume the first packets correspond
++                    // to time 0.
++
++                    ALOGV("This is a live stream, assuming time = 0");
++
++                    info->mRTPTime = rtpTime;
++                    info->mNormalPlaytimeUs = 0ll;
++                    info->mNPTMappingValid = true;
+                 }
+ 
+                 int64_t nptUs =
+-- 
+1.7.1
+

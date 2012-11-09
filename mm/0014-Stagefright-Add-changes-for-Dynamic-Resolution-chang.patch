@@ -1,0 +1,226 @@
+From d655f9a978d9ffaf09c22af7621aa71ab91e3e0d Mon Sep 17 00:00:00 2001
+From: Suresh Choudhary <sureshc@nvidia.com>
+Date: Mon, 29 Oct 2012 16:43:55 +0530
+Subject: [PATCH 14/40] Stagefright : Add changes for Dynamic Resolution change for J
+
+Original Author :  manikanta kanamarlapudi <manikak@nvidia.com>
+
+libstagefright : Added support for  multiple sps and pps
+
+* Our OMX decoder detects the dynamic resolution change and
+sends a new PortSettingsChanged Event.
+
+* If this is a resolution change, we delay the processing of
+PortSettingsChange, until renderer releases all the buffers.
+This is handled through INFO_FORMAT_CHANGED, error status from
+mVideoSource
+
+* Also setting the kKeyDisplayWidth & kKeyDisplayHeight while
+dynamic resolution change
+
+Reviewed-on: http://git-master/r/66173
+
+libstagefright : Applies correct display scaling values for DRC
+
+The scale values set using OMX_IndexCommonConfigScale sets the
+display width and height. After DRC if the stream's DAR is same
+as SAR OMX_IndexCommonConfigScale comes with value as 0x10000/0x10000,
+but this was not getting applied over older scaled display params
+
+bug 946046
+
+http://git-master/r/90986
+
+Change-Id: Ic63cb0d8bed3628276b06450aff28e71db473264
+Reviewed-on: http://git-psac/r/307
+Reviewed-by: Simone Willett <swillett@nvidia.com>
+Tested-by: Simone Willett <swillett@nvidia.com>
+
+Conflicts:
+
+	media/libstagefright/OMXCodec.cpp
+---
+ include/media/stagefright/OMXCodec.h   |    5 ++
+ media/libstagefright/AwesomePlayer.cpp |    4 ++
+ media/libstagefright/OMXCodec.cpp      |   79 +++++++++++++++++++++++++-------
+ 3 files changed, 71 insertions(+), 17 deletions(-)
+
+diff --git a/include/media/stagefright/OMXCodec.h b/include/media/stagefright/OMXCodec.h
+index 7fa9770..842aad3 100644
+--- a/include/media/stagefright/OMXCodec.h
++++ b/include/media/stagefright/OMXCodec.h
+@@ -207,7 +207,12 @@ private:
+     ReadOptions::SeekMode mSeekMode;
+     int64_t mTargetTimeUs;
+     bool mOutputPortSettingsChangedPending;
++    bool mBuffersWithRenderer;
++    int32_t mPortSettingsEvent;
++    int32_t mEventPortIndex;
+     sp<SkipCutBuffer> mSkipCutBuffer;
++    int32_t mDisplayWidth;
++    int32_t mDisplayHeight;
+ 
+     MediaBuffer *mLeftOverBuffer;
+ 
+diff --git a/media/libstagefright/AwesomePlayer.cpp b/media/libstagefright/AwesomePlayer.cpp
+index 35c08be..e10820d 100644
+--- a/media/libstagefright/AwesomePlayer.cpp
++++ b/media/libstagefright/AwesomePlayer.cpp
+@@ -1664,6 +1664,10 @@ void AwesomePlayer::onVideoEvent() {
+                 if (err == INFO_FORMAT_CHANGED) {
+                     ALOGV("VideoSource signalled format change.");
+ 
++                    if (mVideoBuffer) {
++                        mVideoBuffer->release();
++                        mVideoBuffer = NULL;
++                    }
+                     notifyVideoSize_l();
+ 
+                     if (mVideoRenderer != NULL) {
+diff --git a/media/libstagefright/OMXCodec.cpp b/media/libstagefright/OMXCodec.cpp
+index 853316b..70dbae0 100755
+--- a/media/libstagefright/OMXCodec.cpp
++++ b/media/libstagefright/OMXCodec.cpp
+@@ -44,6 +44,10 @@
+ 
+ #include "include/avc_utils.h"
+ 
++#define PORT_SETTINGS_DELAYED                   0X01
++#define PORT_SETTINGS_NOT_CHANGED               0x02
++#define DO_NOT_SEND_BUFFER                      0x04
++
+ namespace android {
+ 
+ // Treat time out as an error if we have not received any output
+@@ -1354,6 +1358,9 @@ OMXCodec::OMXCodec(
+       mSignalledEOS(false),
+       mNoMoreOutputData(false),
+       mOutputPortSettingsHaveChanged(false),
++      mBuffersWithRenderer(0),
++      mPortSettingsEvent(0),
++      mEventPortIndex(-1),
+       mSeekTimeUs(-1),
+       mSeekMode(ReadOptions::SEEK_CLOSEST_SYNC),
+       mTargetTimeUs(-1),
+@@ -2412,8 +2419,10 @@ void OMXCodec::onEvent(OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2) {
+                 // There is no need to check whether mFilledBuffers is empty or not
+                 // when the OMX_EventPortSettingsChanged is not meant for reallocating
+                 // the output buffers.
+-                if (data1 == kPortIndexOutput) {
+-                    CHECK(mFilledBuffers.empty());
++                if (mBuffersWithRenderer == 1)
++                {
++                    mPortSettingsEvent = mPortSettingsEvent | DO_NOT_SEND_BUFFER;
++                    mPortSettingsEvent = mPortSettingsEvent | PORT_SETTINGS_DELAYED;
+                 }
+                 onPortSettingsChanged(data1);
+             } else if (data1 == kPortIndexOutput &&
+@@ -2448,15 +2457,17 @@ void OMXCodec::onEvent(OMX_EVENTTYPE event, OMX_U32 data1, OMX_U32 data2) {
+                         ALOGV("Get OMX_IndexConfigScale: 0x%lx/0x%lx",
+                                 scale.xWidth, scale.xHeight);
+ 
+-                        if (scale.xWidth != 0x010000) {
+-                            mOutputFormat->setInt32(kKeyDisplayWidth,
+-                                    ((right - left +  1) * scale.xWidth)  >> 16);
++                        int32_t width  = ((right - left +  1) * scale.xWidth) >> 16;
++                        int32_t height = ((bottom  - top + 1) * scale.xHeight) >> 16;
++
++                        if (mDisplayWidth != width) {
++                            mOutputFormat->setInt32(kKeyDisplayWidth, width);
++                            mDisplayWidth = width;
+                             mOutputPortSettingsHaveChanged = true;
+                         }
+-
+-                        if (scale.xHeight != 0x010000) {
+-                            mOutputFormat->setInt32(kKeyDisplayHeight,
+-                                    ((bottom  - top + 1) * scale.xHeight) >> 16);
++                        if (mDisplayHeight != height) {
++                            mOutputFormat->setInt32(kKeyDisplayHeight, height);
++                            mDisplayHeight = height;
+                             mOutputPortSettingsHaveChanged = true;
+                         }
+                     }
+@@ -2534,6 +2545,8 @@ void OMXCodec::onCmdComplete(OMX_COMMANDTYPE cmd, OMX_U32 data) {
+                         setState(ERROR);
+                     }
+                 }
++                mBuffersWithRenderer = 0;
++                mPortSettingsEvent = (mPortSettingsEvent & ~(DO_NOT_SEND_BUFFER));
+             }
+             break;
+         }
+@@ -2808,17 +2821,29 @@ status_t OMXCodec::freeBuffer(OMX_U32 portIndex, size_t bufIndex) {
+ void OMXCodec::onPortSettingsChanged(OMX_U32 portIndex) {
+     CODEC_LOGV("PORT_SETTINGS_CHANGED(%ld)", portIndex);
+ 
+-    CHECK_EQ((int)mState, (int)EXECUTING);
+-    CHECK_EQ(portIndex, (OMX_U32)kPortIndexOutput);
+-    CHECK(!mOutputPortSettingsChangedPending);
+-
+-    if (mPortStatus[kPortIndexOutput] != ENABLED) {
+-        CODEC_LOGV("Deferring output port settings change.");
+-        mOutputPortSettingsChangedPending = true;
++    if((mBuffersWithRenderer == 1) && (mPortSettingsEvent & PORT_SETTINGS_DELAYED)) {
++        mEventPortIndex = portIndex;
++        CHECK_EQ((int)mState, (int)EXECUTING);
++        CHECK_EQ(portIndex, (OMX_U32)kPortIndexOutput);
++        setState(RECONFIGURING);
+         return;
+-    }
++    } else {
++        if(mState != RECONFIGURING) {
++            CHECK_EQ((int)mState, (int)EXECUTING);
++            CHECK_EQ(portIndex, (OMX_U32)kPortIndexOutput);
++            setState(RECONFIGURING);
++        }
++        CHECK(!mOutputPortSettingsChangedPending);
++
+ 
+     setState(RECONFIGURING);
++        if (mPortStatus[kPortIndexOutput] != ENABLED) {
++            CODEC_LOGV("Deferring output port settings change.");
++            mOutputPortSettingsChangedPending = true;
++            return;
++        }
++    }
++
+ 
+     if (mQuirks & kNeedsFlushBeforeDisable) {
+         if (!flushPortAsync(portIndex)) {
+@@ -3895,6 +3920,23 @@ status_t OMXCodec::read(
+         }
+     }
+ 
++    if((mPortSettingsEvent & PORT_SETTINGS_NOT_CHANGED) && (mBuffersWithRenderer == 1)) {
++        mPortSettingsEvent = (mPortSettingsEvent & ~(PORT_SETTINGS_NOT_CHANGED));
++        onPortSettingsChanged(mEventPortIndex);
++    }
++
++    if((mPortSettingsEvent & PORT_SETTINGS_DELAYED) && (mBuffersWithRenderer == 1)) {
++        mPortSettingsEvent = (mPortSettingsEvent | (PORT_SETTINGS_NOT_CHANGED));
++        mPortSettingsEvent = (mPortSettingsEvent & ~(PORT_SETTINGS_DELAYED));
++        mFilledBuffers.clear();
++        return INFO_FORMAT_CHANGED;
++    }
++
++    if(mPortSettingsEvent & DO_NOT_SEND_BUFFER) {
++        mFilledBuffers.clear();
++        return INFO_FORMAT_CHANGED;
++    }
++
+     while (mState != ERROR && !mNoMoreOutputData && mFilledBuffers.empty()) {
+         if ((err = waitForBufferFilled_l()) != OK) {
+             return err;
+@@ -3928,6 +3970,9 @@ status_t OMXCodec::read(
+     }
+     *buffer = info->mMediaBuffer;
+ 
++    if(mBuffersWithRenderer == 0) {
++        mBuffersWithRenderer = 1;
++    }
+     return OK;
+ }
+ 
+-- 
+1.7.1
+

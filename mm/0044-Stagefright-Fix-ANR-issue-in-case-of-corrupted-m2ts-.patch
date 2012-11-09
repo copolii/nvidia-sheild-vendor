@@ -1,0 +1,70 @@
+From 86762270fd333a3a8ead14570f1981731bb5856c Mon Sep 17 00:00:00 2001
+From: Smita Gaikwad <smitag@nvidia.com>
+Date: Thu, 27 Sep 2012 02:36:26 -0400
+Subject: [PATCH 3/3] [Stagefright]Fix ANR issue in case of corrupted m2ts streams
+
+ANR is seen while trying to play large sized, corrupted m2ts
+streams due to large overhead of seraching of first and last
+PES packets, Restrict this search to only 25000 packets from
+both sides,to fix the ANR.Also avoid seeking to -ve offset
+while trying to search backwards.
+
+Bug 1050138
+
+Change-Id: I229e2beef93f0efb616eaebdbd3e2ad35c89da67
+---
+ media/libstagefright/mpeg2ts/MPEG2TSExtractor.cpp |   10 +++++++---
+ 1 files changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/media/libstagefright/mpeg2ts/MPEG2TSExtractor.cpp b/media/libstagefright/mpeg2ts/MPEG2TSExtractor.cpp
+index 7e914f1..1428eac 100644
+--- a/media/libstagefright/mpeg2ts/MPEG2TSExtractor.cpp
++++ b/media/libstagefright/mpeg2ts/MPEG2TSExtractor.cpp
+@@ -14,7 +14,7 @@
+  * limitations under the License.
+  */
+ 
+-//#define LOG_NDEBUG 0
++#define LOG_NDEBUG 0
+ #define LOG_TAG "MPEG2TSExtractor"
+ #include <utils/Log.h>
+ 
+@@ -357,7 +357,8 @@ uint64_t MPEG2TSExtractor::GetM2TSDuration() {
+         // M2TS/MTS format, compute duration
+         uint8_t packet[kMaxTSPacketSize];
+         // Try hitting the first PES packet first
+-        while (!firstPesFound) {
++        int numPacketsParsed = 0;
++        while (!firstPesFound && numPacketsParsed < 25000) {
+             ssize_t n = mDataSource->readAt(offset, packet, mParser->GetTsPacketLength());
+ 
+             if (n < mParser->GetTsPacketLength()) {
+@@ -366,6 +367,7 @@ uint64_t MPEG2TSExtractor::GetM2TSDuration() {
+                 break;
+             }
+ 
++            ++numPacketsParsed;
+             offset += n;
+             firstPesFound = mParser->computePts(packet, mParser->GetTsPacketLength());
+         }
+@@ -379,7 +381,8 @@ uint64_t MPEG2TSExtractor::GetM2TSDuration() {
+ 
+         offset = (fileSize - residue) - mParser->GetTsPacketLength();
+         fileSize -= residue;
+-        while (!lastPesFound) {
++        numPacketsParsed = 0;
++        while (!lastPesFound && offset > 0 && numPacketsParsed < 25000) {
+             ssize_t n = mDataSource->readAt(offset, packet, mParser->GetTsPacketLength());
+ 
+             if (n < mParser->GetTsPacketLength()) {
+@@ -388,6 +391,7 @@ uint64_t MPEG2TSExtractor::GetM2TSDuration() {
+                 break;
+             }
+ 
++            ++numPacketsParsed;
+             offset -= n;
+             lastPesFound = mParser->computePts(packet, mParser->GetTsPacketLength());
+         }
+-- 
+1.7.4.1
+

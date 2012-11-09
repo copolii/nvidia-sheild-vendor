@@ -39,5 +39,6 @@ else
     apply_patch hardware/libhardware_legacy 0001-audio-policy-Add-WFD-device-in-Audio-Policy-Manager-.patch
     apply_patch hardware/libhardware 0001-usbaudio-Get-card-number-from-substring.patch
     apply_patch external/tinyalsa 0001-external-tinyalsa-Enable-tinyalsa-apps-in-JB-build.patch
+    $TOP/vendor/nvidia/build/apply_mm_patches_jb_mr1.sh
 fi
 

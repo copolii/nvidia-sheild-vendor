@@ -1,0 +1,57 @@
+From 749919882ee63338016697f27e61cafdcb93586c Mon Sep 17 00:00:00 2001
+From: Yogesh Solanke <ysolanke@nvidia.com>
+Date: Tue, 17 Jul 2012 14:11:59 +0530
+Subject: [PATCH 26/40] OggExtractor: Use last granule position for local source
+
+For cached source, total duration is set using bitrate and size.
+Actual last granule position is not used. This results in wrong
+duration for local file source, since NuCachedSource2 is used for
+local content.
+
+Fix by using last granule position when kIsLocalDataSource is set
+
+Bug 1017614
+(Reviewed On-http://git-master/r/#change,65993)
+
+StageFright: Fix crash if no metadata available
+Bug 1002868
+(Reviewed On-http://git-master/r/#change,111869)
+
+Change-Id: I0969d24ca451410122ab4be375445a25ba3e7ffc
+---
+ media/libstagefright/OggExtractor.cpp              |    3 ++-
+ .../StagefrightMetadataRetriever.cpp               |    4 ++++
+ 2 files changed, 6 insertions(+), 1 deletions(-)
+
+diff --git a/media/libstagefright/OggExtractor.cpp b/media/libstagefright/OggExtractor.cpp
+index 5e79e78..db21e8b 100644
+--- a/media/libstagefright/OggExtractor.cpp
++++ b/media/libstagefright/OggExtractor.cpp
+@@ -624,7 +624,8 @@ status_t MyVorbisExtractor::init() {
+ 
+     off64_t size;
+     uint64_t lastGranulePosition;
+-    if (!(mSource->flags() & DataSource::kIsCachingDataSource)
++    if ((!(mSource->flags() & DataSource::kIsCachingDataSource)
++        || (mSource->flags() & DataSource::kIsLocalDataSource))
+             && mSource->getSize(&size) == OK
+             && findPrevGranulePosition(size, &lastGranulePosition) == OK) {
+         // Let's assume it's cheap to seek to the end.
+diff --git a/media/libstagefright/StagefrightMetadataRetriever.cpp b/media/libstagefright/StagefrightMetadataRetriever.cpp
+index ecc6d10..549d645 100644
+--- a/media/libstagefright/StagefrightMetadataRetriever.cpp
++++ b/media/libstagefright/StagefrightMetadataRetriever.cpp
+@@ -454,6 +454,10 @@ static bool checkFileValidity(sp<MediaExtractor> &extractor)
+     //Make sure we have file mime type and atleast one track with metadata
+     const char *trackMIME;
+     sp<MetaData> meta = extractor->getMetaData();
++
++    if (meta == NULL)
++        return false;
++
+     if (meta->findCString(kKeyMIMEType,&trackMIME))
+     {
+         for(int i = 0; i < extractor->countTracks(); i++)
+-- 
+1.7.1
+

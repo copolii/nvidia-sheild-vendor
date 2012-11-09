@@ -1,0 +1,103 @@
+From da6029ad920e16dd8c1432cd9103dadcece7eca8 Mon Sep 17 00:00:00 2001
+From: Aniruddha C <aniruddhac@nvidia.com>
+Date: Tue, 19 Jun 2012 18:09:52 +0530
+Subject: [PATCH 21/40] Consume data if prefetcher is stopped
+
+Start consuming the data if pre-fetcher in NuCachedSource2
+is stopped and we are in paused state. If data is not
+consumed, then prefetcher will wait indefinitely for the
+mLastAccessPos to be greater than 6MB and playback will
+never resume.
+
+Bug 972308
+
+Change-Id: If77ac17a4dcc84cfbb53e21766413647917b39ec
+---
+ media/libstagefright/AwesomePlayer.cpp         |   35 +++++++++++++++++++++++-
+ media/libstagefright/NuCachedSource2.cpp       |    4 +++
+ media/libstagefright/include/NuCachedSource2.h |    1 +
+ 3 files changed, 39 insertions(+), 1 deletions(-)
+
+diff --git a/media/libstagefright/AwesomePlayer.cpp b/media/libstagefright/AwesomePlayer.cpp
+index 2525477..8e5b8af 100644
+--- a/media/libstagefright/AwesomePlayer.cpp
++++ b/media/libstagefright/AwesomePlayer.cpp
+@@ -909,6 +909,20 @@ void AwesomePlayer::onBufferingUpdate() {
+                 sendCacheStats();
+             }
+             notifyListener_l(MEDIA_INFO, MEDIA_INFO_BUFFERING_START);
++        } else if (!eos && cachedDurationUs < kHighWaterMarkUs
++               && !(mFlags & PREPARING)
++               && !(mFlags & PLAYING)) {
++            if (mCachedSource != NULL) {
++                if(!mCachedSource->isCacheFetching()) {
++                    modifyFlags(CACHE_UNDERRUN, CLEAR);
++                    if (mWVMExtractor == NULL) {
++                        ALOGI("Prefetcher stopped below HighWaterMark at (%.2f secs), resuming.",
++                             cachedDurationUs / 1E6);
++                        play_l();
++                    }
++                    notifyListener_l(MEDIA_INFO, MEDIA_INFO_BUFFERING_END);
++                }
++            }
+         } else if (eos || cachedDurationUs > kHighWaterMarkUs) {
+             if (mFlags & CACHE_UNDERRUN) {
+                 modifyFlags(CACHE_UNDERRUN, CLEAR);
+@@ -1149,7 +1163,26 @@ status_t AwesomePlayer::startAudioPlayer_l(bool sendErrorNotification) {
+             postAudioSeekComplete();
+         }
+     } else {
+-        mAudioPlayer->resume();
++        int64_t cachedDurationUs;
++        bool eos;
++        if (mCachedSource != NULL && getCachedDuration_l(&cachedDurationUs, &eos)) {
++            if (eos || cachedDurationUs > kHighWaterMarkUs
++                    || (cachedDurationUs < kHighWaterMarkUs
++                    && !(mFlags & PREPARING)
++                    && !mCachedSource->isCacheFetching())) {
++                mAudioPlayer->resume();
++            } else {
++                // kHighWaterMarkUs has not been reached yet.
++                // We wait till that time to start AudioPlayer.
++                if (mVideoSource == NULL && mAudioPlayer != NULL) {
++                    // Clearing the PLAYING flag for Audio only case, since play is not finished.
++                    modifyFlags(PLAYING, CLEAR);
++                }
++                return OK;
++            }
++        } else {
++            mAudioPlayer->resume();
++        }
+     }
+ 
+     modifyFlags(AUDIO_RUNNING, SET);
+diff --git a/media/libstagefright/NuCachedSource2.cpp b/media/libstagefright/NuCachedSource2.cpp
+index b22019a..4597fdf 100644
+--- a/media/libstagefright/NuCachedSource2.cpp
++++ b/media/libstagefright/NuCachedSource2.cpp
+@@ -652,6 +652,10 @@ void NuCachedSource2::resumeFetchingIfNecessary() {
+     restartPrefetcherIfNecessary_l(true /* ignore low water threshold */);
+ }
+ 
++bool NuCachedSource2::isCacheFetching() {
++    return mFetching;
++}
++
+ sp<DecryptHandle> NuCachedSource2::DrmInitialization(const char* mime) {
+     return mSource->DrmInitialization(mime);
+ }
+diff --git a/media/libstagefright/include/NuCachedSource2.h b/media/libstagefright/include/NuCachedSource2.h
+index 12d6bb9..7b2c3bc 100644
+--- a/media/libstagefright/include/NuCachedSource2.h
++++ b/media/libstagefright/include/NuCachedSource2.h
+@@ -52,6 +52,7 @@ struct NuCachedSource2 : public DataSource {
+     size_t approxDataRemaining(status_t *finalStatus) const;
+ 
+     void resumeFetchingIfNecessary();
++    bool isCacheFetching();
+ 
+     // The following methods are supported only if the
+     // data source is HTTP-based; otherwise, ERROR_UNSUPPORTED
+-- 
+1.7.1
+

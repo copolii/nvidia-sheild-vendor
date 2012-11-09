@@ -1,0 +1,927 @@
+From df85339aeb3d1a560381a9fc0fb9d63621af6793 Mon Sep 17 00:00:00 2001
+From: aarti jadhav-gaikwad <agaikwad@nvidia.com>
+Date: Thu, 5 Jul 2012 11:15:06 +0530
+Subject: [PATCH 3/5] frameworks/av : ULP Audio changes in MMFW
+
+frameworks/av : Handle EOS/ERROR events from libaudio
+
+Handling of EOS/ERROR events sent by libaudio is
+done in stagefright in case of ULP audio decode-render
+
+Bug 967185
+
+Reviewed-on: http://git-master/r/106426
+(cherry picked from commit 3969d9c9766cf3261e66decf5d74c328478608c1)
+
+Change-Id: I3f3ad3d8bbc1f8c61aad393dd0cd9556416ba8ec
+
+libstagefright: Handle audio routing for ULP playback
+
+Destroyed current playback with avp decode and
+recreated the chain with CPU decode.
+The playback in new chain starts from location same
+at the time of routing
+
+(cherry-picked from commit 170abcdeffeca5fcf5ff6314a6a9b4f69faf0702)
+Reviewed-on: http://git-master/r/115401
+
+Change-Id: Ia26654f5aef63cbbc55c6138864a2faba488f21e
+
+MediaPlayer: Handle EOS for ULP audio tracks
+
+Bug 998701
+
+Reviewed-on: http://git-master/r/103846
+(cherry picked from commit 1e4aea370bbdaa397451997b6ff56ae7c2a0e75e )
+
+Change-Id: Icbbebbcb4f0fb8890cf7870e4bf053574c0ba12b
+
+libstagefright: Handle gapless audio for ULP playback
+
+Modifications done to avoid alternate audio ulp playback
+as gapless is enabled in JB. With these modifications
+consecutive audio streams can be played in ULP mode
+
+Bug 1019235
+
+Change-Id: Ie48c5654d7a08ab3a2b047bdc9c23bbca575932f
+
+libstagefright: Fix issue in async stop in ulp audio
+
+audioPlayer needs to be paused before flushing buffered
+data in libaudio to avoid further data transfer to
+libaudio before track delete
+
+Bug 1032643
+
+Change-Id: I944f83ae6d3769cca813ec11a74f53b4fe808df9
+
+AwesomePlayer: Fix seek after switching from ULP to non-ULP path
+
+Bug 1033197
+Change-Id: I60c6c995f11cef589792805005db6684f94dc1d3
+
+libstagefright: Check for ulp in next loop after ulp disable
+
+AwesomePlayer is modified to restructure the code which
+detects the ulp case for mp3 playback to make it easy to
+switch between ulp-no ulp playback. Modifications done
+to check for ulp decode possibility in next loop once
+its disabled during routing
+
+Bug 1022323
+
+Change-Id: Id96a49eddd4fab72657dbf82164514a437adfc86
+
+AudioTrack: Avoid frequent cpu wakeup for ULP
+
+When all the data is buffered in libaudio for decoding
+in ULP audio case; sleep for more time to help enter into
+LP2. The wakeup interval in such case is increased to 250ms
+as compared to 10ms in non-ulp case
+
+Bug 1040689
+
+Reviewed-on: http://git-master/r/131697
+(cherry picked from commit e5b9b2ed6b3f7edb0edb884232837ea24f72dd57)
+
+Change-Id: Iec20c7a814c5428455dc921de3eeb4dd2fd535fd
+
+MediaPlayerService: Don't reuse old audiotrack for ULP
+
+AudioSink by default tries to reuse the old audiotrack if audio format
+is same for consecutive streams. Avoid this logic for ULP streams since
+using same AudioTrack for two different ULP streams can cause problem.
+
+Bug 1048646
+
+Change-Id: I90254a2a592bcd633e8a8333d9cba06afe9e7f0c
+Reviewed-on: http://git-master/r/132633
+(cherry picked from commit f75e3c53a0cade64785aaebff28a42a595759521)
+
+libstagefright: post EOS only after libaudio notifies
+
+Modification done to post EOS only after libaudio
+notification.
+
+Bug 1053625
+
+Reviewed-on: http://git-master/r/134758
+(cherry picked from commit b46130d5d6a6cdd68d03381505a567fdd1e41b2d)
+
+Change-Id: I2ec1856c5e1395c618354feba669263999e3aae4
+
+SF: Enable ULP only for MP3 files
+
+Check update where decision to consider stream for ULP.
+
+Bug 1044969
+
+Reviwed-on: http://git-master/r/130605
+(cherry picked from commit 5321978a5caeb536a433139b0ed3236509f1ef94)
+
+Change-Id: I32f53ba7b11e12d5051a9faaf6381de77a84040e
+
+StageFright: Resume after pause for ULP stream near EOS
+
+As ULP can decode big chunk of data, so framework get EOS
+much earlier than normal scenario. On pause of those area
+once you get EOS can not resume as nothing to decode and
+send it to audio HAL trigger.
+So sending NULL data to resume playback.
+
+Bug 1008210
+
+Change-Id: I6edbcd276d0a3d6d2381942bef7764970d952e05
+Reviewed-on: http://git-master/r/117316
+---
+ include/media/IMediaPlayerService.h                |    2 +
+ include/media/mediaplayer.h                        |    7 +
+ include/media/stagefright/AudioPlayer.h            |    3 +
+ include/private/media/AudioTrackShared.h           |    1 +
+ media/libmedia/AudioTrack.cpp                      |   14 +-
+ media/libmedia/IMediaPlayerService.cpp             |   26 ++
+ media/libmediaplayerservice/MediaPlayerService.cpp |   21 ++-
+ media/libmediaplayerservice/MediaPlayerService.h   |    2 +
+ media/libstagefright/AudioPlayer.cpp               |   39 +++-
+ media/libstagefright/AwesomePlayer.cpp             |  247 ++++++++++++++++----
+ media/libstagefright/include/AwesomePlayer.h       |    9 +-
+ 11 files changed, 317 insertions(+), 54 deletions(-)
+
+diff --git a/include/media/IMediaPlayerService.h b/include/media/IMediaPlayerService.h
+index 7a89135..9157ffc 100644
+--- a/include/media/IMediaPlayerService.h
++++ b/include/media/IMediaPlayerService.h
+@@ -87,6 +87,8 @@ public:
+ 
+     virtual void addBatteryData(uint32_t params) = 0;
+     virtual status_t pullBatteryData(Parcel* reply) = 0;
++    virtual status_t setUlpAudioParameter(int key, const Parcel &request) = 0;
++
+ };
+ 
+ // ----------------------------------------------------------------------------
+diff --git a/include/media/mediaplayer.h b/include/media/mediaplayer.h
+index f7cebc5..0973ad2 100644
+--- a/include/media/mediaplayer.h
++++ b/include/media/mediaplayer.h
+@@ -122,6 +122,8 @@ enum media_info_type {
+     MEDIA_INFO_NOT_SEEKABLE = 801,
+     // New media metadata is available.
+     MEDIA_INFO_METADATA_UPDATE = 802,
++    // Audio ULP plaback enabled/disabled
++    MEDIA_INFO_AUDIO_ULP_STATE = 803,
+ 
+     //9xx
+     MEDIA_INFO_TIMED_TEXT_ERROR = 900,
+@@ -155,6 +157,11 @@ enum media_parameter_keys {
+     // Playback rate expressed in permille (1000 is normal speed), saved as int32_t, with negative
+     // values used for rewinding or reverse playback.
+     KEY_PARAMETER_PLAYBACK_RATE_PERMILLE = 1300,                // set only
++
++    /* Custom NV ULP audio specific keys */
++    KEY_PARAMETER_AUDIO_DECODE_EOS = 3000,               // set only
++    KEY_PARAMETER_AUDIO_DECODE_ERROR = 3100,             // set only
++    KEY_PARAMETER_AUDIO_DISABLE_ULP = 3200               // set only
+ };
+ 
+ // Keep INVOKE_ID_* in sync with MediaPlayer.java.
+diff --git a/include/media/stagefright/AudioPlayer.h b/include/media/stagefright/AudioPlayer.h
+index d317699..b8c4239 100644
+--- a/include/media/stagefright/AudioPlayer.h
++++ b/include/media/stagefright/AudioPlayer.h
+@@ -99,6 +99,9 @@ private:
+ 
+     bool mStarted;
+     bool mEnabledAudioULP;
++    bool mULP_ResumeOnEOS;
++    size_t mFramecount;
++    size_t mFramecount_ULP;
+ 
+     bool mIsFirstBuffer;
+     status_t mFirstBufferResult;
+diff --git a/include/private/media/AudioTrackShared.h b/include/private/media/AudioTrackShared.h
+index 5b133f3..9d70192 100644
+--- a/include/private/media/AudioTrackShared.h
++++ b/include/private/media/AudioTrackShared.h
+@@ -30,6 +30,7 @@ namespace android {
+ #define MAX_STARTUP_TIMEOUT_MS  3000    // Longer timeout period at startup to cope with A2DP init time
+ #define MAX_RUN_TIMEOUT_MS      1000
+ #define WAIT_PERIOD_MS          10
++#define ULP_WAIT_PERIOD_MS      250
+ #define RESTORE_TIMEOUT_MS      5000    // Maximum waiting time for a track to be restored
+ 
+ #define CBLK_UNDERRUN_MSK       0x0001
+diff --git a/media/libmedia/AudioTrack.cpp b/media/libmedia/AudioTrack.cpp
+index 4a97484..24b9e9a 100644
+--- a/media/libmedia/AudioTrack.cpp
++++ b/media/libmedia/AudioTrack.cpp
+@@ -1303,7 +1303,10 @@ bool AudioTrack::processAudioBuffer(const sp<AudioTrackThread>& thread)
+             // Keep this thread going to handle timed events and
+             // still try to get more data in intervals of WAIT_PERIOD_MS
+             // but don't just loop and block the CPU, so wait
+-            usleep(WAIT_PERIOD_MS*1000);
++            if (audio_is_ulp_support(mFormat))
++                usleep(ULP_WAIT_PERIOD_MS*1000);
++            else
++                usleep(WAIT_PERIOD_MS*1000);
+             break;
+         }
+ 
+@@ -1328,7 +1331,14 @@ bool AudioTrack::processAudioBuffer(const sp<AudioTrackThread>& thread)
+     while (frames);
+ 
+     if (frames == 0) {
+-        mRemainingFrames = mNotificationFramesAct;
++        if (audio_is_linear_pcm(mFormat)) {
++            mRemainingFrames = mNotificationFramesAct;
++        } else {
++        /* There is no harm to pass total buffer size for compressed stream, since mNotificationFramesAct
++         is already half of framecount. So requesting actual framecount for compressed stream.
++         Will be useful for pause-resume case in ULP to trigger AF immediately */
++            mRemainingFrames = mNotificationFramesAct*2;
++        }
+     } else {
+         mRemainingFrames = frames;
+     }
+diff --git a/media/libmedia/IMediaPlayerService.cpp b/media/libmedia/IMediaPlayerService.cpp
+index c0a0260..4e954ea 100644
+--- a/media/libmedia/IMediaPlayerService.cpp
++++ b/media/libmedia/IMediaPlayerService.cpp
+@@ -46,6 +46,7 @@ enum {
+     ADD_BATTERY_DATA,
+     PULL_BATTERY_DATA,
+     LISTEN_FOR_REMOTE_DISPLAY,
++    SET_ULP_AUDIO_PARAMETER,
+ };
+ 
+ class BpMediaPlayerService: public BpInterface<IMediaPlayerService>
+@@ -156,6 +157,19 @@ public:
+         remote()->transact(LISTEN_FOR_REMOTE_DISPLAY, data, &reply);
+         return interface_cast<IRemoteDisplay>(reply.readStrongBinder());
+     }
++
++    virtual status_t setUlpAudioParameter(int key, const Parcel& request)
++    {
++        Parcel data, reply;
++
++        data.writeInterfaceToken(IMediaPlayerService::getInterfaceDescriptor());
++        data.writeInt32(key);
++        if (request.dataSize() > 0) {
++            data.appendFrom(const_cast<Parcel *>(&request), 0, request.dataSize());
++        }
++        remote()->transact(SET_ULP_AUDIO_PARAMETER, data, &reply);
++        return reply.readInt32();
++    }
+ };
+ 
+ IMPLEMENT_META_INTERFACE(MediaPlayerService, "android.media.IMediaPlayerService");
+@@ -256,6 +270,18 @@ status_t BnMediaPlayerService::onTransact(
+             reply->writeStrongBinder(display->asBinder());
+             return NO_ERROR;
+         } break;
++        case SET_ULP_AUDIO_PARAMETER: {
++            CHECK_INTERFACE(IMediaPlayerService, data, reply);
++            int key = data.readInt32();
++            Parcel request;
++            if (data.dataAvail() > 0) {
++                request.appendFrom(
++                        const_cast<Parcel *>(&data), data.dataPosition(), data.dataAvail());
++            }
++            request.setDataPosition(0);
++            reply->writeInt32(setUlpAudioParameter(key, request));
++            return NO_ERROR;
++        } break;
+         default:
+             return BBinder::onTransact(code, data, reply, flags);
+     }
+diff --git a/media/libmediaplayerservice/MediaPlayerService.cpp b/media/libmediaplayerservice/MediaPlayerService.cpp
+index 49fc044..9ee22e6 100644
+--- a/media/libmediaplayerservice/MediaPlayerService.cpp
++++ b/media/libmediaplayerservice/MediaPlayerService.cpp
+@@ -496,6 +496,7 @@ MediaPlayerService::Client::Client(
+     mAudioSessionId = audioSessionId;
+     mUID = uid;
+     mRetransmitEndpointValid = false;
++    mEnabledAudioULP = false;
+ 
+ #if CALLBACK_ANTAGONIZER
+     ALOGD("create Antagonizer");
+@@ -1083,6 +1084,10 @@ void MediaPlayerService::Client::notify(
+     }
+ 
+     if (MEDIA_INFO == msg &&
++        MEDIA_INFO_AUDIO_ULP_STATE == ext1) {
++        client->mEnabledAudioULP = ext2;
++        return;
++    } else if (MEDIA_INFO == msg &&
+         MEDIA_INFO_METADATA_UPDATE == ext1) {
+         const media::Metadata::Type metadata_type = ext2;
+ 
+@@ -1450,7 +1455,8 @@ status_t MediaPlayerService::AudioOutput::open(
+ 
+         bool reuse = true;
+         if ((mCallbackData == NULL && mCallback != NULL) ||
+-                (mCallbackData != NULL && mCallback == NULL)) {
++                (mCallbackData != NULL && mCallback == NULL) ||
++                audio_is_ulp_support(format)) {
+             // recycled track uses callbacks but the caller wants to use writes, or vice versa
+             ALOGV("can't chain callback and write");
+             reuse = false;
+@@ -2067,4 +2073,17 @@ status_t MediaPlayerService::pullBatteryData(Parcel* reply) {
+     }
+     return NO_ERROR;
+ }
++
++status_t MediaPlayerService::setUlpAudioParameter(int key, const Parcel &request) {
++    Mutex::Autolock lock(mLock);
++
++    for (int i = 0, n = mClients.size(); i < n; ++i) {
++        sp<Client> c = mClients[i].promote();
++        if (c->mEnabledAudioULP == true) {
++            c->setParameter(key,request);
++        }
++    }
++
++    return NO_ERROR;
++}
+ } // namespace android
+diff --git a/media/libmediaplayerservice/MediaPlayerService.h b/media/libmediaplayerservice/MediaPlayerService.h
+index b1cd99b..92e29bb 100644
+--- a/media/libmediaplayerservice/MediaPlayerService.h
++++ b/media/libmediaplayerservice/MediaPlayerService.h
+@@ -302,6 +302,7 @@ public:
+     virtual void                addBatteryData(uint32_t params);
+     // API for the Battery app to pull the data of codecs usage
+     virtual status_t            pullBatteryData(Parcel* reply);
++    virtual status_t            setUlpAudioParameter(int key, const Parcel& request);
+ private:
+ 
+     class Client : public BnMediaPlayer {
+@@ -401,6 +402,7 @@ private:
+                     sp<IBinder>                 mConnectedWindowBinder;
+                     struct sockaddr_in          mRetransmitEndpoint;
+                     bool                        mRetransmitEndpointValid;
++                    bool                        mEnabledAudioULP;
+                     sp<Client>                  mNextClient;
+ 
+         // Metadata filters.
+diff --git a/media/libstagefright/AudioPlayer.cpp b/media/libstagefright/AudioPlayer.cpp
+index 133c4df..86e7043 100644
+--- a/media/libstagefright/AudioPlayer.cpp
++++ b/media/libstagefright/AudioPlayer.cpp
+@@ -83,7 +83,9 @@ AudioPlayer::AudioPlayer(
+       mAudioSink(audioSink),
+       mAllowDeepBuffering(allowDeepBuffering),
+       mObserver(observer),
+-      mPinnedTimeUs(-1ll) {
++      mPinnedTimeUs(-1ll),
++      mULP_ResumeOnEOS(false),
++      mFramecount(0) {
+ 
+     mPortSettingsChangedEvent = new AudioPlayerEvent(this, &AudioPlayer::onPortSettingsChangedEvent);
+     mPortSettingsChangedEventPending = false;
+@@ -289,7 +291,10 @@ void AudioPlayer::pause(bool playPendingSamples) {
+     } else {
+         if(mEnabledAudioULP) {
+             String8 key = String8("nv_param_avp_decode_pause=1");
+-            AudioSystem::setParameters(NULL,key);
++            AudioSystem::setParameters(0,key);
++            mFramecount_ULP = 0;
++            mAudioTrack->getMinFrameCount((int *)&mFramecount, AUDIO_STREAM_MUSIC, mSampleRate);
++            mULP_ResumeOnEOS = false;
+         }
+         if (mAudioSink.get() != NULL) {
+             mAudioSink->pause();
+@@ -306,7 +311,9 @@ void AudioPlayer::resume() {
+ 
+     if(mEnabledAudioULP) {
+         String8 key = String8("nv_param_avp_decode_pause=0");
+-        AudioSystem::setParameters(NULL,key);
++        AudioSystem::setParameters(0,key);
++        if (mReachedEOS)
++            mULP_ResumeOnEOS = true;
+     }
+ 
+     if (mAudioSink.get() != NULL) {
+@@ -351,6 +358,7 @@ void AudioPlayer::reset() {
+     // to instantiate it again.
+     wp<MediaSource> tmp = mSource;
+     mSource.clear();
++    if(!mEnabledAudioULP)
+     while (tmp.promote() != NULL) {
+         usleep(1000);
+     }
+@@ -591,7 +599,7 @@ size_t AudioPlayer::fillBuffer(void *data, size_t size) {
+         ALOGV("AudioCallback");
+     }
+ 
+-    if (mReachedEOS) {
++    if (mReachedEOS && !mULP_ResumeOnEOS) {
+         return 0;
+     }
+ 
+@@ -607,6 +615,16 @@ size_t AudioPlayer::fillBuffer(void *data, size_t size) {
+         return size;
+     }
+ 
++    if (true == mULP_ResumeOnEOS) {
++        LOGV("Trigger resume... filling zeros %d",size);
++        memset(data, 0, size);
++        mFramecount_ULP += size;
++        if(mFramecount <= mFramecount_ULP)
++            mULP_ResumeOnEOS = false;
++
++        return size;
++    }
++
+     size_t size_done = 0;
+     size_t size_remaining = size;
+     while (size_remaining > 0) {
+@@ -697,11 +715,16 @@ size_t AudioPlayer::fillBuffer(void *data, size_t size) {
+                          numFramesPendingPlayout,
+                          timeToCompletionUs, timeToCompletionUs / 1E6);
+ 
+-                    postEOS = true;
+-                    if (mAudioSink->needsTrailingPadding()) {
+-                        postEOSDelayUs = timeToCompletionUs + mLatencyUs;
++                    if (mEnabledAudioULP) {
++                        String8 key = String8("nv_param_avp_decode_eos=1");
++                        AudioSystem::setParameters(0,key);
+                     } else {
+-                        postEOSDelayUs = 0;
++                        postEOS = true;
++                        if (mAudioSink->needsTrailingPadding()) {
++                            postEOSDelayUs = timeToCompletionUs + mLatencyUs;
++                        } else {
++                            postEOSDelayUs = 0;
++                        }
+                     }
+                 }
+ 
+diff --git a/media/libstagefright/AwesomePlayer.cpp b/media/libstagefright/AwesomePlayer.cpp
+index 977b377..7db80a8 100644
+--- a/media/libstagefright/AwesomePlayer.cpp
++++ b/media/libstagefright/AwesomePlayer.cpp
+@@ -65,7 +65,7 @@ static int64_t kLowWaterMarkUs = 2000000ll;  // 2secs
+ static int64_t kHighWaterMarkUs = 5000000ll;  // 5secs
+ static const size_t kLowWaterMarkBytes = 40000;
+ static const size_t kHighWaterMarkBytes = 200000;
+-bool AwesomePlayer::mEnabledAudioULP = false;
++bool AwesomePlayer::mAudioULPInstanceRunning = false;
+ Mutex AwesomePlayer::mAudioULP;
+ 
+ struct AwesomeEvent : public TimedEventQueue::Event {
+@@ -194,15 +194,18 @@ AwesomePlayer::AwesomePlayer()
+       mVideoScalingMode(NATIVE_WINDOW_SCALING_MODE_SCALE_TO_WINDOW),
+       mFlags(0),
+       mExtractorFlags(0),
++      mIsBufferingStartEventNotified(false),
+       mVideoBuffer(NULL),
+       mDecryptHandle(NULL),
+       mLastVideoTimeUs(-1),
+       mTextDriver(NULL),
+       mStreamSupportsULP(false),
+       mOwnerAudioULP(false),
+-      mIsBufferingStartEventNotified(false),
++      mEnabledAudioULP(false),
+       mDataSourceFlags(0),
+-      mPauseAfterSeek(false) {
++      mPauseAfterSeek(false),
++      mAudioSystemSupportsULP(0),
++      mReachedEOSAudioULP(false) {
+     CHECK_EQ(mClient.connect(), (status_t)OK);
+ 
+     DataSource::RegisterDefaultSniffers();
+@@ -220,6 +223,8 @@ AwesomePlayer::AwesomePlayer()
+     mBufferingEventPending = false;
+     mVideoLagEvent = new AwesomeEvent(this, &AwesomePlayer::onVideoLagUpdate);
+     mVideoEventPending = false;
++    mDisableUlpEvent = new AwesomeEvent(this, &AwesomePlayer::onUlpDisable);
++    mDisableUlpEventPending = false;
+ 
+     mCheckAudioStatusEvent = new AwesomeEvent(
+             this, &AwesomePlayer::onCheckAudioStatus);
+@@ -413,7 +418,6 @@ status_t AwesomePlayer::setDataSource_l(
+     if (extractor == NULL) {
+         return UNKNOWN_ERROR;
+     }
+-    mDataSourceFlags = dataSource->flags();
+ #ifdef PROFILING
+     // Redundant call, can this be removed?
+     setProfileFlags();
+@@ -479,7 +483,7 @@ status_t AwesomePlayer::setDataSource_l(const sp<MediaExtractor> &extractor) {
+ 
+     bool haveAudio = false;
+     bool haveVideo = false;
+-    int32_t numChannels = 0, sampleRate = 0, ulpSupported = 0;
++    int32_t numChannels = 0, sampleRate = 0;
+     for (size_t i = 0; i < extractor->countTracks(); ++i) {
+         sp<MetaData> meta = extractor->getTrackMetaData(i);
+ 
+@@ -569,22 +573,26 @@ status_t AwesomePlayer::setDataSource_l(const sp<MediaExtractor> &extractor) {
+             return UNKNOWN_ERROR;
+         }
+     }
++    mExtractorFlags = extractor->flags();
+ 
+-    {
+-        // Check if libaudio supports ULP decode
+-        char *paramVal;
+-        String8 key = String8("nv_param_ulp_supported");
+-        String8 out = AudioSystem::getParameters(NULL,key);
+-        if (out.length() != 0)
+-            sscanf(out.string(), "%d", &ulpSupported);
+-    }
+-
+-    if (!haveVideo && haveAudio && ulpSupported && (numChannels == 2) && ((sampleRate == 48000) || (sampleRate == 44100))) {
+-        mStreamSupportsULP = true;
++    // Check if libaudio supports ULP decode
++    char *paramVal;
++    String8 key = String8("nv_param_ulp_supported");
++    String8 out = AudioSystem::getParameters(0,key);
++    if (out.length() != 0)
++        sscanf(out.string(), "%d", &mAudioSystemSupportsULP);
++
++    if (!haveVideo && haveAudio && (numChannels == 2) && ((sampleRate == 48000) || (sampleRate == 44100)) &&
++        (mAudioSink->realtime()) && (mAudioSink->getStreamType() == AUDIO_STREAM_MUSIC) &&
++        (mDataSourceFlags & DataSource::kIsLocalDataSource)) {
++        // Check if MP3 audio : Currently audio decode on avp is only supported for mp3
++        sp<MetaData> meta = mAudioTrack->getFormat();
++        const char *mime;
++        CHECK(meta->findCString(kKeyMIMEType, &mime));
++        if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_MPEG))
++           mStreamSupportsULP = true;
+     }
+ 
+-    mExtractorFlags = extractor->flags();
+-
+     return OK;
+ }
+ 
+@@ -669,19 +677,29 @@ void AwesomePlayer::reset_l() {
+     mTimeSource = NULL;
+ 
+     if (mOwnerAudioULP) {
+-        // flush the compressed data ib libaudio for asynchronous stop
++        if (mFlags & AUDIO_RUNNING) {
++            // Pause the audio track to stop feeding compressed data to libaudio
++            mAudioPlayer->pause();
++        }
++        // flush the compressed data in libaudio for asynchronous stop
+         String8 key = String8("nv_param_avp_decode_flush=1");
+-        AudioSystem::setParameters(NULL,key);
++        AudioSystem::setParameters(0,key);
+     }
+     mOffsetTimeUs = 0;
++    mReachedEOSAudioULP = false;
+ 
+     delete mAudioPlayer;
+     mAudioPlayer = NULL;
+ 
+     if (mOwnerAudioULP) {
+         Mutex::Autolock autoLock(AwesomePlayer::mAudioULP);
+-        AwesomePlayer::mEnabledAudioULP = false;
++        AwesomePlayer::mAudioULPInstanceRunning = false;
+         mOwnerAudioULP = false;
++        mEnabledAudioULP = false;
++        notifyListener_l(
++            MEDIA_INFO,
++            MEDIA_INFO_AUDIO_ULP_STATE,
++            0);
+     }
+ 
+     if (mTextDriver != NULL) {
+@@ -994,6 +1012,37 @@ void AwesomePlayer::sendCacheStats() {
+     }
+ }
+ 
++void AwesomePlayer::onUlpDisable() {
++    Mutex::Autolock autoLock(mLock);
++    if(!mDisableUlpEventPending) {
++        return;
++    }
++    mDisableUlpEventPending = false;
++    bool wasPlaying = (mFlags & PLAYING) != 0;
++    pause_l();
++
++    if (mOwnerAudioULP) {
++        Mutex::Autolock autoLock(AwesomePlayer::mAudioULP);
++        AwesomePlayer::mAudioULPInstanceRunning = false;
++        mOwnerAudioULP = false;
++        mAudioSystemSupportsULP = false;
++
++        notifyListener_l(
++            MEDIA_INFO,
++            MEDIA_INFO_AUDIO_ULP_STATE,
++            0);
++        status_t err = recreateAudioChain();
++        if (err != OK) {
++            ALOGE("Failed to recreate audio chain: 0x%x", err);
++            notifyListener_l(MEDIA_ERROR, MEDIA_ERROR_UNKNOWN, err);
++            return;
++        }
++    }
++    if (wasPlaying) {
++        play_l();
++    }
++}
++
+ void AwesomePlayer::onStreamDone() {
+     // Posted whenever any stream finishes playing.
+     ATRACE_CALL();
+@@ -1035,12 +1084,48 @@ void AwesomePlayer::onStreamDone() {
+         if (mVideoSource != NULL) {
+             postVideoEvent_l();
+         }
++
++        if ((true == mStreamSupportsULP) && (false == mOwnerAudioULP)) {
++            // Recheck if AVP supports the ulp decode now
++            char *paramVal;
++            String8 key = String8("nv_param_ulp_supported");
++            String8 out = AudioSystem::getParameters(0,key);
++            if (out.length() != 0)
++                sscanf(out.string(), "%d", &mAudioSystemSupportsULP);
++
++            if (mAudioSystemSupportsULP) {
++                bool wasPlaying = (mFlags & PLAYING) != 0;
++                pause_l();
++                status_t err = recreateAudioChain();
++                if (err != OK) {
++                    ALOGE("Failed to recreate audio chain: 0x%x", err);
++                    notifyListener_l(MEDIA_ERROR, MEDIA_ERROR_UNKNOWN, err);
++                    return;
++                }
++                if (wasPlaying) {
++                    play_l();
++                }
++            }
++        }
+     } else {
+         ALOGV("MEDIA_PLAYBACK_COMPLETE");
+-        notifyListener_l(MEDIA_PLAYBACK_COMPLETE);
+ 
+         pause_l(true /* at eos */);
+ 
++        if (mOwnerAudioULP) {
++            Mutex::Autolock autoLock(AwesomePlayer::mAudioULP);
++            String8 key = String8("nv_param_avp_decode_flush=1");
++            AudioSystem::setParameters(0,key);
++            AwesomePlayer::mAudioULPInstanceRunning = false;
++            mOwnerAudioULP = false;
++            notifyListener_l(
++                MEDIA_INFO,
++                MEDIA_INFO_AUDIO_ULP_STATE,
++                0);
++        }
++
++        notifyListener_l(MEDIA_PLAYBACK_COMPLETE);
++
+         modifyFlags(AT_EOS, SET);
+     }
+ }
+@@ -1062,13 +1147,14 @@ status_t AwesomePlayer::play() {
+ 
+ status_t AwesomePlayer::play_l() {
+     modifyFlags(SEEK_PREVIEW, CLEAR);
++    status_t err = OK;
+ 
+     if (mFlags & PLAYING) {
+         return OK;
+     }
+ 
+     if (!(mFlags & PREPARED)) {
+-        status_t err = prepare_l();
++        err = prepare_l();
+ 
+         if (err != OK) {
+             return err;
+@@ -1078,6 +1164,47 @@ status_t AwesomePlayer::play_l() {
+     modifyFlags(PLAYING, SET);
+     modifyFlags(FIRST_FRAME, SET);
+ 
++    if ((true == mStreamSupportsULP) && (false == mOwnerAudioULP)) {
++        Mutex::Autolock autoLock(AwesomePlayer::mAudioULP);
++        // Recheck if AVP supports the ulp decode
++        char *paramVal;
++        String8 key = String8("nv_param_ulp_supported");
++        String8 out = AudioSystem::getParameters(0,key);
++        if (out.length() != 0)
++            sscanf(out.string(), "%d", &mAudioSystemSupportsULP);
++
++        //Created chain with cpu decoder? Recheck
++        if (mAudioSystemSupportsULP && (mAudioPlayer == NULL) && (false == mEnabledAudioULP)) {
++            err = recreateAudioChain();
++            if (err != OK) {
++                ALOGE("Failed to recreate audio chain: 0x%x", err);
++                return err;
++            }
++        }
++
++        if ((true == mEnabledAudioULP) &&
++            (false == AwesomePlayer::mAudioULPInstanceRunning) &&
++            (mAudioSystemSupportsULP)) {
++            AwesomePlayer::mAudioULPInstanceRunning = true;
++            mOwnerAudioULP = true;
++            notifyListener_l(
++                MEDIA_INFO,
++                MEDIA_INFO_AUDIO_ULP_STATE,
++                1);
++        } else if ((true == mEnabledAudioULP) &&
++            ((true == AwesomePlayer::mAudioULPInstanceRunning) ||
++            (!mAudioSystemSupportsULP))) {
++            // Already one instance running on AVP : disable ULP and open cpu decoder
++            mAudioSystemSupportsULP = false; //can't support another instance
++            mEnabledAudioULP = false;
++            err = recreateAudioChain();
++            if (err != OK) {
++                ALOGE("Failed to recreate audio chain: 0x%x", err);
++                return err;
++            }
++        }
++    }
++
+     if (mDecryptHandle != NULL) {
+         int64_t position;
+         getPosition(&position);
+@@ -1534,11 +1661,10 @@ status_t AwesomePlayer::getPosition(int64_t *positionUs) {
+         Mutex::Autolock autoLock(mMiscStateLock);
+         *positionUs = mVideoTimeUs;
+     } else if (mAudioPlayer != NULL) {
+-        if(mOwnerAudioULP)
+-        {
++        if (mOwnerAudioULP) {
+             uint64_t pos = 0;
+             String8 key = String8("nv_param_avp_decode_position");
+-            String8 out = AudioSystem::getParameters(NULL,key);
++            String8 out = AudioSystem::getParameters(0,key);
+             if(out.length() != 0)
+                 sscanf(out.string(), "%lld", &pos);
+             *positionUs = mOffsetTimeUs + pos;
+@@ -1617,20 +1743,21 @@ status_t AwesomePlayer::seekTo_l(int64_t timeUs) {
+ 
+ void AwesomePlayer::seekAudioIfNecessary_l() {
+     if (mSeeking != NO_SEEK && mVideoSource == NULL && mAudioPlayer != NULL) {
+-        if((mOwnerAudioULP == true) && (mFlags & AUDIO_RUNNING)) {
++        if ((mOwnerAudioULP == true) && (mFlags & AUDIO_RUNNING)) {
+             // Pause the audio track to stop feeding compressed data to libaudio
+             mAudioPlayer->pause();
+         }
+         mAudioPlayer->seekTo(mSeekTimeUs);
+         // flush buffered data in avp for ULP case
+-        if(mOwnerAudioULP == true) {
++        if (mOwnerAudioULP == true) {
+             String8 key = String8("nv_param_avp_decode_flush=1");
+-            AudioSystem::setParameters(NULL,key);
+-            mOffsetTimeUs = mSeekTimeUs;
++            AudioSystem::setParameters(0,key);
+             if(mFlags & AUDIO_RUNNING)
+                 mAudioPlayer->resume();
+         }
+ 
++        mOffsetTimeUs = mSeekTimeUs;
++        mReachedEOSAudioULP = false;
+         mWatchForAudioSeekComplete = true;
+         mWatchForAudioEOS = true;
+ 
+@@ -1667,19 +1794,13 @@ status_t AwesomePlayer::initAudioDecoder() {
+     const char *mime;
+     CHECK(meta->findCString(kKeyMIMEType, &mime));
+ 
+-    if ((mStreamSupportsULP) &&
+-        (mAudioSink->realtime()) &&
+-        (mAudioSink->getStreamType() == AUDIO_STREAM_MUSIC) &&
+-        (mDataSourceFlags & DataSource::kIsLocalDataSource) &&
+-        (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_MPEG))) {
+-        Mutex::Autolock autoLock(AwesomePlayer::mAudioULP);
+-        if (!AwesomePlayer::mEnabledAudioULP) {
+-            AwesomePlayer::mEnabledAudioULP = true;
+-            mOwnerAudioULP = true;
+-        }
++    if ((true == mStreamSupportsULP) && mAudioSystemSupportsULP) {
++        mEnabledAudioULP = true;
++    } else {
++        mEnabledAudioULP = false;
+     }
+ 
+-    if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_RAW) || mOwnerAudioULP) {
++    if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_RAW) || mEnabledAudioULP) {
+         mAudioSource = mAudioTrack;
+     } else {
+         mAudioSource = OMXCodec::Create(
+@@ -2360,7 +2481,8 @@ void AwesomePlayer::onCheckAudioStatus() {
+     }
+ 
+     status_t finalStatus;
+-    if (mWatchForAudioEOS && mAudioPlayer->reachedEOS(&finalStatus)) {
++    if (mWatchForAudioEOS && mAudioPlayer->reachedEOS(&finalStatus) &&
++        ((!mOwnerAudioULP) || ((mOwnerAudioULP) && (mReachedEOSAudioULP)))) {
+         mWatchForAudioEOS = false;
+         modifyFlags(AUDIO_AT_EOS, SET);
+         modifyFlags(FIRST_FRAME, SET);
+@@ -2751,6 +2873,33 @@ status_t AwesomePlayer::setParameter(int key, const Parcel &request) {
+                 return NO_INIT;
+             }
+         }
++       case KEY_PARAMETER_AUDIO_DECODE_EOS:
++        {
++            if (mOwnerAudioULP) {
++                mReachedEOSAudioULP = true;
++                postCheckAudioStatusEvent(0);
++                // This is EOS, Current position should point to end
++                mOffsetTimeUs = mDurationUs;
++            }
++            return NO_ERROR;
++        }
++        case KEY_PARAMETER_AUDIO_DECODE_ERROR:
++        {
++            if (mOwnerAudioULP)
++                notifyListener_l(MEDIA_ERROR, MEDIA_ERROR_UNKNOWN, request.readInt32());
++            return NO_ERROR;
++        }
++        case KEY_PARAMETER_AUDIO_DISABLE_ULP:
++        {
++            // Routing case, need to switch to cpu decoder from current playback position
++            if (mOwnerAudioULP) {
++                mSeekTimeUs = request.readInt64() + mOffsetTimeUs;
++                mSeeking = SEEK;
++                mDisableUlpEventPending = true;
++                mQueue.postEvent(mDisableUlpEvent);
++            }
++            return NO_ERROR;
++        }
+         default:
+         {
+             return ERROR_UNSUPPORTED;
+@@ -3049,6 +3198,20 @@ bool AwesomePlayer::isStreamingHTTP() const {
+     return mCachedSource != NULL || mWVMExtractor != NULL;
+ }
+ 
++status_t AwesomePlayer::recreateAudioChain() {
++    if (mAudioPlayer != NULL) {
++        mAudioSource.clear();
++        delete mAudioPlayer;
++        mAudioPlayer = NULL;
++        modifyFlags(AUDIOPLAYER_STARTED, CLEAR);
++        modifyFlags(AUDIO_RUNNING, CLEAR);
++    } else {
++        mAudioSource->stop();
++        mAudioSource.clear();
++    }
++    return initAudioDecoder();
++}
++
+ status_t AwesomePlayer::dump(int fd, const Vector<String16> &args) const {
+     Mutex::Autolock autoLock(mStatsLock);
+ 
+diff --git a/media/libstagefright/include/AwesomePlayer.h b/media/libstagefright/include/AwesomePlayer.h
+index c1e5320..0f7234e 100644
+--- a/media/libstagefright/include/AwesomePlayer.h
++++ b/media/libstagefright/include/AwesomePlayer.h
+@@ -125,6 +125,7 @@ struct AwesomePlayer {
+ 
+     void postAudioEOS(int64_t delayUs = 0ll);
+     void postAudioSeekComplete();
++    status_t recreateAudioChain();
+ 
+     status_t dump(int fd, const Vector<String16> &args) const;
+ 
+@@ -236,6 +237,8 @@ private:
+     bool mAudioStatusEventPending;
+     sp<TimedEventQueue::Event> mVideoLagEvent;
+     bool mVideoLagEventPending;
++    sp<TimedEventQueue::Event> mDisableUlpEvent;
++    bool mDisableUlpEventPending;
+ 
+     sp<TimedEventQueue::Event> mAsyncPrepareEvent;
+     Condition mPreparedCondition;
+@@ -269,7 +272,8 @@ private:
+     //Audio ULP
+     bool mStreamSupportsULP;
+     bool mOwnerAudioULP;
+-    static bool mEnabledAudioULP;
++    bool mEnabledAudioULP;
++    static bool mAudioULPInstanceRunning;
+     static Mutex mAudioULP;
+     int64_t mOffsetTimeUs;
+ 
+@@ -310,6 +314,7 @@ private:
+     void abortPrepare(status_t err);
+     void finishAsyncPrepare_l();
+     void onVideoLagUpdate();
++    void onUlpDisable();
+ 
+     bool getCachedDuration_l(int64_t *durationUs, bool *eos);
+ 
+@@ -379,6 +384,8 @@ private:
+     AwesomePlayer(const AwesomePlayer &);
+     AwesomePlayer &operator=(const AwesomePlayer &);
+     uint32_t mDataSourceFlags;
++    int mAudioSystemSupportsULP;
++    bool mReachedEOSAudioULP;
+ #ifdef PROFILING
+     struct ProfileStats{
+         uint64_t mProfFlags;//1 - noAudio, 2 - noAvsync, 4 - noPreCache, 8 - noRender, 16 - statFlag, 32 - showJitter
+-- 
+1.7.1
+

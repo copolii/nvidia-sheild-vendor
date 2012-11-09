@@ -1,0 +1,52 @@
+From 9244c20b4c1d40a8481800ea95bf0d33dce8d111 Mon Sep 17 00:00:00 2001
+From: aarti jadhav-gaikwad <agaikwad@nvidia.com>
+Date: Tue, 24 Jul 2012 14:45:33 +0530
+Subject: [PATCH 28/40] libstagefright: Handle unsupported codec metaData
+
+Modification done in StagefrightMetadataRetriver
+to handle NULL return for meta data if codec is
+unsupported by extractor.
+
+Bug 1020917
+
+Change-Id: I17bf4409874a541e56d0e66b5a1cf359740ca933
+---
+ .../StagefrightMetadataRetriever.cpp               |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
+
+diff --git a/media/libstagefright/StagefrightMetadataRetriever.cpp b/media/libstagefright/StagefrightMetadataRetriever.cpp
+index 549d645..c17f972 100644
+--- a/media/libstagefright/StagefrightMetadataRetriever.cpp
++++ b/media/libstagefright/StagefrightMetadataRetriever.cpp
+@@ -346,6 +346,9 @@ VideoFrame *StagefrightMetadataRetriever::getFrameAtTime(
+     for (i = 0; i < n; ++i) {
+         sp<MetaData> meta = mExtractor->getTrackMetaData(i);
+ 
++        if (meta == NULL)
++            continue;
++
+         const char *mime;
+         CHECK(meta->findCString(kKeyMIMEType, &mime));
+ 
+@@ -528,6 +531,9 @@ void StagefrightMetadataRetriever::parseMetaData() {
+ 
+     size_t numTracks = mExtractor->countTracks();
+ 
++    if (numTracks == 0)      //If no tracks available, corrupt or not valid stream
++        return;
++
+     char tmp[32];
+     sprintf(tmp, "%d", numTracks);
+ 
+@@ -545,6 +551,8 @@ void StagefrightMetadataRetriever::parseMetaData() {
+     String8 timedTextLang;
+     for (size_t i = 0; i < numTracks; ++i) {
+         sp<MetaData> trackMeta = mExtractor->getTrackMetaData(i);
++        if (trackMeta == NULL)
++            continue;
+ 
+         int64_t durationUs;
+         if (trackMeta->findInt64(kKeyDuration, &durationUs)) {
+-- 
+1.7.1
+
