@@ -525,7 +525,7 @@ index 6a35053..264d640 100644
 +                if (!audio_is_linear_pcm(mFormat))
 +                    audioHALFrames = 0;
 +
-                 if (track->presentationComplete(framesWritten, audioHALFrames)) {
+                 if (mStandby || track->presentationComplete(framesWritten, audioHALFrames)) {
                      if (track->isStopped()) {
                          track->reset();
 @@ -3843,6 +3949,7 @@ void AudioFlinger::DirectOutputThread::threadLoop_mix()
