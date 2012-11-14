@@ -35,7 +35,7 @@ else
     apply_patch system/core 0002-Enable-use-of-modem.-property-by-radio-user.patch
     apply_patch system/core 0003-Enable-use-of-ro.sf.lcd_density-prop-by-system-user.patch
     apply_patch system/core 0001-audio-add-ulp-audio-format-query.patch
-    apply_patch frameworks/av 0001-AudioFlinger-Support-ULP-audio-on-Android-JB.patch
+    #apply_patch frameworks/av 0001-AudioFlinger-Support-ULP-audio-on-Android-JB.patch
     apply_patch hardware/libhardware_legacy 0001-audio-policy-Add-WFD-device-in-Audio-Policy-Manager-.patch
     apply_patch hardware/libhardware 0001-usbaudio-Get-card-number-from-substring.patch
     apply_patch external/tinyalsa 0001-external-tinyalsa-Enable-tinyalsa-apps-in-JB-build.patch
