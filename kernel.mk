@@ -45,6 +45,10 @@ else
     endif
 endif
 
+ifeq ($(TARGET_TEGRA_VERSION),t148)
+    TARGET_KERNEL_CONFIG ?= tegra14_android_defconfig
+endif
+
 ifeq ($(wildcard $(KERNEL_PATH)/arch/arm/configs/$(TARGET_KERNEL_CONFIG)),)
     $(error Could not find kernel defconfig for board)
 endif
