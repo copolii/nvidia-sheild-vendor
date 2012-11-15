@@ -93,6 +93,7 @@ function ksetup()
         $SRC/scripts/config --file $KOUT/.config \
             --enable DEBUG_FS \
             --enable GCOV_KERNEL \
+            --enable GCOV_TOOLCHAIN_IS_ANDROID \
             --disable GCOV_PROFILE_ALL
     fi
 }
