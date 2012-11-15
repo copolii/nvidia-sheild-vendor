@@ -38,6 +38,7 @@ NVIDIA_HOST_STATIC_LIBRARY := $(NVIDIA_BUILD_ROOT)/host_static_library.mk
 NVIDIA_HOST_SHARED_LIBRARY := $(NVIDIA_BUILD_ROOT)/host_shared_library.mk
 NVIDIA_HOST_EXECUTABLE     := $(NVIDIA_BUILD_ROOT)/host_executable.mk
 NVIDIA_JAVA_LIBRARY        := $(NVIDIA_BUILD_ROOT)/java_library.mk
+NVIDIA_STATIC_JAVA_LIBRARY := $(NVIDIA_BUILD_ROOT)/static_java_library.mk
 NVIDIA_PACKAGE             := $(NVIDIA_BUILD_ROOT)/package.mk
 NVIDIA_COVERAGE            := $(NVIDIA_BUILD_ROOT)/coverage.mk
 NVIDIA_PREBUILT            := $(NVIDIA_BUILD_ROOT)/prebuilt.mk
