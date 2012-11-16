@@ -20,12 +20,3 @@ if [ "$ODMDATA_OVERRIDE" ]; then
 else
     export NVFLASH_ODM_DATA=0x80098000
 fi
-
-if [ "$BOARD_IS_E1613" == "1" ]
-then
-      cp $OUTDIR/flash_dalmore_e1613.bct $OUTDIR/flash.bct
-      cp $OUTDIR/flash_dalmore_e1613.cfg $OUTDIR/bct.cfg
-else
-      cp $OUTDIR/flash_dalmore_e1611.bct $OUTDIR/flash.bct
-      cp $OUTDIR/flash_dalmore_e1611.cfg $OUTDIR/bct.cfg
-fi
