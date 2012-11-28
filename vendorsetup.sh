@@ -241,7 +241,42 @@ function krebuild()
         && mkdir -p $T/$OUTDIR/system/lib/modules && cp -f `find $T/$OUTDIR/modules -name *.ko` $T/$OUTDIR/system/lib/modules \
         && $MKBOOTIMG --kernel $ZIMAGE --ramdisk $RAMDISK --output $T/$OUTDIR/boot.img )
 
-    echo "$OUT/Boot.img created successfully."
+    echo "$OUT/boot.img created successfully."
+}
+
+function builddtb()
+{
+    local TARGET_USE_DTB=$(get_build_var TARGET_USE_DTB)
+    local APPEND_DTB_TO_KERNEL=$(get_build_var APPEND_DTB_TO_KERNEL)
+
+    if [ "$TARGET_USE_DTB" == true ] && [ "$APPEND_DTB_TO_KERNEL" == false ]; then
+        local TARGET_KERNEL_DT_NAME=$(get_build_var TARGET_KERNEL_DT_NAME)
+        ksetup $TARGET_KERNEL_DT_NAME.dtb
+        cp $OUT/obj/KERNEL/arch/arm/boot/$TARGET_KERNEL_DT_NAME.dtb $OUT
+        echo "$OUT/$TARGET_KERNEL_DT_NAME.dtb created successfully."
+    fi
+}
+
+function buildsysimg()
+{
+    local OUT=$(get_build_var OUT)
+    local TARGET_OUT=$OUT/system
+    local systemimage_intermediates=$OUT/obj/PACKAGING/systemimage_intermediates
+    $TOP/build/tools/releasetools/build_image.py $TARGET_OUT $systemimage_intermediates/system_image_info.txt $systemimage_intermediates/system.img
+    cp $systemimage_intermediates/system.img $OUT/
+    echo "$OUT/system.img created successfully."
+}
+
+function buildall()
+{
+    #build kernel and kernel modules
+    krebuild
+
+    #build board's device tree blob (dtb)
+    builddtb
+
+    #create system.img
+    buildsysimg
 }
 
 # allow us to override Google defined functions to apply local fixes
