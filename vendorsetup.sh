@@ -294,7 +294,7 @@ function _flash()
     fi
 
     # Get NVFLASH_ODM_DATA from the product specific shell script.
-    local product=$(get_build_var TARGET_PRODUCT)
+    local product=$(get_build_var TARGET_DEVICE)
     if [ -f $T/vendor/nvidia/build/${product}/${product}.sh ]; then
         echo "run product script"
         . $T/vendor/nvidia/build/${product}/${product}.sh
@@ -357,7 +357,7 @@ function fboot()
     local FASTBOOT=$T/$HOST_OUTDIR/bin/fastboot
 
     # Get Vendor ID (FASTBOOT_VID) from the product specific shell script.
-    local product=$(get_build_var TARGET_PRODUCT)
+    local product=$(get_build_var TARGET_DEVICE)
     if [ -f $T/vendor/nvidia/build/${product}/${product}.sh ]; then
        . $T/vendor/nvidia/build/${product}/${product}.sh
     fi
@@ -403,7 +403,7 @@ function fflash()
     local FASTBOOT=$T/$HOST_OUTDIR/bin/fastboot
 
     # Get Vendor ID (FASTBOOT_VID) from the product specific shell script.
-    local product=$(get_build_var TARGET_PRODUCT)
+    local product=$(get_build_var TARGET_DEVICE)
     if [ -f $T/vendor/nvidia/build/${product}/${product}.sh ]; then
        . $T/vendor/nvidia/build/${product}/${product}.sh
     fi
