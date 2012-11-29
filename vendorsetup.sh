@@ -437,6 +437,12 @@ function fflash()
     local SYSTEMIMAGE=$T/$OUTDIR/system.img
     local FASTBOOT=$T/$HOST_OUTDIR/bin/fastboot
 
+    local TARGET_USE_DTB=$(get_build_var TARGET_USE_DTB)
+    local APPEND_DTB_TO_KERNEL=$(get_build_var APPEND_DTB_TO_KERNEL)
+    if [ "$TARGET_USE_DTB" == true ] && [ "$APPEND_DTB_TO_KERNEL" == false ]; then
+        local DTBIMAGE=$T/$OUTDIR/$(get_build_var TARGET_KERNEL_DT_NAME).dtb
+    fi
+
     # Get Vendor ID (FASTBOOT_VID) from the product specific shell script.
     local product=$(get_build_var TARGET_DEVICE)
     if [ -f $T/vendor/nvidia/build/${product}/${product}.sh ]; then
@@ -461,7 +467,11 @@ function fflash()
             echo "Couldn't find $SYSTEMIMAGE. Check your build for any error." >&2
             return 1
         fi
-        CMD="-i $vendor_id flash system $SYSTEMIMAGE flash boot $BOOTIMAGE reboot"
+        CMD="-i $vendor_id flash system $SYSTEMIMAGE flash boot $BOOTIMAGE"
+        if [ "$DTBIMAGE" != "" ] && [ -f "$DTBIMAGE" ]; then
+            CMD=$CMD" flash dtb $DTBIMAGE"
+        fi
+        CMD=$CMD" reboot"
     fi
 
     echo "sudo $FASTBOOT $CMD"
