@@ -96,6 +96,10 @@ function ksetup()
             --enable GCOV_TOOLCHAIN_IS_ANDROID \
             --disable GCOV_PROFILE_ALL
     fi
+    if [ "$NV_MOBILE_DGPU" == "1" ]; then
+        echo "dGPU enabled kernel"
+        $SRC/scripts/config --file $KOUT/.config --enable TASK_SIZE_3G_LESS_24M
+    fi
 }
 
 function kconfig()
