@@ -240,6 +240,34 @@ function krebuild()
     echo "$OUT/Boot.img created successfully."
 }
 
+# allow us to override Google defined functions to apply local fixes
+# see: http://mivok.net/2009/09/20/bashfunctionoverrist.html
+_save_function()
+{
+    local oldname=$1
+    local newname=$2
+    local code=$(declare -f ${oldname})
+    eval "${newname}${code#${oldname}}"
+}
+
+#
+# Unset variables known to break or harm the Android Build System
+#
+#  - CDPATH: breaks build
+#    https://groups.google.com/forum/?fromgroups=#!msg/android-building/kW-WLoag0EI/RaGhoIZTEM4J
+#
+_save_function m  _google_m
+function m()
+{
+    CDPATH= _google_m $*
+}
+
+_save_function mm _google_mm
+function mm()
+{
+    CDPATH= _google_mm $*
+}
+
 function mp()
 {
     _getnumcpus
