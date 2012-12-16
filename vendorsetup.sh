@@ -336,10 +336,18 @@ function _flash()
     local FLASH_CMD="$T/$HOSTOUT/bin/nvflash"
     local NVFLASH_PATH="${FLASH_CMD}"
     local _PRODUCT_MDM_PARTITION="${product}_MDM_PARTITION"
+    local _PRODUCT_SIF_PARTITION="${product}_SIF_PARTITION"
 
     if [ "${!_PRODUCT_MDM_PARTITION}" == "yes" -a "${PRODUCT_MDM_PARTITION}" != "no" ] ; then
         # Read MDM partition for back-up:
         MDM_BACKUP_CMD="${NVFLASH_PATH} --read MDM MDM_${product}.img --bl bootloader.bin"
+        # Remaining nvflash operations will be in resume mode:
+        FLASH_CMD="${FLASH_CMD} --resume "
+    fi
+
+    if [ "${!_PRODUCT_SIF_PARTITION}" == "yes" -a "${PRODUCT_SIF_PARTITION}" != "no" ] ; then
+        # Read SIF partition for back-up:
+        SIF_BACKUP_CMD="${NVFLASH_PATH} --read SIF SIF_${product}.img --bl bootloader.bin"
         # Remaining nvflash operations will be in resume mode:
         FLASH_CMD="${FLASH_CMD} --resume "
     fi
@@ -364,6 +372,13 @@ function _flash()
         MDM_RESTORE_CMD="${NVFLASH_PATH} --resume --download MDM MDM_${product}.img --bl bootloader.bin"
         # Update full flash cmd:
         FLASH_CMD="${MDM_BACKUP_CMD} && ${FLASH_CMD} && ${MDM_RESTORE_CMD}"
+    fi
+
+    if [ "${!_PRODUCT_SIF_PARTITION}" == "yes" -a "${PRODUCT_SIF_PARTITION}" != "no" ] ; then
+        # Restore SIF partition:
+        SIF_RESTORE_CMD="${NVFLASH_PATH} --resume --download SIF SIF_${product}.img --bl bootloader.bin"
+        # Update full flash cmd:
+        FLASH_CMD="${SIF_BACKUP_CMD} && ${FLASH_CMD} && ${SIF_RESTORE_CMD}"
     fi
 
     FLASH_CMD="$FLASH_CMD --go"
