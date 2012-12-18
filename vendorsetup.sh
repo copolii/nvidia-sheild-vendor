@@ -96,6 +96,10 @@ function ksetup()
             --enable GCOV_TOOLCHAIN_IS_ANDROID \
             --disable GCOV_PROFILE_ALL
     fi
+    if [ "$NV_MOBILE_DGPU" == "1" ]; then
+        echo "dGPU enabled kernel"
+        $SRC/scripts/config --file $KOUT/.config --enable TASK_SIZE_3G_LESS_24M
+    fi
 }
 
 function kconfig()
@@ -237,7 +241,70 @@ function krebuild()
         && mkdir -p $T/$OUTDIR/system/lib/modules && cp -f `find $T/$OUTDIR/modules -name *.ko` $T/$OUTDIR/system/lib/modules \
         && $MKBOOTIMG --kernel $ZIMAGE --ramdisk $RAMDISK --output $T/$OUTDIR/boot.img )
 
-    echo "$OUT/Boot.img created successfully."
+    echo "$OUT/boot.img created successfully."
+}
+
+function builddtb()
+{
+    local TARGET_USE_DTB=$(get_build_var TARGET_USE_DTB)
+    local APPEND_DTB_TO_KERNEL=$(get_build_var APPEND_DTB_TO_KERNEL)
+
+    if [ "$TARGET_USE_DTB" == true ] && [ "$APPEND_DTB_TO_KERNEL" == false ]; then
+        local TARGET_KERNEL_DT_NAME=$(get_build_var TARGET_KERNEL_DT_NAME)
+        ksetup $TARGET_KERNEL_DT_NAME.dtb
+        cp $OUT/obj/KERNEL/arch/arm/boot/$TARGET_KERNEL_DT_NAME.dtb $OUT
+        echo "$OUT/$TARGET_KERNEL_DT_NAME.dtb created successfully."
+    fi
+}
+
+function buildsysimg()
+{
+    local OUT=$(get_build_var OUT)
+    local TARGET_OUT=$OUT/system
+    local systemimage_intermediates=$OUT/obj/PACKAGING/systemimage_intermediates
+    $TOP/build/tools/releasetools/build_image.py $TARGET_OUT $systemimage_intermediates/system_image_info.txt $systemimage_intermediates/system.img
+    cp $systemimage_intermediates/system.img $OUT/
+    echo "$OUT/system.img created successfully."
+}
+
+function buildall()
+{
+    #build kernel and kernel modules
+    krebuild
+
+    #build board's device tree blob (dtb)
+    builddtb
+
+    #create system.img
+    buildsysimg
+}
+
+# allow us to override Google defined functions to apply local fixes
+# see: http://mivok.net/2009/09/20/bashfunctionoverrist.html
+_save_function()
+{
+    local oldname=$1
+    local newname=$2
+    local code=$(declare -f ${oldname})
+    eval "${newname}${code#${oldname}}"
+}
+
+#
+# Unset variables known to break or harm the Android Build System
+#
+#  - CDPATH: breaks build
+#    https://groups.google.com/forum/?fromgroups=#!msg/android-building/kW-WLoag0EI/RaGhoIZTEM4J
+#
+_save_function m  _google_m
+function m()
+{
+    CDPATH= _google_m $*
+}
+
+_save_function mm _google_mm
+function mm()
+{
+    CDPATH= _google_mm $*
 }
 
 function mp()
@@ -262,7 +329,7 @@ function _flash()
     fi
 
     # Get NVFLASH_ODM_DATA from the product specific shell script.
-    local product=$(get_build_var TARGET_PRODUCT)
+    local product=$(get_build_var TARGET_DEVICE)
     if [ -f $T/vendor/nvidia/build/${product}/${product}.sh ]; then
         echo "run product script"
         . $T/vendor/nvidia/build/${product}/${product}.sh
@@ -325,7 +392,7 @@ function fboot()
     local FASTBOOT=$T/$HOST_OUTDIR/bin/fastboot
 
     # Get Vendor ID (FASTBOOT_VID) from the product specific shell script.
-    local product=$(get_build_var TARGET_PRODUCT)
+    local product=$(get_build_var TARGET_DEVICE)
     if [ -f $T/vendor/nvidia/build/${product}/${product}.sh ]; then
        . $T/vendor/nvidia/build/${product}/${product}.sh
     fi
@@ -371,7 +438,7 @@ function fflash()
     local FASTBOOT=$T/$HOST_OUTDIR/bin/fastboot
 
     # Get Vendor ID (FASTBOOT_VID) from the product specific shell script.
-    local product=$(get_build_var TARGET_PRODUCT)
+    local product=$(get_build_var TARGET_DEVICE)
     if [ -f $T/vendor/nvidia/build/${product}/${product}.sh ]; then
        . $T/vendor/nvidia/build/${product}/${product}.sh
     fi
