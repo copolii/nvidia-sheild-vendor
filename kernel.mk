@@ -33,11 +33,7 @@ ifeq ($(TARGET_TEGRA_VERSION),ap20)
     TARGET_KERNEL_CONFIG ?= tegra_android_defconfig
 else
     ifeq ($(TARGET_TEGRA_VERSION),t30)
-        ifeq ($(NV_MOBILE_DGPU),1)
-            TARGET_KERNEL_CONFIG ?= tegra3_android_dgpu_defconfig
-        else
-            TARGET_KERNEL_CONFIG ?= tegra3_android_defconfig
-        endif
+        TARGET_KERNEL_CONFIG ?= tegra3_android_defconfig
     else
         ifeq ($(TARGET_TEGRA_VERSION),t114)
              TARGET_KERNEL_CONFIG ?= tegra11_android_defconfig
@@ -171,7 +167,7 @@ $(KERNEL_EXTRA_ENV) $(MAKE) -C $(NV_COMPAT_KERNEL_DIR) \
 endef
 endif
 
-$(dotconfig): $(KERNEL_PATH)/arch/$(TARGET_ARCH)/configs/$(TARGET_KERNEL_CONFIG) | $(NV_KERNEL_INTERMEDIATES_DIR)
+$(dotconfig): $(KERNEL_DEFCONFIG_PATH) | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel config " $(TARGET_KERNEL_CONFIG)
 	+$(hide) $(kernel-make) $(TARGET_KERNEL_CONFIG)
 ifeq ($(SECURE_OS_BUILD),y)
@@ -185,6 +181,10 @@ ifeq ($(NVIDIA_KERNEL_COVERAGE_ENABLED),1)
 		--enable GCOV_KERNEL \
 		--enable GCOV_TOOLCHAIN_IS_ANDROID \
 		--disable GCOV_PROFILE_ALL
+endif
+ifeq ($(NV_MOBILE_DGPU),1)
+	@echo "dGPU enabled kernel"
+	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TASK_SIZE_3G_LESS_24M
 endif
 
 ifeq ($(APPEND_DTB_TO_KERNEL),true)

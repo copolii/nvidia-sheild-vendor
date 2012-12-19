@@ -17,12 +17,6 @@ LOCAL_CFLAGS += -UNV_DEBUG -DNV_DEBUG=0 -UDEBUG -U_DEBUG -DNDEBUG
 # If coverage output isn't disabled
 ifneq ($(LOCAL_NVIDIA_NULL_COVERAGE),true)
 LOCAL_LDFLAGS += -lgcc -lgcov
-# If it's a shared library module
-ifeq ($(LOCAL_MODULE_CLASS),SHARED_LIBRARIES)
-# Include an instance of atexit(3) referencing __dso_handle
-LOCAL_WHOLE_STATIC_LIBRARIES += libatexit
-LOCAL_LDFLAGS += -Wl,--exclude-libs=libatexit
-endif 	# LOCAL_MODULE_CLASS == SHARED_LIBRARIES
 else	# !LOCAL_NVIDIA_NULL_COVERAGE
 # Link to NULL-output libgcov
 LOCAL_STATIC_LIBRARIES += libgcov_null
