@@ -501,6 +501,7 @@ function nvflash()
     echo "Shell function \"nvflash\" is obsolete, please use \"flash\" instead." >&2
 }
 
+# Print out a shellscript for flashing BSP or buildbrain package
 function _nvflash_sh()
 {
     T=$(gettop)
@@ -510,15 +511,15 @@ function _nvflash_sh()
     fi
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
-    local FLASH_CMD=$(_flash | tail -1)
-    FLASH_CMD="../../../../${FLASH_CMD#${T}/}"
+    local FLASH_CMD=$(_flash | grep nvflash | tail -1)
+    local f=$(echo $OUTDIR | sed 's/[a-zA-Z0-9]*\//\.\.\//g;s/[a-zA-Z0-9]*$//g')
+    FLASH_CMD="../${f}${FLASH_CMD#${T}/}"
 
-    local FLASH_SH="$T/$OUTDIR/nvflash.sh"
-
-    echo "#!/bin/bash" > $FLASH_SH
-    echo $FLASH_CMD >> $FLASH_SH
-
-    chmod 755 $FLASH_SH
+    echo "#!/bin/bash"
+    echo "("
+    echo "cd $OUTDIR"
+    echo "$FLASH_CMD"
+    echo ")"
 }
 
 function adbserver()
