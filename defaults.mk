@@ -80,10 +80,6 @@ ifdef PLATFORM_IS_JELLYBEAN_MR1
 LOCAL_CFLAGS += -DPLATFORM_IS_JELLYBEAN_MR1=1
 endif
 
-ifdef PLATFORM_IS_GTV_HC
-LOCAL_CFLAGS += -DPLATFORM_IS_GTV_HC=1
-endif
-
 #########################################################
 #                  T30 Macros
 #########################################################
@@ -156,9 +152,4 @@ LOCAL_NVIDIA_LINK_SCRIPT :=
 LOCAL_NVIDIA_OBJCOPY_FLAGS :=
 LOCAL_NVIDIA_RAW_EXECUTABLE_LDFLAGS :=
 LOCAL_NVIDIA_USE_PUBLIC_KEY_HEADER :=
-
-# FIXME: GTV's toolchain generates a lot of warnings for now
-ifdef PLATFORM_IS_GTV_HC
-LOCAL_NVIDIA_NO_WARNINGS_AS_ERRORS := 1
-endif
 
