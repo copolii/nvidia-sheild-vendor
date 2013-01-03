@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
 #
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
@@ -315,77 +315,6 @@ function mmp()
     mm -j$NUMCPUS $*
 }
 
-function _flash()
-{
-    T=$(gettop)
-
-    if [ ! "$T" ]; then
-        echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
-        return 1
-    fi
-
-    # Get NVFLASH_ODM_DATA from the product specific shell script.
-    local product=$(get_build_var TARGET_PRODUCT)
-    if [ -f $T/vendor/nvidia/build/${product}/${product}.sh ]; then
-        echo "run product script"
-        . $T/vendor/nvidia/build/${product}/${product}.sh
-    fi
-
-    local OUTDIR=$(get_build_var PRODUCT_OUT)
-    local HOSTOUT=$(get_build_var HOST_OUT)
-    local FLASH_CMD="$T/$HOSTOUT/bin/nvflash"
-    local NVFLASH_PATH="${FLASH_CMD}"
-    local _PRODUCT_MDM_PARTITION="${product}_MDM_PARTITION"
-    local _PRODUCT_SIF_PARTITION="${product}_SIF_PARTITION"
-
-    if [ "${!_PRODUCT_MDM_PARTITION}" == "yes" -a "${PRODUCT_MDM_PARTITION}" != "no" ] ; then
-        # Read MDM partition for back-up:
-        MDM_BACKUP_CMD="${NVFLASH_PATH} --read MDM MDM_${product}.img --bl bootloader.bin"
-        # Remaining nvflash operations will be in resume mode:
-        FLASH_CMD="${FLASH_CMD} --resume "
-    fi
-
-    if [ "${!_PRODUCT_SIF_PARTITION}" == "yes" -a "${PRODUCT_SIF_PARTITION}" != "no" ] ; then
-        # Read SIF partition for back-up:
-        SIF_BACKUP_CMD="${NVFLASH_PATH} --read SIF SIF_${product}.img --bl bootloader.bin"
-        # Remaining nvflash operations will be in resume mode:
-        FLASH_CMD="${FLASH_CMD} --resume "
-    fi
-
-    if [ "${NVFLASH_BCT}" != "" ] ; then
-        FLASH_CMD="$FLASH_CMD --bct ${NVFLASH_BCT} --setbct"
-    else
-        FLASH_CMD="$FLASH_CMD --bct flash.bct --setbct"
-    fi
-    if [ "${NVFLASH_ODM_DATA}" != "" ] ; then
-        FLASH_CMD="$FLASH_CMD --odmdata ${NVFLASH_ODM_DATA}"
-    fi
-    FLASH_CMD="$FLASH_CMD --configfile flash.cfg"
-    FLASH_CMD="$FLASH_CMD --create"
-    # TODO: can this be removed?  See commit 63c25d2ea07972.
-    [ "${NVFLASH_VERIFY}" ] && FLASH_CMD="$FLASH_CMD --verifypart -1"
-    FLASH_CMD="$FLASH_CMD --bl bootloader.bin"
-    [ "$*" != "" ] && FLASH_CMD="$FLASH_CMD $*"
-
-    if [ "${!_PRODUCT_MDM_PARTITION}" == "yes" -a "${PRODUCT_MDM_PARTITION}" != "no" ] ; then
-        # Restore MDM partition:
-        MDM_RESTORE_CMD="${NVFLASH_PATH} --resume --download MDM MDM_${product}.img --bl bootloader.bin"
-        # Update full flash cmd:
-        FLASH_CMD="${MDM_BACKUP_CMD} && ${FLASH_CMD} && ${MDM_RESTORE_CMD}"
-    fi
-
-    if [ "${!_PRODUCT_SIF_PARTITION}" == "yes" -a "${PRODUCT_SIF_PARTITION}" != "no" ] ; then
-        # Restore SIF partition:
-        SIF_RESTORE_CMD="${NVFLASH_PATH} --resume --download SIF SIF_${product}.img --bl bootloader.bin"
-        # Update full flash cmd:
-        FLASH_CMD="${SIF_BACKUP_CMD} && ${FLASH_CMD} && ${SIF_RESTORE_CMD}"
-    fi
-
-    FLASH_CMD="$FLASH_CMD --go"
-
-    echo $FLASH_CMD
-}
-
 function fboot()
 {
     T=$(gettop)
@@ -401,14 +330,7 @@ function fboot()
     local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/arm/boot/zImage
     local RAMDISK=$T/$OUTDIR/ramdisk.img
     local FASTBOOT=$T/$HOST_OUTDIR/bin/fastboot
-
-    # Get Vendor ID (FASTBOOT_VID) from the product specific shell script.
-    local product=$(get_build_var TARGET_PRODUCT)
-    if [ -f $T/vendor/nvidia/build/${product}/${product}.sh ]; then
-       . $T/vendor/nvidia/build/${product}/${product}.sh
-    fi
-    local vendor_id
-    vendor_id=${FASTBOOT_VID:-"0x955"}
+    local vendor_id=${FASTBOOT_VID:-"0x955"}
 
     if [ ! "$FASTBOOT" ]; then
         echo "Couldn't find $FASTBOOT." >&2
@@ -448,13 +370,12 @@ function fflash()
     local SYSTEMIMAGE=$T/$OUTDIR/system.img
     local FASTBOOT=$T/$HOST_OUTDIR/bin/fastboot
 
-    # Get Vendor ID (FASTBOOT_VID) from the product specific shell script.
-    local product=$(get_build_var TARGET_PRODUCT)
-    if [ -f $T/vendor/nvidia/build/${product}/${product}.sh ]; then
-       . $T/vendor/nvidia/build/${product}/${product}.sh
+    local TARGET_USE_DTB=$(get_build_var TARGET_USE_DTB)
+    local APPEND_DTB_TO_KERNEL=$(get_build_var APPEND_DTB_TO_KERNEL)
+    if [ "$TARGET_USE_DTB" == true ] && [ "$APPEND_DTB_TO_KERNEL" == false ]; then
+        local DTBIMAGE=$T/$OUTDIR/$(get_build_var TARGET_KERNEL_DT_NAME).dtb
     fi
-    local vendor_id
-    vendor_id=${FASTBOOT_VID:-"0x955"}
+    local vendor_id=${FASTBOOT_VID:-"0x955"}
 
     if [ ! "$FASTBOOT" ]; then
         echo "Couldn't find $FASTBOOT." >&2
@@ -479,47 +400,45 @@ function fflash()
     (sudo $FASTBOOT $CMD)
 }
 
-function flash()
+function _flash()
 {
-    T=$(gettop)
-    if [ ! "$T" ]; then
-        echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
-        return 1
+    local PRODUCT_OUT=$(get_build_var PRODUCT_OUT)
+    local HOST_OUT=$(get_build_var HOST_OUT)
+
+    # _nvflash_sh uses the 'bsp' argument to create BSP flashing script
+    if [[ "$1" == "bsp" ]]; then
+        T="\$(pwd)"
+        local FLASH_SH="$T/$PRODUCT_OUT/flash.sh \$@"
+        shift
+    else
+        T=$(gettop)
+        local FLASH_SH=$T/vendor/nvidia/build/flash.sh
     fi
 
-    local OUTDIR=$(get_build_var PRODUCT_OUT)
+    local cmdline=(
+        NVFLASH_BINARY=$T/$HOST_OUT/bin/nvflash
+        PRODUCT_OUT=$T/$PRODUCT_OUT
+        $FLASH_SH
+        $@
+    )
 
-    local FLASH_CMD="$(_flash $* | tail -1)"
-    echo $FLASH_CMD
-
-    (cd $T/$OUTDIR && eval sudo $FLASH_CMD)
+    echo ${cmdline[@]}
 }
 
-# Inform user about the new name of the function.  This should be removed
-# after a transition period (around June 2011).
-function nvflash()
+function flash()
 {
-    echo "Shell function \"nvflash\" is obsolete, please use \"flash\" instead." >&2
+    eval $(_flash)
 }
 
+# Print out a shellscript for flashing BSP or buildbrain package
+# and copy the core script to PRODUCT_OUT
 function _nvflash_sh()
 {
     T=$(gettop)
-    if [ ! "$T" ]; then
-        echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
-        return 1
-    fi
-
-    local OUTDIR=$(get_build_var PRODUCT_OUT)
-    local FLASH_CMD=$(_flash | tail -1)
-    FLASH_CMD="../../../../${FLASH_CMD#${T}/}"
-
-    local FLASH_SH="$T/$OUTDIR/nvflash.sh"
-
-    echo "#!/bin/bash" > $FLASH_SH
-    echo $FLASH_CMD >> $FLASH_SH
-
-    chmod 755 $FLASH_SH
+    local PRODUCT_OUT=$(get_build_var PRODUCT_OUT)
+    cp -u $T/vendor/nvidia/build/flash.sh $PRODUCT_OUT
+    echo "#!/bin/bash"
+    echo "($(_flash bsp))"
 }
 
 function adbserver()
