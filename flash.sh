@@ -85,10 +85,10 @@ dalmore() {
     # Set bctfile and cfgfile based on target board
     if [[ $board == e1613 ]]; then
         bctfile=flash_dalmore_e1613.bct
-        cfgfile=flash_dalmore_e1613.cfg
+        #cfgfile=flash_dalmore_e1613.cfg
     elif [[ $board == e1611 ]]; then
         bctfile=flash_dalmore_e1611.bct
-        cfgfile=flash_dalmore_e1611.cfg
+        #cfgfile=flash_dalmore_e1611.cfg
     fi
 }
 
@@ -109,13 +109,13 @@ cardhu() {
     # Set bctfile and cfgfile based on target board
     if [[ $board == pm269 ]]; then
         bctfile=flash_pm269.bct
-        cfgfile=flash_pm269.cfg
+        #cfgfile=bct_pm269.cfg
     elif [[ $board == pm305 ]]; then
         bctfile=flash_pm305.bct
-        cfgfile=flash_pm305.cfg
+        #cfgfile=bct_pm305.cfg
     elif [[ $board == cardhu ]]; then
         bctfile=flash_cardhu.bct
-        cfgfile=flash_cardhu.cfg
+        #cfgfile=bct_cardhu.cfg
     fi
 }
 
@@ -133,15 +133,15 @@ enterprise() {
     # Set bctfile, cfgfile and odmdata based on target board
     if [[ $board == a01 ]]; then
         bctfile=flash_a01.bct
-        cfgfile=bct_a01.cfg
+        #cfgfile=bct_a01.cfg
         odmdata=0x3009A000
     elif [[ $board == a02 ]]; then
         bctfile=flash_a02.bct
-        cfgfile=bct_a02.cfg
+        #cfgfile=bct_a02.cfg
         odmdata=0x4009A000
     elif [[ $board == a03 ]]; then
         bctfile=flash_a03.bct
-        cfgfile=flash_a03.cfg
+        #cfgfile=flash_a03.cfg
         odmdata=0x3009A018
     fi
 }
