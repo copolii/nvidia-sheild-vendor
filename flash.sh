@@ -69,6 +69,11 @@ ventana() {
     odmdata=0x30098011
 }
 
+ceres() {
+    odmdata=0x40098000
+    bctfile=flash_ceres_e1613.cfg
+}
+
 dalmore() {
     # Set default ODM data
     odmdata=0x80098000
