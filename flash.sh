@@ -101,6 +101,10 @@ dalmore() {
     fi
 }
 
+macallan() {
+    odmdata=0x80098000
+}
+
 cardhu() {
     # Set default ODM data
     odmdata=0x40080000
