@@ -84,6 +84,9 @@ ifdef PLATFORM_IS_GTV_HC
 LOCAL_CFLAGS += -DPLATFORM_IS_GTV_HC=1
 endif
 
+#########################################################
+#                  T30 Macros
+#########################################################
 ifeq ($(SECURE_OS_BUILD),y)
 # Disallow all profiling and debug on both Android and Secure OS
 TEGRA_CFLAGS += -DS_PROF_OFF_DBG_OFF_NS_PROF_OFF_DBG_OFF=0
@@ -99,6 +102,19 @@ TEGRA_CFLAGS += -DNS_PROF_ON_DBG_OFF=0
 # Full profiling and debug on Android
 TEGRA_CFLAGS += -DNS_PROF_ON_DBG_ON=1
 endif
+
+#########################################################
+#                  T114 Macros
+#########################################################
+ifeq ($(SECURE_OS_BUILD),y)
+# Secure Profiling (ARM - Secure Priviledged Non-Invasive Debug)
+TEGRA_CFLAGS += -DT11X_SECURE_PROF=0
+# Secure Debugging (ARM - Secure Priviledged Invasive Debug Enable)
+TEGRA_CFLAGS += -DT11X_SECURE_DEBUG=0
+endif
+# Non-Secure Profiling (ARM - Non-Invasive Debug Enable)
+TEGRA_CFLAGS += -DT11X_NON_SECURE_PROF=0
+
 
 LOCAL_CFLAGS += $(TEGRA_CFLAGS)
 
