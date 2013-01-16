@@ -8,9 +8,10 @@
 # package flashing script.
 
 # Usage:
-#  flash.sh [-b <file.bct>] [-f <file.cfg>] [-o <odmdata>] [-C <cmdline>]
+#  flash.sh [-b <file.bct>] [-f <file.cfg>] [-o <odmdata>] [-C <cmdline>] -- [optional args]
 # -C flag overrides the entire command line for nvflash, other three
 # options are for explicitly specifying bct, cfg and odmdata options.
+# optional arguments after '--' are added as-is to end of nvflash cmdline.
 
 # Option precedence is as follows:
 #
@@ -39,10 +40,15 @@ do
         ;;
     o) _odmdata=${OPTARG};
         ;;
-    C) _cmdline=${OPTARG};
+    C) shift ; _cmdline=$@;
         ;;
     esac
 done
+
+# Optional command-line arguments, added to nvflash cmdline as-is:
+# flash -b my_flash.bct -- <args to nvflash>
+shift $(($OPTIND - 1))
+_args=$@
 
 # Fetch target board name
 product=$(echo ${PRODUCT_OUT%/} | grep -o '[a-zA-Z0-9]*$')
@@ -55,6 +61,7 @@ MDM_BOARDS=(pluto enterprise)
 
 pluto() {
     odmdata=0x40098008
+    bctfile=bct_504.cfg
 }
 
 roth() {
@@ -85,11 +92,9 @@ dalmore() {
 
     # Set bctfile and cfgfile based on target board
     if [[ $board == e1613 ]]; then
-        bctfile=flash_dalmore_e1613.bct
-        #cfgfile=flash_dalmore_e1613.cfg
+        bctfile=flash_dalmore_e1613.cfg
     elif [[ $board == e1611 ]]; then
-        bctfile=flash_dalmore_e1611.bct
-        #cfgfile=flash_dalmore_e1611.cfg
+        bctfile=flash_dalmore_e1611.cfg
     fi
 }
 
@@ -109,14 +114,11 @@ cardhu() {
 
     # Set bctfile and cfgfile based on target board
     if [[ $board == pm269 ]]; then
-        bctfile=flash_pm269.bct
-        #cfgfile=bct_pm269.cfg
+        bctfile=bct_pm269.cfg
     elif [[ $board == pm305 ]]; then
-        bctfile=flash_pm305.bct
-        #cfgfile=bct_pm305.cfg
+        bctfile=bct_pm305.cfg
     elif [[ $board == cardhu ]]; then
-        bctfile=flash_cardhu.bct
-        #cfgfile=bct_cardhu.cfg
+        bctfile=bct_cardhu.cfg
     fi
 }
 
@@ -133,16 +135,13 @@ enterprise() {
 
     # Set bctfile, cfgfile and odmdata based on target board
     if [[ $board == a01 ]]; then
-        bctfile=flash_a01.bct
-        #cfgfile=bct_a01.cfg
+        bctfile=bct_a01.cfg
         odmdata=0x3009A000
     elif [[ $board == a02 ]]; then
-        bctfile=flash_a02.bct
-        #cfgfile=bct_a02.cfg
+        bctfile=bct_a02.cfg
         odmdata=0x4009A000
     elif [[ $board == a03 ]]; then
-        bctfile=flash_a03.bct
-        #cfgfile=flash_a03.cfg
+        bctfile=flash_a03.cfg
         odmdata=0x3009A018
     fi
 }
@@ -193,7 +192,7 @@ _set_cmdline() {
     fi
 
     # Set BCT and CFG files (with fallback defaults)
-    bctfile=${_bctfile-${bctfile-"flash.bct"}}
+    bctfile=${_bctfile-${bctfile-"bct.cfg"}}
     cfgfile=${_cfgfile-${cfgfile-"flash.cfg"}}
 
     # Parse nvflash commandline
@@ -228,14 +227,15 @@ fi
 
 # Backup+restore MDM partition for boards with modems
 if _in_array $product "${MDM_BOARDS[@]}" && \
-[[ $PRODUCT_MDM_PARTITION != "no" ]]; then
+[[ $PRODUCT_MDM_PARTITION != "no" ]] &&
+[[ ! $_cmdline ]]; then
     cmdline=(${cmdline[@]%"--go"})
     cmdline=(
         sudo $NVFLASH_BINARY
         --read MDM MDM_${product}.img
         --bl bootloader.bin \&\&
         sudo $NVFLASH_BINARY
-        --resume ${cmdline[@]} \&\&
+        --resume ${cmdline[@]} ${_args[@]} \&\&
         sudo $NVFLASH_BINARY
         --resume
         --download MDM MDM_${product}.img
@@ -243,7 +243,7 @@ if _in_array $product "${MDM_BOARDS[@]}" && \
         --go
     )
 else
-    cmdline=(sudo $NVFLASH_BINARY ${cmdline[@]})
+    cmdline=(sudo $NVFLASH_BINARY ${cmdline[@]} ${_args[@]})
 fi
 
 echo "INFO: PRODUCT_OUT = $PRODUCT_OUT"
