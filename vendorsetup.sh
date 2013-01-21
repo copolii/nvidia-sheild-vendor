@@ -435,7 +435,7 @@ function _flash()
 
 function flash()
 {
-    eval $(_flash)
+    eval $(_flash $@)
 }
 
 # Print out a shellscript for flashing BSP or buildbrain package
