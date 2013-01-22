@@ -139,10 +139,10 @@ enterprise() {
         odmdata=0x3009A000
     elif [[ $board == a02 ]]; then
         bctfile=bct_a02.cfg
-        odmdata=0x4009A000
+        odmdata=0x3009A000
     elif [[ $board == a03 ]]; then
         bctfile=flash_a03.cfg
-        odmdata=0x3009A018
+        odmdata=0x4009A018
     fi
 }
 
