@@ -53,6 +53,9 @@ product=$(echo ${PRODUCT_OUT%/} | grep -o '[a-zA-Z0-9]*$')
 # Boards with modems
 MDM_BOARDS=(pluto enterprise whistler)
 
+# Boards with SIF partition
+SIF_BOARDS=(roth)
+
 pluto() {
     odmdata=0x40098008
 }
@@ -207,6 +210,24 @@ _set_cmdline() {
     )
 }
 
+# Backup and restore partition "$1"
+_save_partition() {
+    local part=$1
+    cmdline=(${cmdline[@]%"--go"})
+    cmdline=(
+        sudo $NVFLASH_BINARY
+        --read $part ${part}_${product}.img
+        --bl bootloader.bin \&\&
+        sudo $NVFLASH_BINARY
+        --resume ${cmdline[@]} \&\&
+        sudo $NVFLASH_BINARY
+        --resume
+        --download $part ${part}_${product}.img
+        --bl bootloader.bin
+        --go
+    )
+}
+
 ###########
 # Main code
 
@@ -228,19 +249,11 @@ fi
 # Backup+restore MDM partition for boards with modems
 if _in_array $product "${MDM_BOARDS[@]}" && \
 [[ $PRODUCT_MDM_PARTITION != "no" ]]; then
-    cmdline=(${cmdline[@]%"--go"})
-    cmdline=(
-        sudo $NVFLASH_BINARY
-        --read MDM MDM_${product}.img
-        --bl bootloader.bin \&\&
-        sudo $NVFLASH_BINARY
-        --resume ${cmdline[@]} \&\&
-        sudo $NVFLASH_BINARY
-        --resume
-        --download MDM MDM_${product}.img
-        --bl bootloader.bin
-        --go
-    )
+    _save_partition MDM
+# Backup+restore SIF partition
+elif _in_array $product "${SIF_BOARDS[@]}" && \
+[[ $PRODUCT_SIF_PARTITION != "no" ]]; then
+    _save_partition SIF
 else
     cmdline=(sudo $NVFLASH_BINARY ${cmdline[@]})
 fi
