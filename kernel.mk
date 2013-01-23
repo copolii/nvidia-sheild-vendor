@@ -168,8 +168,12 @@ endif
 $(dotconfig): $(KERNEL_DEFCONFIG_PATH) | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel config " $(TARGET_KERNEL_CONFIG)
 	+$(hide) $(kernel-make) $(TARGET_KERNEL_CONFIG)
-ifeq ($(SECURE_OS_BUILD),y)
-	@echo "SecureOS enabled kernel"
+ifneq ($(filter tf y,$(SECURE_OS_BUILD)),)
+	@echo "TF SecureOS enabled kernel"
+	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TRUSTED_FOUNDATIONS
+endif
+ifeq ($(SECURE_OS_BUILD),tlk)
+	@echo "TLK SecureOS enabled kernel"
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TRUSTED_FOUNDATIONS
 endif
 ifeq ($(NVIDIA_KERNEL_COVERAGE_ENABLED),1)

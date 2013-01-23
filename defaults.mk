@@ -65,11 +65,14 @@ TEGRA_CFLAGS += -DCONFIG_PLLP_BASE_AS_408MHZ=1
 
 
 # Define Trusted Foundations
-ifeq ($(SECURE_OS_BUILD),y)
+ifneq ($(filter tf y,$(SECURE_OS_BUILD)),)
 TEGRA_CFLAGS += -DCONFIG_TRUSTED_FOUNDATIONS
 ifeq (,$(findstring tf.enable=y,$(ADDITIONAL_BUILD_PROPERTIES)))
 ADDITIONAL_BUILD_PROPERTIES += tf.enable=y
 endif
+endif
+ifeq ($(SECURE_OS_BUILD),tlk)
+TEGRA_CFLAGS += -DCONFIG_TRUSTED_LITTLE_KERNEL
 endif
 
 ifeq ($(NV_EMBEDDED_BUILD),1)
@@ -90,7 +93,16 @@ endif
 #########################################################
 #                  T30 Macros
 #########################################################
-ifeq ($(SECURE_OS_BUILD),y)
+ifneq ($(filter tf y,$(SECURE_OS_BUILD)),)
+# Disallow all profiling and debug on both Android and Secure OS
+TEGRA_CFLAGS += -DS_PROF_OFF_DBG_OFF_NS_PROF_OFF_DBG_OFF=0
+# Only profiling on Android
+TEGRA_CFLAGS += -DS_PROF_OFF_DBG_OFF_NS_PROF_ON_DBG_OFF=0
+# Full profiling and debug on Android
+TEGRA_CFLAGS += -DS_PROF_OFF_DBG_OFF_NS_PROF_ON_DBG_ON=1
+# Full profiling and debug on both Android and Secure OS
+TEGRA_CFLAGS += -DS_PROF_ON_DBG_ON_NS_PROF_ON_DBG_ON=0
+else ifeq ($(SECURE_OS_BUILD),tlk)
 # Disallow all profiling and debug on both Android and Secure OS
 TEGRA_CFLAGS += -DS_PROF_OFF_DBG_OFF_NS_PROF_OFF_DBG_OFF=0
 # Only profiling on Android
@@ -109,7 +121,12 @@ endif
 #########################################################
 #                  T114 Macros
 #########################################################
-ifeq ($(SECURE_OS_BUILD),y)
+ifneq ($(filter tf y,$(SECURE_OS_BUILD)),)
+# Secure Profiling (ARM - Secure Priviledged Non-Invasive Debug)
+TEGRA_CFLAGS += -DSECURE_PROF=0
+# Secure Debugging (ARM - Secure Priviledged Invasive Debug Enable)
+TEGRA_CFLAGS += -DSECURE_DEBUG=0
+else ifeq ($(SECURE_OS_BUILD),tlk)
 # Secure Profiling (ARM - Secure Priviledged Non-Invasive Debug)
 TEGRA_CFLAGS += -DSECURE_PROF=0
 # Secure Debugging (ARM - Secure Priviledged Invasive Debug Enable)
