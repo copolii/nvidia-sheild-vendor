@@ -1,6 +1,12 @@
 #
 # Linux kernel and loadable kernel modules
 #
+
+# We don't need kernel for standalone bootloader build
+ifeq ($(BUILD_STANDALONE_BOOTLOADER), 1)
+TARGET_NO_KERNEL := true
+endif
+
 ifneq ($(TARGET_NO_KERNEL),true)
 
 ifneq ($(TOP),.)
