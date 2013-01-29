@@ -14,20 +14,62 @@ else
 endif
 endif
 
-# generate blob for bootloaders
-nv-blob: \
-      $(HOST_OUT_EXECUTABLES)/nvblob \
-      $(HOST_OUT_EXECUTABLES)/nvsignblob \
-      $(TOP)/device/nvidia/common/security/signkey.pk8 \
-      $(PRODUCT_OUT)/bootloader.bin \
-      $(PRODUCT_OUT)/microboot.bin
-	$(hide) python $(filter %nvblob,$^) \
-		$(filter %bootloader.bin,$^) EBT 1 \
-		$(filter %microboot.bin,$^) NVC 1
-
 #
 # Generate ramdisk images for simulation
 #
 sim-image: nvidia-tests
 	device/nvidia/common/copy_simtools.sh
 	device/nvidia/common/generate_full_filesystem.sh
+
+#
+# bootloader blob target and macros
+#
+
+# macro: checks file existence and returns list of existing file
+# $(1) list of file paths
+define _dynamic_blob_dependencies
+$(foreach f,$(1), $(eval \
+ ifneq ($(wildcard $(f)),)
+  _dep += $(f)
+ endif))\
+ $(_dep)
+ $(eval _dep :=)
+endef
+
+# macro: construct command line for nvblob based on type of input file
+# $(1) list of file paths
+define _blob_command_line
+$(foreach f,$(1), $(eval \
+ ifneq ($(filter %microboot.bin,$(f)),)
+  _cmd += $(f) NVC 1
+ else ifneq ($(filter %.dtb,$(f)),)
+  _cmd += $(f) DTB 1
+ else ifneq ($(filter %.bct,$(f)),)
+  _cmd += $(f) BCT 1
+ else ifneq ($(filter %xusb_sil_rel_fw,$(f)),)
+  _cmd += $(f) DFI 1
+ endif))\
+ $(_cmd)
+ $(eval _cmd :=)
+endef
+
+# These are additional files for which we generate blobs only if they exists
+_blob_deps := \
+      $(PRODUCT_OUT)/microboot.bin \
+      $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME).dtb \
+      $(PRODUCT_OUT)/flash.bct \
+      $(PRODUCT_OUT)/xusb_sil_rel_fw
+
+# target to generate blob
+nv-blob: \
+      $(HOST_OUT_EXECUTABLES)/nvblob \
+      $(HOST_OUT_EXECUTABLES)/nvsignblob \
+      $(TOP)/device/nvidia/common/security/signkey.pk8 \
+      $(PRODUCT_OUT)/bootloader.bin \
+      $(call _dynamic_blob_dependencies, $(_blob_deps))
+	$(hide) python $(filter %nvblob,$^) \
+		$(filter %bootloader.bin,$^) EBT 1 \
+                $(call _blob_command_line, $^)
+
+# Clear local variable
+_blob_deps :=
