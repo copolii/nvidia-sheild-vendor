@@ -21,4 +21,4 @@ else
     export NVFLASH_ODM_DATA=0x40098000
 fi
 
-export NVFLASH_BCT=flash_ceres_e1613.cfg
+export NVFLASH_BCT=flash_ceres_e1613_408MHz.cfg
