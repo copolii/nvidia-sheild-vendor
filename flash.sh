@@ -76,8 +76,8 @@ kai() {
 }
 
 ceres() {
-    odmdata=0x40098000
-    bctfile=flash_ceres_e1613_408MHz.cfg
+    odmdata=0x40080000
+    bctfile=flash_ceres_e1680.cfg
 }
 
 dalmore() {
