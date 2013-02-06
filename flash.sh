@@ -76,7 +76,7 @@ kai() {
 }
 
 ceres() {
-    odmdata=0x40080000
+    odmdata=0x40080008
     bctfile=flash_ceres_e1680.cfg
 }
 
