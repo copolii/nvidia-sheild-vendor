@@ -57,7 +57,7 @@ product=$(echo ${PRODUCT_OUT%/} | grep -o '[a-zA-Z0-9]*$')
 # Setup functions per target board
 
 # Boards with modems
-MDM_BOARDS=(pluto enterprise)
+MDM_BOARDS=(pluto enterprise ceres)
 
 # Boards with SIF partition
 SIF_BOARDS=(roth)
