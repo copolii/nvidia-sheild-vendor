@@ -61,7 +61,7 @@ pluto() {
 }
 
 roth() {
-    odmdata=0x80098000
+    odmdata=0x8049C000
 }
 
 kai() {
@@ -210,6 +210,8 @@ _set_cmdline() {
         --configfile $cfgfile
         --create
         --bl bootloader.bin
+        --fusebypass_config fuse_bypass.txt
+        --sku_to_bypass T40T
         --go
     )
 }
