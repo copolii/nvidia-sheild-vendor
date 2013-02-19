@@ -1,3 +1,10 @@
+# Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+#
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 # Grab name of the makefile to depend on it
 ifneq ($(PREV_LOCAL_PATH),$(LOCAL_PATH))
@@ -54,11 +61,7 @@ LOCAL_CFLAGS += -DNV_DEBUG=0
 endif
 LOCAL_CFLAGS += -DNV_IS_AVP=0
 LOCAL_CFLAGS += -DNV_BUILD_STUBS=1
-ifneq ($(filter ap20,$(TARGET_TEGRA_VERSION)),)
-TEGRA_CFLAGS += -DCONFIG_PLLP_BASE_AS_408MHZ=0
-else
 TEGRA_CFLAGS += -DCONFIG_PLLP_BASE_AS_408MHZ=1
-endif
 
 
 # Define Trusted Foundations
@@ -108,12 +111,12 @@ endif
 #########################################################
 ifeq ($(SECURE_OS_BUILD),y)
 # Secure Profiling (ARM - Secure Priviledged Non-Invasive Debug)
-TEGRA_CFLAGS += -DT11X_SECURE_PROF=0
+TEGRA_CFLAGS += -DSECURE_PROF=0
 # Secure Debugging (ARM - Secure Priviledged Invasive Debug Enable)
-TEGRA_CFLAGS += -DT11X_SECURE_DEBUG=0
+TEGRA_CFLAGS += -DSECURE_DEBUG=0
 endif
 # Non-Secure Profiling (ARM - Non-Invasive Debug Enable)
-TEGRA_CFLAGS += -DT11X_NON_SECURE_PROF=0
+TEGRA_CFLAGS += -DNON_SECURE_PROF=0
 
 
 LOCAL_CFLAGS += $(TEGRA_CFLAGS)

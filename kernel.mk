@@ -1,6 +1,12 @@
 #
 # Linux kernel and loadable kernel modules
 #
+
+# We don't need kernel for standalone bootloader build
+ifeq ($(BUILD_STANDALONE_BOOTLOADER), 1)
+TARGET_NO_KERNEL := true
+endif
+
 ifneq ($(TARGET_NO_KERNEL),true)
 
 ifneq ($(TOP),.)
@@ -29,19 +35,11 @@ endif
 dotconfig := $(NV_KERNEL_INTERMEDIATES_DIR)/.config
 BUILT_KERNEL_TARGET := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/zImage
 
-ifeq ($(TARGET_TEGRA_VERSION),ap20)
-    TARGET_KERNEL_CONFIG ?= tegra_android_defconfig
-else
-    ifeq ($(TARGET_TEGRA_VERSION),t30)
-        TARGET_KERNEL_CONFIG ?= tegra3_android_defconfig
-    else
-        ifeq ($(TARGET_TEGRA_VERSION),t114)
-             TARGET_KERNEL_CONFIG ?= tegra11_android_defconfig
-        endif
-    endif
-endif
-
-ifeq ($(TARGET_TEGRA_VERSION),t148)
+ifeq ($(TARGET_TEGRA_VERSION),t30)
+    TARGET_KERNEL_CONFIG ?= tegra3_android_defconfig
+else ifeq ($(TARGET_TEGRA_VERSION),t114)
+    TARGET_KERNEL_CONFIG ?= tegra11_android_defconfig
+else ifeq ($(TARGET_TEGRA_VERSION),t148)
     TARGET_KERNEL_CONFIG ?= tegra14_android_defconfig
 endif
 
