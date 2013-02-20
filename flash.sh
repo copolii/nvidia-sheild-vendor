@@ -56,6 +56,7 @@ pluto() {
 
 roth() {
     odmdata=0x8049C000
+    bypass="--fusebypass_config fuse_bypass.txt --sku_to_bypass T40T"
 }
 
 kai() {
@@ -195,6 +196,7 @@ _set_cmdline() {
     # Set BCT and CFG files (with fallback defaults)
     bctfile=${_bctfile-${bctfile-"flash.bct"}}
     cfgfile=${_cfgfile-${cfgfile-"flash.cfg"}}
+    bypass=${bypass-" "}
 
     # Parse nvflash commandline
     cmdline=(
@@ -204,8 +206,7 @@ _set_cmdline() {
         --configfile $cfgfile
         --create
         --bl bootloader.bin
-        --fusebypass_config fuse_bypass.txt
-        --sku_to_bypass T40T
+        $bypass
         --go
     )
 }
