@@ -197,6 +197,7 @@ _set_cmdline() {
     # Set BCT and CFG files (with fallback defaults)
     bctfile=${_bctfile-${bctfile-"bct.cfg"}}
     cfgfile=${_cfgfile-${cfgfile-"flash.cfg"}}
+    bypass=${bypass-" "}
 
     # Parse nvflash commandline
     cmdline=(
@@ -206,6 +207,7 @@ _set_cmdline() {
         --configfile $cfgfile
         --create
         --bl bootloader.bin
+        $bypass
         --go
     )
 }
