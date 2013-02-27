@@ -32,3 +32,8 @@ nv-blob: \
 sim-image: nvidia-tests
 	device/nvidia/common/copy_simtools.sh
 	device/nvidia/common/generate_full_filesystem.sh
+	@echo "Generating sdmmc image w/ full filesystem ..."
+	device/nvidia/common/sdmmc_util.sh \
+	    -s 2048 -z \
+	    -o $(PRODUCT_OUT)/sdmmc_full_fs.img \
+	    -c device/nvidia/common/sdmmc_full_fs.cfg
