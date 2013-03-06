@@ -39,11 +39,25 @@ function _getnumcpus ()
     fi
 }
 
+function _karch()
+{
+    # Some boards (eg. exuma) have diff ARCHes between
+    # userspace and kernel, denoted by TARGET_ARCH and
+    # TARGET_ARCH_KERNEL, whichever non-null is picked.
+    local arch=$(get_build_var TARGET_ARCH_KERNEL)
+    test -z $arch && arch=$(get_build_var TARGET_ARCH)
+    echo $arch
+}
+
 function _ktoolchain()
 {
     local build_id=$(get_build_var BUILD_ID)
     if [[ "${build_id}" =~ ^J ]]; then
-        echo "CROSS_COMPILE=$T/prebuilts/gcc/$HOSTTYPE/arm/arm-eabi-4.6/bin/arm-eabi-"
+        if [[ "$(_karch)" == arm64 ]]; then
+            echo "CROSS_COMPILE=$T/prebuilts/gcc/$HOSTTYPE/arm/aarch64-linux-gnu/bin/aarch64-linux-gnu-"
+        else
+            echo "CROSS_COMPILE=$T/prebuilts/gcc/$HOSTTYPE/arm/arm-eabi-4.6/bin/arm-eabi-"
+        fi
     else
         echo "CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
     fi
@@ -74,11 +88,10 @@ function ksetup()
     _gethosttype
 
     local TOOLS=$(get_build_var TARGET_TOOLS_PREFIX)
-    local ARCHITECTURE=$(get_build_var TARGET_ARCH)
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local KOUT="$T/$INTERMEDIATES/KERNEL"
     local CROSS=$(_ktoolchain)
-    local KARCH="ARCH=$ARCHITECTURE"
+    local KARCH="ARCH=$(_karch)"
     local SECURE_OS_BUILD=$(get_build_var SECURE_OS_BUILD)
 
     echo "mkdir -p $KOUT"
@@ -124,11 +137,10 @@ function kconfig()
     _gethosttype
 
     local TOOLS=$(get_build_var TARGET_TOOLS_PREFIX)
-    local ARCHITECTURE=$(get_build_var TARGET_ARCH)
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local KOUT="O=$T/$INTERMEDIATES/KERNEL"
     local CROSS=$(_ktoolchain)
-    local KARCH="ARCH=$ARCHITECTURE"
+    local KARCH="ARCH=$(_karch)"
 
     echo "make -C $SRC $KARCH $CROSS $KOUT menuconfig"
     (cd $T && make -C $SRC $KARCH $CROSS $KOUT menuconfig)
@@ -160,11 +172,10 @@ function ksavedefconfig()
     _gethosttype
 
     local TOOLS=$(get_build_var TARGET_TOOLS_PREFIX)
-    local ARCHITECTURE=$(get_build_var TARGET_ARCH)
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local KOUT="$T/$INTERMEDIATES/KERNEL"
     local CROSS=$(_ktoolchain)
-    local KARCH="ARCH=$ARCHITECTURE"
+    local KARCH="ARCH=$(_karch)"
 
     # make a backup of the current configuration
     cp $KOUT/.config $KOUT/.config.backup
@@ -177,7 +188,7 @@ function ksavedefconfig()
 
     echo "make -C $SRC $KARCH $CROSS O=$KOUT savedefconfig"
     (cd $T && make -C $SRC $KARCH $CROSS O=$KOUT savedefconfig &&
-        cp $KOUT/defconfig $SRC/arch/arm/configs/$1)
+        cp $KOUT/defconfig $SRC/arch/$(_karch)/configs/$1)
 
     # restore configuration from backup
     rm $KOUT/.config
@@ -208,16 +219,15 @@ function krebuild()
 
     local OUTDIR=$(get_build_var PRODUCT_OUT)
     local TOOLS=$(get_build_var TARGET_TOOLS_PREFIX)
-    local ARCHITECTURE=$(get_build_var TARGET_ARCH)
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local HOSTOUT=$(get_build_var HOST_OUT)
     local MKBOOTIMG=$T/$HOSTOUT/bin/mkbootimg
-    local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/arm/boot/zImage
+    local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/$(_karch)/boot/zImage
     local RAMDISK=$T/$OUTDIR/ramdisk.img
 
     local KOUT="O=$T/$INTERMEDIATES/KERNEL"
     local CROSS=$(_ktoolchain)
-    local KARCH="ARCH=$ARCHITECTURE"
+    local KARCH="ARCH=$(_karch)"
 
     if [ ! -f "$RAMDISK" ]; then
         echo "Couldn't find $RAMDISK. Try setting TARGET_PRODUCT." >&2
@@ -242,6 +252,12 @@ function krebuild()
         && $MKBOOTIMG --kernel $ZIMAGE --ramdisk $RAMDISK --output $T/$OUTDIR/boot.img )
 
     echo "$OUT/boot.img created successfully."
+
+    if [[ $KARCH =~ "arm64" ]]; then
+        local bwdir=$TEGRA_TOP/core-private/system/boot-wrapper-aarch64
+        sh -c "make -C $bwdir && make -C $bwdir EMMC_BOOT=1" &>/dev/null
+        echo "$OUT/linux-system.axf created successfully."
+    fi
 }
 
 function builddtb()
@@ -252,7 +268,7 @@ function builddtb()
     if [ "$TARGET_USE_DTB" == true ] && [ "$APPEND_DTB_TO_KERNEL" == false ]; then
         local TARGET_KERNEL_DT_NAME=$(get_build_var TARGET_KERNEL_DT_NAME)
         ksetup $TARGET_KERNEL_DT_NAME.dtb
-        cp $OUT/obj/KERNEL/arch/arm/boot/$TARGET_KERNEL_DT_NAME.dtb $OUT
+        cp $OUT/obj/KERNEL/arch/$(_karch)/boot/$TARGET_KERNEL_DT_NAME.dtb $OUT
         echo "$OUT/$TARGET_KERNEL_DT_NAME.dtb created successfully."
     fi
 }
@@ -331,7 +347,7 @@ function fboot()
     local OUTDIR=$(get_build_var PRODUCT_OUT)
     local HOST_OUTDIR=$(get_build_var HOST_OUT)
 
-    local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/arm/boot/zImage
+    local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/$(_karch)/boot/zImage
     local RAMDISK=$T/$OUTDIR/ramdisk.img
     local FASTBOOT=$T/$HOST_OUTDIR/bin/fastboot
     local vendor_id=${FASTBOOT_VID:-"0x955"}
