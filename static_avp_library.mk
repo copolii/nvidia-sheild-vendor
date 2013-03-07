@@ -37,7 +37,7 @@ LOCAL_CFLAGS += $(LOCAL_MODULE_CFLAGS)
 ifeq ($(AVP_EXTERNAL_TOOLCHAIN),)
   LOCAL_CFLAGS += -mno-thumb-interwork
   ifneq ($(LOCAL_ARM_MODE),thumb)
-    LOCAL_CFLAGS += -mno-thumb
+    LOCAL_CFLAGS += -marm
     LOCAL_CFLAGS += -U__thumb
   endif
 else
@@ -51,7 +51,7 @@ endif
 
 # Override the ARM vs. Thumb default above.
 ifeq ($(LOCAL_ARM_MODE),arm)
-  LOCAL_CFLAGS += -mno-thumb
+  LOCAL_CFLAGS += -marm
   LOCAL_CFLAGS += -U__thumb
 endif
 ifeq ($(LOCAL_ARM_MODE),thumb)
