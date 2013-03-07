@@ -32,6 +32,19 @@ KERNEL_PATH ?= $(CURDIR)/kernel
 REAL_TARGET_ARCH := $(TARGET_ARCH)
 
 # Special handling for ARM64 kernel (diff arch/ and built-in bootloader)
+ifdef TARGET_ARCH_KERNEL
+    REAL_TARGET_ARCH := $(TARGET_ARCH_KERNEL)
+else
+    REAL_TARGET_ARCH := $(TARGET_ARCH)
+endif
+
+ifeq ($(REAL_TARGET_ARCH),arm64)
+    BOOT_WRAPPER_DIR := $(TEGRA_TOP)/core-private/system/boot-wrapper-aarch64
+    BOOT_WRAPPER_CMD := $(MAKE) -C $(BOOT_WRAPPER_DIR);
+    BOOT_WRAPPER_CMD += $(MAKE) -C $(BOOT_WRAPPER_DIR) EMMC_BOOT=1
+else
+    BOOT_WRAPPER_CMD :=
+endif
 
 # Always use absolute path for NV_KERNEL_INTERMEDIATES_DIR
 ifneq ($(filter /%, $(TARGET_OUT_INTERMEDIATES)),)
@@ -92,11 +105,11 @@ endef
 ifeq ($(TARGET_KERNEL_DT_NAME),)
     $(error Must provide a DT file name in TARGET_KERNEL_DT_NAME -- <kernel>/arch/arm/boot/dts/*)
 else
-    KERNEL_DTS_PATH := $(call dts-files-under,$(KERNEL_PATH)/arch/$(TARGET_ARCH)/boot/dts,$(call word-dash,1,$(TARGET_KERNEL_DT_NAME)))
+    KERNEL_DTS_PATH := $(call dts-files-under,$(KERNEL_PATH)/arch/$(REAL_TARGET_ARCH)/boot/dts,$(call word-dash,1,$(TARGET_KERNEL_DT_NAME)))
     KERNEL_DT_NAME := $(subst .dts,,$(notdir $(KERNEL_DTS_PATH)))
     KERNEL_DT_NAME_DTB := $(subst .dts,.dtb,$(notdir $(KERNEL_DTS_PATH)))
-    BUILT_KERNEL_DTB := $(addprefix $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/dts/,$(addsuffix .dtb,$(KERNEL_DT_NAME)))
-    TARGET_BUILT_KERNEL_DTB := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/dts/$(TARGET_KERNEL_DT_NAME).dtb
+    BUILT_KERNEL_DTB := $(addprefix $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(REAL_TARGET_ARCH)/boot/dts/,$(addsuffix .dtb,$(KERNEL_DT_NAME)))
+    TARGET_BUILT_KERNEL_DTB := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(REAL_TARGET_ARCH)/boot/dts/$(TARGET_KERNEL_DT_NAME).dtb
     INSTALLED_DTB_TARGET := $(addprefix $(OUT)/,$(addsuffix .dtb, $(KERNEL_DT_NAME)))
     DTS_PATH_EXIST := $(foreach dts_file,$(KERNEL_DTS_PATH),$(if $(wildcard $(dts_file)),,$(error DTS file not found -- $(dts_file))))
 endif
@@ -307,6 +320,10 @@ $(NV_KERNEL_BUILD_DIRECTORY_LIST):
 # Set private variables for all builds. TODO: Why?
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_SRC_PATH := $(KERNEL_PATH)
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_TOPDIR := $(CURDIR)
+ifeq ($(TARGET_TEGRA_VERSION),t132)
+kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_KERNEL_TOOLCHAIN := $(ARM_EABI_TOOLCHAIN)/../../aarch64-linux-gnu/bin/aarch64-linux-gnu-
+else
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_KERNEL_TOOLCHAIN := $(ARM_EABI_TOOLCHAIN)/arm-eabi-
+endif
 
 endif
