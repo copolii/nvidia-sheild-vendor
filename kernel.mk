@@ -25,6 +25,17 @@ BOOTLOADER_SUPPORTS_DTB ?= false
 APPEND_DTB_TO_KERNEL ?= false
 EXTRA_KERNEL_TARGETS :=
 
+# Special handling for ARM64 kernel (diff arch/ and built-in bootloader)
+ifneq ($(filter t132, $(TARGET_TEGRA_VERSION)),)
+    REAL_TARGET_ARCH := arm64
+    BOOT_WRAPPER_DIR := $(TEGRA_TOP)/core-private/system/boot-wrapper-aarch64
+    BOOT_WRAPPER_CMD := $(MAKE) -C $(BOOT_WRAPPER_DIR);
+    BOOT_WRAPPER_CMD += $(MAKE) -C $(BOOT_WRAPPER_DIR) EMMC_BOOT=1
+else
+    REAL_TARGET_ARCH := $(TARGET_ARCH)
+    BOOT_WRAPPER_CMD :=
+endif
+
 # Always use absolute path for NV_KERNEL_INTERMEDIATES_DIR
 ifneq ($(filter /%, $(TARGET_OUT_INTERMEDIATES)),)
 NV_KERNEL_INTERMEDIATES_DIR := $(TARGET_OUT_INTERMEDIATES)/KERNEL
@@ -33,7 +44,7 @@ NV_KERNEL_INTERMEDIATES_DIR := $(CURDIR)/$(TARGET_OUT_INTERMEDIATES)/KERNEL
 endif
 
 dotconfig := $(NV_KERNEL_INTERMEDIATES_DIR)/.config
-BUILT_KERNEL_TARGET := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/zImage
+BUILT_KERNEL_TARGET := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(REAL_TARGET_ARCH)/boot/zImage
 
 ifeq ($(TARGET_TEGRA_VERSION),t30)
     TARGET_KERNEL_CONFIG ?= tegra3_android_defconfig
@@ -43,7 +54,7 @@ else ifeq ($(TARGET_TEGRA_VERSION),t148)
     TARGET_KERNEL_CONFIG ?= tegra14_android_defconfig
 endif
 
-ifeq ($(wildcard $(KERNEL_PATH)/arch/arm/configs/$(TARGET_KERNEL_CONFIG)),)
+ifeq ($(wildcard $(KERNEL_PATH)/arch/$(REAL_TARGET_ARCH)/configs/$(TARGET_KERNEL_CONFIG)),)
     $(error Could not find kernel defconfig for board)
 endif
 
@@ -68,7 +79,7 @@ ifeq ($(BOARD_WLAN_DEVICE),wl18xx_mac80211)
     NV_COMPAT_KERNEL_MODULES_TARGET_DIR := $(NV_KERNEL_MODULES_TARGET_DIR)/compat
 endif
 
-KERNEL_DEFCONFIG_PATH := $(KERNEL_PATH)/arch/$(TARGET_ARCH)/configs/$(TARGET_KERNEL_CONFIG)
+KERNEL_DEFCONFIG_PATH := $(KERNEL_PATH)/arch/$(REAL_TARGET_ARCH)/configs/$(TARGET_KERNEL_CONFIG)
 
 # If we don't have kernel or bootloader support for DTB loading, we won't be using it
 ifeq ($(BOOTLOADER_SUPPORTS_DTB),false)
@@ -90,8 +101,8 @@ ifeq ($(TARGET_USE_DTB),true)
     ifeq ($(TARGET_KERNEL_DT_NAME),)
         $(error Must provide a DT file name in TARGET_KERNEL_DT_NAME -- <kernel>/arch/arm/boot/dts/*)
     else
-        KERNEL_DTS_PATH := $(KERNEL_PATH)/arch/$(TARGET_ARCH)/boot/dts/$(TARGET_KERNEL_DT_NAME).dts
-        BUILT_KERNEL_DTB := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/$(TARGET_KERNEL_DT_NAME).dtb
+        KERNEL_DTS_PATH := $(KERNEL_PATH)/arch/$(REAL_TARGET_ARCH)/boot/dts/$(TARGET_KERNEL_DT_NAME).dts
+        BUILT_KERNEL_DTB := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(REAL_TARGET_ARCH)/boot/$(TARGET_KERNEL_DT_NAME).dtb
         INSTALLED_DTB_TARGET := $(OUT)/$(TARGET_KERNEL_DT_NAME).dtb
         ifneq ($(wildcard $(KERNEL_DTS_PATH)), $(KERNEL_DTS_PATH))
             $(error DTS file not found -- $(KERNEL_DTS_PATH))
@@ -136,7 +147,11 @@ ifeq ($(OS),Linux)
 endif
 
 ifdef PLATFORM_IS_JELLYBEAN
+ifeq ($(TARGET_TEGRA_VERSION),t132)
+KERNEL_TOOLCHAIN := prebuilts/gcc/$(HOSTTYPE)/arm/aarch64-linux-gnu/bin/aarch64-linux-gnu-
+else
 KERNEL_TOOLCHAIN := prebuilts/gcc/$(HOSTTYPE)/arm/arm-eabi-4.6/bin/arm-eabi-
+endif
 else ifdef PLATFORM_IS_GTV_HC
 KERNEL_TOOLCHAIN := prebuilt/$(HOSTTYPE)/toolchain/arm-unknown-linux-gnueabi-4.5.3-glibc/bin/arm-unknown-linux-gnueabi-
 else
@@ -148,7 +163,7 @@ endif
 # ALWAYS prefix these macros with "+" to correctly enable parallel building!
 define kernel-make
 $(KERNEL_EXTRA_ENV) $(MAKE) -C $(PRIVATE_SRC_PATH) \
-    ARCH=$(TARGET_ARCH) \
+    ARCH=$(REAL_TARGET_ARCH) \
     CROSS_COMPILE=$(PRIVATE_KERNEL_TOOLCHAIN) \
     O=$(NV_KERNEL_INTERMEDIATES_DIR) $(KERNEL_EXTRA_ARGS) \
     $(if $(SHOW_COMMANDS),V=1)
@@ -157,7 +172,7 @@ endef
 ifneq ( , $(findstring $(BOARD_WLAN_DEVICE), wl12xx_mac80211 wl18xx_mac80211))
 define compat-kernel-make
 $(KERNEL_EXTRA_ENV) $(MAKE) -C $(NV_COMPAT_KERNEL_DIR) \
-    ARCH=$(TARGET_ARCH) \
+    ARCH=$(REAL_TARGET_ARCH) \
     CROSS_COMPILE=$(PRIVATE_KERNEL_TOOLCHAIN) \
     KLIB=$(NV_KERNEL_INTERMEDIATES_DIR) \
     KLIB_BUILD=$(NV_KERNEL_INTERMEDIATES_DIR) \
@@ -196,6 +211,7 @@ endif
 $(BUILT_KERNEL_TARGET): $(dotconfig) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel build"
 	+$(hide) $(kernel-make) zImage
+	+$(hide) $(BOOT_WRAPPER_CMD)
 
 $(BUILT_KERNEL_DTB): $(BUILT_KERNEL_TARGET) FORCE
 	@echo "Device tree build"
