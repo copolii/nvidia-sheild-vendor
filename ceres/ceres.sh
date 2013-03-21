@@ -18,7 +18,7 @@ export FASTBOOT_VID=0x955
 if [ "$ODMDATA_OVERRIDE" ]; then
     export NVFLASH_ODM_DATA=$ODMDATA_OVERRIDE
 else
-    export NVFLASH_ODM_DATA=0x40098000
+    export NVFLASH_ODM_DATA=0x40298000
 fi
 
 export NVFLASH_BCT=flash_ceres_e1613_408MHz.cfg
