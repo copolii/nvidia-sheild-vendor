@@ -170,11 +170,11 @@ $(dotconfig): $(KERNEL_DEFCONFIG_PATH) | $(NV_KERNEL_INTERMEDIATES_DIR)
 	+$(hide) $(kernel-make) $(TARGET_KERNEL_CONFIG)
 ifneq ($(filter tf y,$(SECURE_OS_BUILD)),)
 	@echo "TF SecureOS enabled kernel"
-	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TRUSTED_FOUNDATIONS
+	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TRUSTED_FOUNDATIONS --enable TEGRA_USE_SECURE_KERNEL
 endif
 ifeq ($(SECURE_OS_BUILD),tlk)
 	@echo "TLK SecureOS enabled kernel"
-	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TRUSTED_FOUNDATIONS
+	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TRUSTED_LITTLE_KERNEL --enable TEGRA_USE_SECURE_KERNEL
 endif
 ifeq ($(NVIDIA_KERNEL_COVERAGE_ENABLED),1)
 	@echo "Explicitly enabling coverage support in kernel config on user request"
