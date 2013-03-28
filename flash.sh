@@ -8,7 +8,7 @@
 # package flashing script.
 
 # Usage:
-#  flash.sh [-b <file.bct>] [-f <file.cfg>] [-o <odmdata>] [-C <cmdline>] -- [optional args]
+#  flash.sh [-b <file.bct>] [-c <file.cfg>] [-o <odmdata>] [-C <cmdline>] -- [optional args]
 # -C flag overrides the entire command line for nvflash, other three
 # options are for explicitly specifying bct, cfg and odmdata options.
 # optional arguments after '--' are added as-is to end of nvflash cmdline.
@@ -58,7 +58,7 @@ product=$(echo ${PRODUCT_OUT%/} | grep -o '[a-zA-Z0-9]*$')
 
 pluto() {
     odmdata=0x40098008
-    bctfile=bct_504.cfg
+    bctfile=common_bct.cfg
 }
 
 roth() {
@@ -77,22 +77,7 @@ ceres() {
 dalmore() {
     # Set default ODM data
     odmdata=0x80098000
-
-    # Set internal board identifier
-    [[ -n $BOARD_IS_E1613 ]] && board=e1613
-    if [[ -z $board ]] && _shell_is_interactive; then
-        # Prompt user for target board info
-        _choose "Which Dalmore board revision to flash?" "e1611 e1613" board e1611
-    else
-        board=${board-e1611}
-    fi
-
-    # Set bctfile and cfgfile based on target board
-    if [[ $board == e1613 ]]; then
-        bctfile=flash_dalmore_e1613.cfg
-    elif [[ $board == e1611 ]]; then
-        bctfile=flash_dalmore_e1611.cfg
-    fi
+    bctfile=common_bct.cfg
 }
 
 macallan() {
