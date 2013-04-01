@@ -79,6 +79,15 @@ else
   NVIDIA_NVMAKE_VERBOSE := -s
 endif
 
+# extra definitions to pass to nvmake
+NVIDIA_NVMAKE_EXTRADEFS :=
+ifeq ($(NVUB_UNIFIED_BRANCHING_ENABLED),1)
+  NVIDIA_NVMAKE_EXTRADEFS += NVUB_UNIFIED_BRANCHING_ENABLED=$(NVUB_UNIFIED_BRANCHING_ENABLED)
+  ifdef NVUB_SUPPORTS_T132
+    NVIDIA_NVMAKE_EXTRADEFS += NVUB_SUPPORTS_T132=$(NVUB_SUPPORTS_T132)
+  endif
+endif
+
 #
 # Call into the nvmake build system to build the module
 #
