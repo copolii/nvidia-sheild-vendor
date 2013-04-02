@@ -52,6 +52,8 @@ else ifeq ($(TARGET_TEGRA_VERSION),t114)
     TARGET_KERNEL_CONFIG ?= tegra11_android_defconfig
 else ifeq ($(TARGET_TEGRA_VERSION),t148)
     TARGET_KERNEL_CONFIG ?= tegra14_android_defconfig
+else ifeq ($(TARGET_TEGRA_VERSION),t124)
+    TARGET_KERNEL_CONFIG ?= tegra12_android_defconfig
 endif
 
 ifeq ($(wildcard $(KERNEL_PATH)/arch/$(REAL_TARGET_ARCH)/configs/$(TARGET_KERNEL_CONFIG)),)
