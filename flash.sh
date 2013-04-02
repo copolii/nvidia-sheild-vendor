@@ -98,6 +98,16 @@ macallan() {
     odmdata=0x80098000
 }
 
+tegratab() {
+    if [[ $POWER_FROM_BATTERY == 1 ]]; then
+        odmdata=0x4049C000
+    else
+        odmdata=0x4009C000
+    fi
+
+    bctfile=flash.bct
+}
+
 cardhu() {
     # Set default ODM data
     odmdata=0x40080000
