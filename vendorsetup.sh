@@ -85,7 +85,7 @@ function ksetup()
     echo "make -C $SRC $KARCH $CROSS O=$KOUT $1"
     (cd $T && mkdir -p $KOUT ; make -C $SRC $KARCH $CROSS O=$KOUT $1)
 
-    if [ "$SECURE_OS_BUILD" == "y" ]; then
+    if [ "$SECURE_OS_BUILD" == "y" ] || [ "$SECURE_OS_BUILD" == "tf" ]; then
         $SRC/scripts/config --file $KOUT/.config --enable TRUSTED_FOUNDATIONS
     fi
     if [ "$NVIDIA_KERNEL_COVERAGE_ENABLED" == "1" ]; then

@@ -56,12 +56,6 @@ product=$(echo ${PRODUCT_OUT%/} | grep -o '[a-zA-Z0-9]*$')
 ##################################
 # Setup functions per target board
 
-# Boards with modems
-MDM_BOARDS=(pluto enterprise)
-
-# Boards with SIF partition
-SIF_BOARDS=(roth)
-
 pluto() {
     odmdata=0x40098008
     bctfile=bct_504.cfg
@@ -76,8 +70,8 @@ kai() {
 }
 
 ceres() {
-    odmdata=0x40098000
-    bctfile=flash_ceres_e1613.cfg
+    odmdata=0x40080008
+    bctfile=flash_ceres_e1680.cfg
 }
 
 dalmore() {
@@ -214,24 +208,6 @@ _set_cmdline() {
     )
 }
 
-# Backup and restore partition "$1"
-_save_partition() {
-    local part=$1
-    cmdline=(${cmdline[@]%"--go"})
-    cmdline=(
-        sudo $NVFLASH_BINARY
-        --read $part ${part}_${product}.img
-        --bl bootloader.bin \&\&
-        sudo $NVFLASH_BINARY
-        --resume ${cmdline[@]} \&\&
-        sudo $NVFLASH_BINARY
-        --resume
-        --download $part ${part}_${product}.img
-        --bl bootloader.bin
-        --go
-    )
-}
-
 ###########
 # Main code
 
@@ -250,17 +226,7 @@ else
     _set_cmdline
 fi
 
-# Backup+restore MDM partition for boards with modems
-if _in_array $product "${MDM_BOARDS[@]}" && \
-[[ $PRODUCT_MDM_PARTITION != "no" ]]; then
-    _save_partition MDM
-# Backup+restore SIF partition
-elif _in_array $product "${SIF_BOARDS[@]}" && \
-[[ $PRODUCT_SIF_PARTITION != "no" ]]; then
-    _save_partition SIF
-else
-    cmdline=(sudo $NVFLASH_BINARY ${cmdline[@]} ${_args[@]})
-fi
+cmdline=(sudo $NVFLASH_BINARY ${cmdline[@]} ${_args[@]})
 
 echo "INFO: PRODUCT_OUT = $PRODUCT_OUT"
 echo "INFO: CMDLINE = ${cmdline[@]}"

@@ -36,6 +36,7 @@ define _blob_command_line
 $(foreach f,$(1), $(eval \
  ifneq ($(filter %microboot.bin,$(f)),)
   _cmd += $(f) NVC 1
+  _cmd += $(f) RMB 1
  else ifneq ($(filter %.dtb,$(f)),)
   _cmd += $(f) DTB 1
  else ifneq ($(filter %.bct,$(f)),)
@@ -63,7 +64,8 @@ nv-blob: \
       $(call _dynamic_blob_dependencies, $(_blob_deps))
 	$(hide) python $(filter %nvblob,$^) \
 		$(filter %bootloader.bin,$^) EBT 1 \
-                $(call _blob_command_line, $^)
+		$(filter %bootloader.bin,$^) RBL 1 \
+		 $(call _blob_command_line, $^)
 
 #
 # Generate ramdisk images for simulation

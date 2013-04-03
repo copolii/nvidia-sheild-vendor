@@ -18,6 +18,11 @@ endif
 
 NVIDIA_BUILD_ROOT          := vendor/nvidia/build
 
+# Temporary global for graphics code move to P4. See bug 1227048.
+ifndef NV_GFX_SRC_IN_P4
+NV_GFX_SRC_IN_P4 := 0
+endif
+
 include vendor/nvidia/build/detectversion.mk
 
 # links to build system files
