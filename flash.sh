@@ -62,7 +62,24 @@ pluto() {
 }
 
 roth() {
-    odmdata=0x80098000
+    odmdata=0x8049C000
+
+    # set internal board identifier
+    [[ -n $board_is_p2454 ]] && board=p2454
+    if [[ -z $board ]] && _shell_is_interactive; then
+        # prompt user for target board info
+        _choose "which roth board revision to flash?" "p2454 p2560" board p2454
+    else
+        board=${board-p2454}
+    fi
+
+    # set bctfile and cfgfile based on target board
+    if [[ $board == p2454 ]]; then
+        bctfile=flash.bct
+    elif [[ $board == p2560 ]]; then
+        bctfile=flash_p2560_450Mhz.bct
+    fi
+    bypass="--fusebypass_config fuse_bypass.txt --sku_to_bypass T40T"
 }
 
 kai() {
