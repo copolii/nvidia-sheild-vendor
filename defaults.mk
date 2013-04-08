@@ -118,6 +118,10 @@ endif
 # Non-Secure Profiling (ARM - Non-Invasive Debug Enable)
 TEGRA_CFLAGS += -DNON_SECURE_PROF=0
 
+# Dynamic BCT loading (Instead of using boot strap pin,
+# BCT sdram set is selected by reading MRR, currently
+# only implemented on Pluto and is disabled by default.)
+TEGRA_CFLAGS += -DNV_DYNAMIC_BCT=0
 
 LOCAL_CFLAGS += $(TEGRA_CFLAGS)
 
