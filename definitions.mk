@@ -20,7 +20,7 @@ NVIDIA_BUILD_ROOT          := vendor/nvidia/build
 
 # Temporary global for graphics code move to P4. See bug 1227048.
 ifndef NV_GFX_SRC_IN_P4
-NV_GFX_SRC_IN_P4 := 0
+NV_GFX_SRC_IN_P4 := 1
 endif
 
 ifndef NV_GPUDRV_SOURCE
