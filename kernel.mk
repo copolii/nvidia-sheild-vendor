@@ -218,10 +218,16 @@ $(BUILT_KERNEL_TARGET): $(dotconfig) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel build"
 	+$(hide) $(kernel-make) zImage
 	+$(hide) $(BOOT_WRAPPER_CMD)
-
-$(BUILT_KERNEL_DTB): $(BUILT_KERNEL_TARGET) FORCE
+ifeq ($(TARGET_USE_DTB),true)
 	@echo "Device tree build"
 	+$(hide) $(kernel-make) $(TARGET_KERNEL_DT_NAME).dtb
+endif
+ifeq ($(APPEND_DTB_TO_KERNEL),true)
+	@echo "Appending DTB file to kernel image"
+	+$(hide) cat $(BUILT_KERNEL_DTB) >>$(BUILT_KERNEL_TARGET)
+endif
+
+$(BUILT_KERNEL_DTB): $(BUILT_KERNEL_TARGET) FORCE
 
 kmodules-build_only: $(BUILT_KERNEL_TARGET) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel modules build"
@@ -294,10 +300,6 @@ ifeq ($(APPEND_DTB_TO_KERNEL),false)
 endif
 
 $(INSTALLED_KERNEL_TARGET): $(BUILT_KERNEL_TARGET) $(BUILT_KERNEL_DTB) $(EXTRA_KERNEL_TARGETS) FORCE | $(ACP)
-ifeq ($(APPEND_DTB_TO_KERNEL),true)
-	@echo "Appending DTB file to kernel image"
-	+$(hide) cat $(BUILT_KERNEL_DTB) >>$(BUILT_KERNEL_TARGET)
-endif
 	$(copy-file-to-target)
 
 # Kernel build also includes some drivers as kernel modules which are
