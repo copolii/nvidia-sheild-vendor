@@ -49,6 +49,14 @@ $(foreach f,$(1), $(eval \
   _cmd += $(f) BCT 1
  else ifneq ($(filter %xusb_sil_rel_fw,$(f)),)
   _cmd += $(f) DFI 1
+ else ifneq ($(filter %charged.bmp,$(f)),)
+  _cmd += $(f) CHG 1
+ else ifneq ($(filter %charging.bmp,$(f)),)
+  _cmd += $(f) FBP 1
+ else ifneq ($(filter %lowbat.bmp,$(f)),)
+  _cmd += $(f) LBP 1
+ else ifneq ($(filter %nvidia.bmp,$(f)),)
+  _cmd += $(f) BMP 1
  endif))\
  $(_cmd)
  $(eval _cmd :=)
@@ -59,7 +67,11 @@ _blob_deps := \
       $(PRODUCT_OUT)/microboot.bin \
       $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME).dtb \
       $(PRODUCT_OUT)/flash.bct \
-      $(PRODUCT_OUT)/xusb_sil_rel_fw
+      $(PRODUCT_OUT)/xusb_sil_rel_fw \
+      $(PRODUCT_OUT)/charged.bmp \
+      $(PRODUCT_OUT)/charging.bmp \
+      $(PRODUCT_OUT)/lowbat.bmp \
+      $(PRODUCT_OUT)/nvidia.bmp
 
 # target to generate blob
 nv-blob: \
