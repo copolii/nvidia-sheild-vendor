@@ -42,6 +42,7 @@ NVIDIA_STATIC_JAVA_LIBRARY := $(NVIDIA_BUILD_ROOT)/static_java_library.mk
 NVIDIA_PACKAGE             := $(NVIDIA_BUILD_ROOT)/package.mk
 NVIDIA_COVERAGE            := $(NVIDIA_BUILD_ROOT)/coverage.mk
 NVIDIA_PREBUILT            := $(NVIDIA_BUILD_ROOT)/prebuilt.mk
+NVIDIA_PREBUILT_NOTICE     := $(NVIDIA_BUILD_ROOT)/nv_prebuilt_notice_files.mk
 NVIDIA_HOST_PREBUILT       := $(NVIDIA_BUILD_ROOT)/host_prebuilt.mk
 NVIDIA_WARNINGS            := $(NVIDIA_BUILD_ROOT)/warnings.mk
 NVIDIA_GENERATED_HEADER    := $(NVIDIA_BUILD_ROOT)/generated_headers.mk
