@@ -61,7 +61,7 @@ roth() {
     [[ -n $board_is_p2454 ]] && board=p2454
     if [[ -z $board ]] && _shell_is_interactive; then
         # prompt user for target board info
-        _choose "which roth board revision to flash?" "p2454 p2560" board p2454
+        _choose "which roth board revision to flash?" "p2560 p2454" board p2560
     else
         board=${board-p2454}
     fi
