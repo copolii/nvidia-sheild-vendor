@@ -58,7 +58,7 @@ product=$(echo ${PRODUCT_OUT%/} | grep -o '[a-zA-Z0-9]*$')
 
 pluto() {
     odmdata=0x40098008
-    bctfile=bct_504.cfg
+    bctfile=common_bct.cfg
 }
 
 roth() {
