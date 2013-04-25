@@ -100,9 +100,9 @@ macallan() {
 
 tegratab() {
     if [[ $POWER_FROM_BATTERY == 1 ]]; then
-        odmdata=0x4049C000
+        odmdata=0x4069C000
     else
-        odmdata=0x4009C000
+        odmdata=0x4029C000
     fi
 
     bctfile=flash.bct
