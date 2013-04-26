@@ -24,6 +24,9 @@ TARGET_USE_DTB ?= false
 BOOTLOADER_SUPPORTS_DTB ?= false
 APPEND_DTB_TO_KERNEL ?= false
 EXTRA_KERNEL_TARGETS :=
+EXTRA_BUILD_CMD :=
+
+REAL_TARGET_ARCH := $(TARGET_ARCH)
 
 # Special handling for ARM64 kernel (diff arch/ and built-in bootloader)
 ifneq ($(filter t132, $(TARGET_TEGRA_VERSION)),)
@@ -217,7 +220,7 @@ endif
 $(BUILT_KERNEL_TARGET): $(dotconfig) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel build"
 	+$(hide) $(kernel-make) zImage
-	+$(hide) $(BOOT_WRAPPER_CMD)
+	+$(hide) $(EXTRA_BUILD_CMD)
 ifeq ($(TARGET_USE_DTB),true)
 	@echo "Device tree build"
 	+$(hide) $(kernel-make) $(TARGET_KERNEL_DT_NAME).dtb
