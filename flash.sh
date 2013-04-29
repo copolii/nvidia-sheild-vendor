@@ -233,7 +233,13 @@ else
     _set_cmdline
 fi
 
-cmdline=(sudo $NVFLASH_BINARY ${cmdline[@]} ${_args[@]})
+cmdline=(sudo $NVFLASH_BINARY ${cmdline[@]})
+
+if [[ $_args ]]; then
+    # This assumes '--go' is last in cmdline
+    unset cmdline[${#cmdline[@]}-1]
+    cmdline=(${cmdline[@]} ${_args[@]} --go)
+fi
 
 echo "INFO: PRODUCT_OUT = $PRODUCT_OUT"
 echo "INFO: CMDLINE = ${cmdline[@]}"
