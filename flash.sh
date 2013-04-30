@@ -104,8 +104,6 @@ tegratab() {
     else
         odmdata=0x4029C000
     fi
-
-    bctfile=flash.bct
 }
 
 cardhu() {
