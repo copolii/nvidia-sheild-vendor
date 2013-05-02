@@ -29,15 +29,6 @@ EXTRA_BUILD_CMD :=
 REAL_TARGET_ARCH := $(TARGET_ARCH)
 
 # Special handling for ARM64 kernel (diff arch/ and built-in bootloader)
-ifneq ($(filter t132, $(TARGET_TEGRA_VERSION)),)
-    REAL_TARGET_ARCH := arm64
-    BOOT_WRAPPER_DIR := $(TEGRA_TOP)/core-private/system/boot-wrapper-aarch64
-    BOOT_WRAPPER_CMD := $(MAKE) -C $(BOOT_WRAPPER_DIR);
-    BOOT_WRAPPER_CMD += $(MAKE) -C $(BOOT_WRAPPER_DIR) EMMC_BOOT=1
-else
-    REAL_TARGET_ARCH := $(TARGET_ARCH)
-    BOOT_WRAPPER_CMD :=
-endif
 
 # Always use absolute path for NV_KERNEL_INTERMEDIATES_DIR
 ifneq ($(filter /%, $(TARGET_OUT_INTERMEDIATES)),)
