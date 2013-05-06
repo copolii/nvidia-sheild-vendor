@@ -181,11 +181,11 @@ $(dotconfig): $(KERNEL_DEFCONFIG_PATH) | $(NV_KERNEL_INTERMEDIATES_DIR)
 	+$(hide) $(kernel-make) $(TARGET_KERNEL_CONFIG)
 ifneq ($(filter tf y,$(SECURE_OS_BUILD)),)
 	@echo "TF SecureOS enabled kernel"
-	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TRUSTED_FOUNDATIONS
+	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TRUSTED_FOUNDATIONS --enable TEGRA_USE_SECURE_KERNEL
 endif
 ifeq ($(SECURE_OS_BUILD),tlk)
 	@echo "TLK SecureOS enabled kernel"
-	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TRUSTED_FOUNDATIONS
+	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TRUSTED_LITTLE_KERNEL --enable TEGRA_USE_SECURE_KERNEL
 endif
 ifeq ($(NVIDIA_KERNEL_COVERAGE_ENABLED),1)
 	@echo "Explicitly enabling coverage support in kernel config on user request"
@@ -264,12 +264,12 @@ endif
 
 build_kernel_tests: kmodules FORCE | $(NV_KERNEL_MODULES_TARGET_DIR) $(NV_KERNEL_BIN_TARGET_DIR)
 	@echo "Kernel space tests build"
-	@echo "Tests at $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests"
-	+$(hide) $(kernel-make) M=$(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests
-	for f in `find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "*.ko"` ; do cp -v "$$f" $(NV_KERNEL_MODULES_TARGET_DIR) ; done
-	for f in `find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "*.sh"` ; do cp -v "$$f" $(NV_KERNEL_BIN_TARGET_DIR) ; done
-	+$(hide) $(kernel-make) M=$(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests clean
-	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "modules.order" -print0 | xargs -0 rm -rf
+	@echo "Tests at $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests-kernel/linux/kernel_space_tests"
+	+$(hide) $(kernel-make) M=$(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests-kernel/linux/kernel_space_tests
+	for f in `find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests-kernel/linux/kernel_space_tests -name "*.ko"` ; do cp -v "$$f" $(NV_KERNEL_MODULES_TARGET_DIR) ; done
+	for f in `find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests-kernel/linux/kernel_space_tests -name "*.sh"` ; do cp -v "$$f" $(NV_KERNEL_BIN_TARGET_DIR) ; done
+	+$(hide) $(kernel-make) M=$(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests-kernel/linux/kernel_space_tests clean
+	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests-kernel/linux/kernel_space_tests -name "modules.order" -print0 | xargs -0 rm -rf
 
 # Unless we hardcode the list of kernel modules, we cannot create
 # a proper dependency from systemimage to the kernel modules.
