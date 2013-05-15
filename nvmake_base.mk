@@ -94,12 +94,12 @@ $(NVIDIA_NVMAKE_MODULE) $(LOCAL_MODULE)_nvmakeclean: NVIDIA_NVMAKE_RM_MODULE_MAK
     CC=$(ARM_EABI_TOOLCHAIN)/arm-eabi-gcc \
     LD=$(ARM_EABI_TOOLCHAIN)/arm-eabi-ld \
     NV_MOBILE_DGPU=$(NV_MOBILE_DGPU) \
-    -C $(dir $(NVIDIA_NVMAKE_MODULE)) -f makefile nv-linux.o
+    -C $(dir $(NVIDIA_NVMAKE_MODULE)) -f Makefile nv-linux.o
 
 ifeq ($(LOCAL_NVIDIA_NVMAKE_BUILD_DIR), drivers/resman)
   $(NVIDIA_NVMAKE_MODULE): NVIDIA_NVMAKE_POST_BUILD_COMMAND := \
     cd $(dir $(NVIDIA_NVMAKE_MODULE)); \
-    $(MAKE) MAKE=$(shell which $(MAKE)) -C $(dir $(NVIDIA_NVMAKE_MODULE)) -f makefile clean; \
+    $(MAKE) MAKE=$(shell which $(MAKE)) -C $(dir $(NVIDIA_NVMAKE_MODULE)) -f Makefile clean; \
     $(NVIDIA_NVMAKE_RM_MODULE_MAKE)
 else
   $(NVIDIA_NVMAKE_MODULE): NVIDIA_NVMAKE_POST_BUILD_COMMAND :=
