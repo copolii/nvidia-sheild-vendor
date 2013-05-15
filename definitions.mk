@@ -1,4 +1,5 @@
-
+#
+# Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
 #
 # Global build system definitions go here
 #
@@ -27,6 +28,7 @@ include vendor/nvidia/build/detectversion.mk
 # links to build system files
 
 NVIDIA_BASE                := $(NVIDIA_BUILD_ROOT)/base.mk
+NVIDIA_DEBUG               := $(NVIDIA_BUILD_ROOT)/debug.mk
 NVIDIA_DEFAULTS            := $(NVIDIA_BUILD_ROOT)/defaults.mk
 NVIDIA_STATIC_LIBRARY      := $(NVIDIA_BUILD_ROOT)/static_library.mk
 NVIDIA_STATIC_AVP_LIBRARY  := $(NVIDIA_BUILD_ROOT)/static_avp_library.mk
