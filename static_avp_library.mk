@@ -8,6 +8,9 @@ LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
 LOCAL_NO_DEFAULT_COMPILER_FLAGS := true
 
+# Do not include default libc etc
+LOCAL_SYSTEM_SHARED_LIBRARIES :=
+
 LOCAL_C_INCLUDES += $(TARGET_OUT_HEADERS)
 LOCAL_C_INCLUDES += $(TOP)/bionic/libc/arch-arm/include
 LOCAL_C_INCLUDES += $(TOP)/bionic/libc/include

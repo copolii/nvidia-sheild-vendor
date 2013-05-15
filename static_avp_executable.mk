@@ -4,6 +4,9 @@ LOCAL_MODULE_CLASS := EXECUTABLES
 LOCAL_FORCE_STATIC_EXECUTABLE := true
 LOCAL_MODULE_SUFFIX := .bin
 
+# Do not include default libc etc
+LOCAL_SYSTEM_SHARED_LIBRARIES :=
+
 include $(BUILD_SYSTEM)/binary.mk
 
 # The c compiler in arm-eabi-4.4.0 toolchain that comes with Froyo apparently
