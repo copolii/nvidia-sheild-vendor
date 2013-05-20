@@ -78,6 +78,7 @@ roth() {
         bctfile=flash.bct
     elif [[ $board == p2560 ]]; then
         bctfile=flash_p2560_450Mhz.bct
+        sif="--sysfile SIF.txt"
     fi
     bypass="--fusebypass_config fuse_bypass.txt --sku_to_bypass T40T"
 }
@@ -198,6 +199,7 @@ _set_cmdline() {
     bctfile=${_bctfile-${bctfile-"bct.cfg"}}
     cfgfile=${_cfgfile-${cfgfile-"flash.cfg"}}
     bypass=${bypass-" "}
+    sif=${sif-" "}
 
     # Parse nvflash commandline
     cmdline=(
@@ -208,6 +210,7 @@ _set_cmdline() {
         --create
         --bl bootloader.bin
         $bypass
+        $sif
         --go
     )
 }
