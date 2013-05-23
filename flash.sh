@@ -104,6 +104,17 @@ tegratab() {
     else
         odmdata=0x4029C000
     fi
+    [[ -n $BOARD_IS_E1569 ]] && board=e1569
+    if [[ -z $board ]] && _shell_is_interactive; then
+        _choose "Which tegratab board revision to flash?" "p1640 e1569" board p1640
+    else
+        board=${board-p1640}
+    fi
+    if [[ $board == e1569 ]]; then
+        bctfile=flash_tegratab_e1569.cfg
+    elif [[ $board == p1640 ]]; then
+        bctfile=flash_tegratab_p1640.cfg
+    fi
 }
 
 cardhu() {
