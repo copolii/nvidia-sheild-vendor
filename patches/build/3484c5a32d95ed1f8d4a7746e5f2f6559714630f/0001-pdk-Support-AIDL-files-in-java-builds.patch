@@ -1,0 +1,32 @@
+From 3484c5a32d95ed1f8d4a7746e5f2f6559714630f Mon Sep 17 00:00:00 2001
+From: Dan Willemsen <dwillemsen@nvidia.com>
+Date: Wed, 3 Oct 2012 23:24:13 -0700
+Subject: [PATCH] pdk: Support AIDL files in java builds
+
+We don't get the framework.aidl in target/common/..., we need to use the
+SDK version.
+
+Change-Id: Id99b49a9b65d09c2325911c6b700e6d81ee0a696
+Reviewed-on: http://git-master/r/163404
+Reviewed-by: Dan Willemsen <dwillemsen@nvidia.com>
+Tested-by: Dan Willemsen <dwillemsen@nvidia.com>
+---
+ core/base_rules.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/base_rules.mk b/core/base_rules.mk
+index 07ef024..e13a247 100644
+--- a/core/base_rules.mk
++++ b/core/base_rules.mk
+@@ -187,7 +187,7 @@ endif
+ aidl_preprocess_import :=
+ LOCAL_SDK_VERSION:=$(strip $(LOCAL_SDK_VERSION))
+ ifdef LOCAL_SDK_VERSION
+-ifeq ($(LOCAL_SDK_VERSION)$(TARGET_BUILD_APPS),current)
++ifeq ($(LOCAL_SDK_VERSION)$(TARGET_BUILD_APPS)$(TARGET_BUILD_PDK),current)
+   # LOCAL_SDK_VERSION is current and no TARGET_BUILD_APPS
+   aidl_preprocess_import := $(TARGET_OUT_COMMON_INTERMEDIATES)/framework.aidl
+ else
+-- 
+1.8.1.5
+

@@ -1,0 +1,400 @@
+From 88509af1e958ab619b54c84f8a793a89af9c2ceb Mon Sep 17 00:00:00 2001
+From: Rudy Sevile <rsevile@nvidia.com>
+Date: Fri, 9 Nov 2012 18:51:40 -0800
+Subject: [PATCH] Frameworks: Native: Add PowerService support
+
+Added underlying interface for PowerService that allows
+sending power hints to PowerHAL.
+This call handles the JNI code, and establishes a connection
+with the service.
+
+Bug 1155935
+Bug 1206410
+
+Change-Id: I49e8b24829fae5826dfe706ab0a107871a43f12c
+Reviewed-on: http://git-master/r/191128
+Tested-by: Mitch Luban <mluban@nvidia.com>
+Reviewed-by: Prajakta Gudadhe <pgudadhe@nvidia.com>
+---
+ include/powerservice/IPowerService.h            |  69 ++++++++++++++++
+ include/powerservice/PowerServiceClient.h       |  54 +++++++++++++
+ libs/powerservice_client/Android.mk             |  23 ++++++
+ libs/powerservice_client/IPowerService.cpp      |  89 +++++++++++++++++++++
+ libs/powerservice_client/PowerServiceClient.cpp | 102 ++++++++++++++++++++++++
+ 5 files changed, 337 insertions(+)
+ create mode 100644 include/powerservice/IPowerService.h
+ create mode 100644 include/powerservice/PowerServiceClient.h
+ create mode 100644 libs/powerservice_client/Android.mk
+ create mode 100644 libs/powerservice_client/IPowerService.cpp
+ create mode 100644 libs/powerservice_client/PowerServiceClient.cpp
+
+diff --git a/include/powerservice/IPowerService.h b/include/powerservice/IPowerService.h
+new file mode 100644
+index 0000000..89cc0ef
+--- /dev/null
++++ b/include/powerservice/IPowerService.h
+@@ -0,0 +1,69 @@
++/*
++ * Copyright (C) 2011-2012 The Android Open Source Project
++ * Copyright (C) 2013, NVIDIA CORPORATION.  All rights reserved.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef ANDROID_I_POWER_SERVICE_H
++#define ANDROID_I_POWER_SERVICE_H
++
++#include <stdint.h>
++#include <sys/types.h>
++
++#include <utils/RefBase.h>
++#include <utils/Errors.h>
++
++#include <binder/IInterface.h>
++#include <hardware/power.h>
++
++typedef enum {
++    APP_PROFILE_CPU_SCALING_MIN_FREQ,
++    APP_PROFILE_CPU_CORE_BIAS,
++    APP_PROFILE_CPU_MAX_NORMAL_FREQ,
++    APP_PROFILE_GPU_CBUS_CAP_LEVEL,
++    APP_PROFILE_GPU_SCALING,
++    APP_PROFILE_PBC_POWER,
++    APP_PROFILE_FAN_CAP,
++    APP_PROFILE_COUNT,
++} app_profile_knob;
++
++namespace android {
++
++class PowerService;
++
++class IPowerService : public IInterface
++{
++public:
++DECLARE_META_INTERFACE(PowerService);
++
++    virtual void sendPowerHint(int hint, void *arg) = 0;
++    virtual void* getData() = 0;
++};
++
++class BnPowerService : public BnInterface<IPowerService>
++{
++    public:
++    enum {
++        sendPowerHintEnum
++    };
++
++    virtual status_t onTransact(uint32_t code,
++            const Parcel& data,
++            Parcel* reply,
++            uint32_t flags = 0);
++};
++
++}; // namespace android
++
++#endif
+diff --git a/include/powerservice/PowerServiceClient.h b/include/powerservice/PowerServiceClient.h
+new file mode 100644
+index 0000000..e46143d
+--- /dev/null
++++ b/include/powerservice/PowerServiceClient.h
+@@ -0,0 +1,54 @@
++/*
++ * Copyright (C) 2011-2012 The Android Open Source Project
++ * Copyright (C) 2013, NVIDIA CORPORATION.  All rights reserved.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef ANDROID_POWER_SERVICE_CLIENT_H
++#define ANDROID_POWER_SERVICE_CLIENT_H
++
++#include <utils/threads.h>
++#include <utils/Errors.h>
++
++#include <powerservice/IPowerService.h>
++
++namespace android {
++
++class PowerServiceClient {
++public:
++    PowerServiceClient();
++
++    void sendPowerHint(int hint, void* data);
++
++private:
++
++    int failedConnectionAttempts;
++    void checkAndTryReconnect(nsecs_t now);
++    status_t tryBindToService();
++    status_t bindToService();
++    void breakConnection();
++    bool rateLimitAndCheckConnection(nsecs_t* last, nsecs_t now);
++
++    //IPC ain't cheap.  Rate limit these calls
++    nsecs_t lastConnectionAttempt;
++
++    static const nsecs_t MINIMUM_POKE_WAIT_NS;
++    static const nsecs_t MINIMUM_CONNECTION_DELAY_NS;
++    static const int MAXIMUM_CONNECTION_ATTEMPTS;
++    sp<IPowerService> mInterface;
++};
++
++};
++
++#endif
+diff --git a/libs/powerservice_client/Android.mk b/libs/powerservice_client/Android.mk
+new file mode 100644
+index 0000000..f982f62
+--- /dev/null
++++ b/libs/powerservice_client/Android.mk
+@@ -0,0 +1,23 @@
++LOCAL_PATH:= $(call my-dir)
++include $(CLEAR_VARS)
++
++LOCAL_SRC_FILES:= \
++	IPowerService.cpp \
++	PowerServiceClient.cpp
++
++LOCAL_SHARED_LIBRARIES := \
++	libcutils \
++	libutils \
++	libbinder
++
++LOCAL_MODULE:= libpowerservice_client
++
++LOCAL_MODULE_TAGS:= optional
++
++ifeq ($(TARGET_SIMULATOR),true)
++    LOCAL_LDLIBS += -lpthread
++endif
++
++LOCAL_PRELINK_MODULE:= false
++
++include $(BUILD_SHARED_LIBRARY)
+diff --git a/libs/powerservice_client/IPowerService.cpp b/libs/powerservice_client/IPowerService.cpp
+new file mode 100644
+index 0000000..1430576
+--- /dev/null
++++ b/libs/powerservice_client/IPowerService.cpp
+@@ -0,0 +1,89 @@
++/*
++ * Copyright (C) 2011-2012 The Android Open Source Project
++ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#define LOG_TAG "PowerService"
++
++#include <stdint.h>
++#include <sys/types.h>
++
++#include <binder/Parcel.h>
++#include <binder/IMemory.h>
++#include <binder/IPCThreadState.h>
++#include <binder/IServiceManager.h>
++
++#include <powerservice/IPowerService.h>
++
++namespace android {
++
++class BpPowerService : public BpInterface<IPowerService> {
++public:
++    BpPowerService(const sp<IBinder>& impl)
++        : BpInterface<IPowerService>(impl) { }
++
++    virtual void* getData() { return NULL; }
++
++    virtual void sendPowerHint(int hint, void *arg)
++    {
++        Parcel data, reply;
++        int *hintData = (int*)arg;
++        data.writeInterfaceToken(IPowerService::getInterfaceDescriptor());
++        data.writeInt32(hint);
++
++        switch (hint) {
++            case POWER_HINT_APP_PROFILE:
++                for (int i = 0; i < APP_PROFILE_COUNT; i++) {
++                    data.writeInt32(hintData[i]);
++                }
++                break;
++            default:
++                break;
++        }
++
++        remote()->transact(BnPowerService::sendPowerHintEnum, data, &reply, IBinder::FLAG_ONEWAY);
++    }
++};
++
++IMPLEMENT_META_INTERFACE(PowerService, "android.IPowerService") ;
++
++status_t BnPowerService::onTransact(
++    uint32_t code, const Parcel& data, Parcel* reply, uint32_t flags)
++{
++    switch(code) {
++        case sendPowerHintEnum: {
++            CHECK_INTERFACE(IPowerService, data, reply);
++            int hint = data.readInt32();
++            int *hintData = (int*)getData();
++
++            switch (hint) {
++                case POWER_HINT_APP_PROFILE:
++                    for (int i = 0; i < APP_PROFILE_COUNT; i++) {
++                        hintData[i] = data.readInt32();
++                    }
++                    break;
++                default:
++                    break;
++            }
++
++            sendPowerHint(hint, (void*)hintData);
++        } break;
++        default:
++            return BBinder::onTransact(code, data, reply, flags);
++    }
++    return NO_ERROR;
++}
++
++}; //namespace android
+diff --git a/libs/powerservice_client/PowerServiceClient.cpp b/libs/powerservice_client/PowerServiceClient.cpp
+new file mode 100644
+index 0000000..1a014fa
+--- /dev/null
++++ b/libs/powerservice_client/PowerServiceClient.cpp
+@@ -0,0 +1,102 @@
++/*
++ * Copyright (C) 2011-2012 The Android Open Source Project
++ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#include <powerservice/PowerServiceClient.h>
++
++#include <binder/IServiceManager.h>
++
++#undef LOG_TAG
++#define LOG_TAG "PowerServiceClient"
++
++namespace android {
++
++PowerServiceClient::PowerServiceClient() :
++    failedConnectionAttempts(0),
++    lastConnectionAttempt(0) {}
++
++const nsecs_t PowerServiceClient::MINIMUM_POKE_WAIT_NS = 40 * 1000000LL;
++const nsecs_t PowerServiceClient::MINIMUM_CONNECTION_DELAY_NS = 5000 * 1000000LL;
++const int PowerServiceClient::MAXIMUM_CONNECTION_ATTEMPTS = 100;
++
++status_t PowerServiceClient::tryBindToService() {
++    sp<IServiceManager> sm = defaultServiceManager();
++    if (sm == 0)
++        return FAILED_TRANSACTION;
++    sp<IBinder> binder = sm->checkService(String16("PowerService"));
++    if (binder == 0)
++        return NAME_NOT_FOUND;
++    mInterface = IPowerService::asInterface(binder);
++    if (mInterface == 0)
++        return BAD_VALUE;
++    LOGI("Successfully bound to service");
++    return NO_ERROR;
++}
++
++status_t PowerServiceClient::bindToService() {
++    sp<IServiceManager> sm = defaultServiceManager();
++    if (sm == 0)
++        return FAILED_TRANSACTION;
++    sp<IBinder> binder = sm->getService(String16("PowerService"));
++    if (binder == 0)
++        return NAME_NOT_FOUND;
++    mInterface = IPowerService::asInterface(binder);
++    if (mInterface == 0)
++        return BAD_VALUE;
++    LOGI("Successfully bound to service");
++    return NO_ERROR;
++}
++
++void PowerServiceClient::checkAndTryReconnect(nsecs_t now) {
++    if (mInterface != 0)
++        return;
++    if (failedConnectionAttempts > MAXIMUM_CONNECTION_ATTEMPTS)
++        return;
++    if (now < lastConnectionAttempt + MINIMUM_CONNECTION_DELAY_NS)
++        return;
++    lastConnectionAttempt = now;
++    status_t res = tryBindToService();
++    if (res != NO_ERROR) {
++        LOGW("Failed to bind to service");
++        failedConnectionAttempts++;
++    }
++}
++
++bool PowerServiceClient::rateLimitAndCheckConnection(nsecs_t* last, nsecs_t now) {
++    if (now - *last < MINIMUM_POKE_WAIT_NS)
++        return false;
++    *last = now;
++    checkAndTryReconnect(now);
++    if (mInterface == 0)
++        return false;
++    return true;
++}
++
++void PowerServiceClient::sendPowerHint(int hint, void* data) {
++    checkAndTryReconnect(systemTime(SYSTEM_TIME_MONOTONIC));
++    if (mInterface == 0) {
++        return;
++    }
++
++    mInterface->sendPowerHint(hint, data);
++}
++
++void PowerServiceClient::breakConnection() {
++    LOGW("Lost connection to service");
++    mInterface = NULL;
++}
++
++};
+-- 
+1.8.1.5
+

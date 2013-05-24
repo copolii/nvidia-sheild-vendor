@@ -4,6 +4,12 @@ if [ a$GERRIT_USER == a ]; then
   export GERRIT_USER=$USER
 fi
 
+export GENERATE=0
+
+if [ $1 == generate ]; then
+    export GENERATE=1
+fi
+
 #directory, patchname
 function apply_patch {
     echo === Changing to $TOP/$1 to apply patch
@@ -21,25 +27,32 @@ function apply_patch {
     popd
 }
 
+#directory, commitid
 function cherry_pick {
     echo === Changing to $TOP/$1 to cherry pick
     pushd $TOP/$1
-    echo === git cherry-pick $2
-    git fetch ssh://git-master.nvidia.com:12001/android/platform/$1 rel-17-partner
-    if [ $? != 0 ]; then
-        echo === error: Downloading patch failed!
-        echo === Aborting!
-        echo === Restoring original directory
-        popd
-        exit 1
-    fi
-    git cherry-pick -x $2
-    if [ $? != 0 ]; then
-        echo === error: Applying patch failed!
-        echo === Aborting!
-        echo === Restoring original directory
-        popd
-        exit 1
+    if [ $GENERATE == 1 ]; then
+        echo === git format-patch $2
+        git fetch ssh://git-master.nvidia.com:12001/android/platform/$1 rel-17-partner
+        if [ $? != 0 ]; then
+            echo === error: Downloading patch failed!
+            echo === Aborting!
+            echo === Restoring original directory
+            popd
+            exit 1
+        fi
+        mkdir -p $TOP/vendor/nvidia/build/patches/$1/$2/
+        git format-patch -N -1 -o $TOP/vendor/nvidia/build/patches/$1/$2/ $2
+    else
+        echo === git am $TOP/vendor/nvidia/build/patches/$1/$2
+        git am $TOP/vendor/nvidia/build/patches/$1/$2/*.patch
+        if [ $? != 0 ]; then
+            echo === error: Applying patch failed!
+            echo === Aborting!
+            echo === Restoring original directory
+            popd
+            exit 1
+        fi
     fi
     echo === Restoring original directory
     popd
@@ -49,21 +62,8 @@ if [ a$TOP == a ]; then
     echo \$TOP is not set. Please set \$TOP before running this script
     exit 1
 else
-    # TEMPORARY: Re-add LOG* variants
-    cherry_pick system/core bad55ca24e2a7e59261a9decb829164a61da8828
-    # Enable use of modem. property by radio user
-    cherry_pick system/core 280cec890387604c7a6be47870a8c8abd0a97769
-    # Enable use of ro.sf.lcd_density prop by system user
-    cherry_pick system/core 59e8f07a05b1f03a4d4802870420fe2fa0f225c2
-    # audio: Add WFD Enable Macro
-    cherry_pick system/core 53e53b7183312c61047b629245ae997c7306f54b
-
-    # frameworks: native: add extra dalvik heap configs
-    cherry_pick frameworks/native 2e041a160c1cbe6ffcaf081dd8dc201713ffac41
     # Frameworks: Native: Add PowerService support
     cherry_pick frameworks/native 88509af1e958ab619b54c84f8a793a89af9c2ceb
-    # Dalvik heap size for a 10" hdpi tablet.
-    cherry_pick frameworks/native dcc0fa1a8cb29b66bc5e2910bda6721765b40f35
 
     # Fix issue with DEBUG_OUT_DIR not properly selected
     cherry_pick build f7dfb3689edcaf5f819fa5e691ce13abf858bca8
