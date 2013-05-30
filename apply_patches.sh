@@ -62,6 +62,10 @@ if [ a$TOP == a ]; then
     echo \$TOP is not set. Please set \$TOP before running this script
     exit 1
 else
+    # frameworks: native: add extra dalvik heap configs
+    cherry_pick frameworks/native 2e041a160c1cbe6ffcaf081dd8dc201713ffac41
+    cherry_pick frameworks/native dcc0fa1a8cb29b66bc5e2910bda6721765b40f35
+
     # Frameworks: Native: Add PowerService support
     cherry_pick frameworks/native 88509af1e958ab619b54c84f8a793a89af9c2ceb
 
