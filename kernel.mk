@@ -143,11 +143,7 @@ ifeq ($(OS),Linux)
 endif
 
 ifdef PLATFORM_IS_JELLYBEAN
-ifeq ($(TARGET_TEGRA_VERSION),t132)
-KERNEL_TOOLCHAIN := prebuilts/gcc/$(HOSTTYPE)/arm/aarch64-linux-gnu/bin/aarch64-linux-gnu-
-else
 KERNEL_TOOLCHAIN := prebuilts/gcc/$(HOSTTYPE)/arm/arm-eabi-4.6/bin/arm-eabi-
-endif
 else ifdef PLATFORM_IS_GTV_HC
 KERNEL_TOOLCHAIN := prebuilt/$(HOSTTYPE)/toolchain/arm-unknown-linux-gnueabi-4.5.3-glibc/bin/arm-unknown-linux-gnueabi-
 else
