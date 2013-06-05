@@ -86,5 +86,8 @@ else
 
     # tinyalsa: return card number from its name substring
     cherry_pick external/tinyalsa c3828fdc2ae1051bd2ca2c8e932f9ce6d61b0c19
+
+    # LCD density property access change
+    apply_patch system/core patches/system/core/0001-Enable-use-of-ro.sf.lcd_density-prop-by-system-user.patch
 fi
 
