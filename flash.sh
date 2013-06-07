@@ -111,9 +111,9 @@ tegratab() {
         board=${board-p1640}
     fi
     if [[ $board == e1569 ]]; then
-        bctfile=flash_tegratab_e1569.cfg
+        bctfile=flash_tegratab_e1569.bct
     elif [[ $board == p1640 ]]; then
-        bctfile=flash_tegratab_p1640.cfg
+        bctfile=flash_tegratab_p1640.bct
     fi
 }
 
