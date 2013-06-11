@@ -5,6 +5,9 @@ endif
 include $(NVIDIA_BASE)
 # TODO Enable coverage build
 
+# Set to 1 to do nvmake builds in the unix-build chroot
+NV_USE_UNIX_BUILD ?= 0
+
 ifeq ($(LOCAL_NVIDIA_NVMAKE_OVERRIDE_BUILD_TYPE),)
   NVIDIA_NVMAKE_BUILD_TYPE := $(TARGET_BUILD_TYPE)
 else
@@ -47,6 +50,24 @@ else
   NVIDIA_NVMAKE_TARGET_OS := $(LOCAL_NVIDIA_NVMAKE_OVERRIDE_TARGET_OS)
 endif
 
+NVIDIA_NVMAKE_UNIX_BUILD_COMMAND := \
+  unix-build \
+  --no-devrel \
+  --extra $(ANDROID_BUILD_TOP) \
+  --extra $(P4ROOT)/sw/tools \
+  --tools $(P4ROOT)/sw/tools \
+  --source $(NVIDIA_NVMAKE_TOP)
+
+ifeq ($(NVIDIA_NVMAKE_TARGET_OS),Android)
+  # Android uses a special chroot, compatible with the 64-bit binaries of the Google toolchain,
+  # as well as a copy of this toolchain.
+  NVIDIA_NVMAKE_UNIX_BUILD_COMMAND += \
+    --extra-with-bind-point $(P4ROOT)/sw/mobile/tools/linux/android/nvmake/unix-build64/lib /lib \
+    --extra-with-bind-point $(P4ROOT)/sw/mobile/tools/linux/android/nvmake/unix-build64/lib32 /lib32 \
+    --extra-with-bind-point $(P4ROOT)/sw/mobile/tools/linux/android/nvmake/unix-build64/lib64 /lib64 \
+    --extra $(P4ROOT)/sw/mobile/tools/linux/android/nvmake
+endif
+
 NVIDIA_NVMAKE_MODULE_PRIVATE_PATH := $(LOCAL_NVIDIA_NVMAKE_OVERRIDE_MODULE_PRIVATE_PATH)
 
 NVIDIA_NVMAKE_MODULE := \
@@ -58,20 +79,17 @@ else
   NVIDIA_NVMAKE_VERBOSE := -s
 endif
 
-# extra definitions to pass to nvmake
-NVIDIA_NVMAKE_EXTRADEFS :=
-
 #
 # Call into the nvmake build system to build the module
 #
 # Add NVUB_SUPPORTS_TXXX=1 to temporarily enable a chip
 #
 
-$(NVIDIA_NVMAKE_MODULE) $(LOCAL_MODULE)_nvmakeclean: NVIDIA_NVMAKE_COMMAND := $(MAKE) \
-    MAKE=$(shell which $(MAKE)) \
-    LD_LIBRARY_PATH=$(NVIDIA_NVMAKE_LIBRARY_PATH) \
+$(NVIDIA_NVMAKE_MODULE) $(LOCAL_MODULE)_nvmakeclean: NVIDIA_NVMAKE_COMMON_BUILD_PARAMS := \
+    TEGRA_TOP=$(TEGRA_TOP) \
+    ANDROID_BUILD_TOP=$(ANDROID_BUILD_TOP) \
+    OUT=$(OUT) \
     NV_ANDROID_TOOLS=$(P4ROOT)/sw/mobile/tools/linux/android/nvmake \
-    NV_UNIX_BUILD_CHROOT=$(P4ROOT)/sw/tools/unix/hosts/Linux-x86/unix-build \
     NV_SOURCE=$(NVIDIA_NVMAKE_TOP) \
     NV_TOOLS=$(P4ROOT)/sw/tools \
     NV_HOST_OS=Linux \
@@ -80,29 +98,42 @@ $(NVIDIA_NVMAKE_MODULE) $(LOCAL_MODULE)_nvmakeclean: NVIDIA_NVMAKE_COMMAND := $(
     NV_TARGET_ARCH=ARMv7 \
     NV_BUILD_TYPE=$(NVIDIA_NVMAKE_BUILD_TYPE) \
     NV_MANGLE_GLSI=0 \
-    $(NVIDIA_NVMAKE_EXTRADEFS) \
     $(NVIDIA_NVMAKE_VERBOSE) \
-    -C $(NVIDIA_NVMAKE_TOP)/$(LOCAL_NVIDIA_NVMAKE_BUILD_DIR) \
-    -f makefile.nvmk \
     $(LOCAL_NVIDIA_NVMAKE_ARGS)
 
-$(NVIDIA_NVMAKE_MODULE) $(LOCAL_MODULE)_nvmakeclean: NVIDIA_NVMAKE_RM_MODULE_MAKE := $(MAKE) \
+ifeq ($(NV_USE_UNIX_BUILD),1)
+  $(NVIDIA_NVMAKE_MODULE) $(LOCAL_MODULE)_nvmakeclean: NVIDIA_NVMAKE_COMMAND := \
+    $(NVIDIA_NVMAKE_UNIX_BUILD_COMMAND) \
+    --newdir $(NVIDIA_NVMAKE_TOP)/$(LOCAL_NVIDIA_NVMAKE_BUILD_DIR) \
+    nvmake
+else
+  $(NVIDIA_NVMAKE_MODULE) $(LOCAL_MODULE)_nvmakeclean: NVIDIA_NVMAKE_COMMAND := \
+    $(MAKE) \
     MAKE=$(shell which $(MAKE)) \
-    PATH=$(ARM_EABI_TOOLCHAIN):/usr/bin/:$(PATH) \
+    LD_LIBRARY_PATH=$(NVIDIA_NVMAKE_LIBRARY_PATH) \
+    NV_UNIX_BUILD_CHROOT=$(P4ROOT)/sw/tools/unix/hosts/Linux-x86/unix-build \
+    -C $(NVIDIA_NVMAKE_TOP)/$(LOCAL_NVIDIA_NVMAKE_BUILD_DIR) \
+    -f makefile.nvmk
+endif
+
+$(NVIDIA_NVMAKE_MODULE) $(LOCAL_MODULE)_nvmakeclean: NVIDIA_NVMAKE_RM_MODULE_MAKE := \
+    $(MAKE) \
+    MAKE=$(shell which $(MAKE)) \
+    PATH=$(ARM_EABI_TOOLCHAIN):/usr/bin:$(PATH) \
     CROSS_COMPILE=arm-eabi- \
     ARCH=arm \
-    SYSOUT=$(ANDROID_BUILD_TOP)/$(TARGET_OUT_INTERMEDIATES)/KERNEL/ \
-    SYSSRC=$(ANDROID_BUILD_TOP)/kernel/ \
+    SYSOUT=$(ANDROID_BUILD_TOP)/$(TARGET_OUT_INTERMEDIATES)/KERNEL \
+    SYSSRC=$(ANDROID_BUILD_TOP)/kernel \
     CC=$(ARM_EABI_TOOLCHAIN)/arm-eabi-gcc \
     LD=$(ARM_EABI_TOOLCHAIN)/arm-eabi-ld \
     NV_MOBILE_DGPU=$(NV_MOBILE_DGPU) \
-    -C $(dir $(NVIDIA_NVMAKE_MODULE)) -f Makefile nv-linux.o
+    -f Makefile
 
 ifeq ($(LOCAL_NVIDIA_NVMAKE_BUILD_DIR), drivers/resman)
   $(NVIDIA_NVMAKE_MODULE): NVIDIA_NVMAKE_POST_BUILD_COMMAND := \
-    cd $(dir $(NVIDIA_NVMAKE_MODULE)); \
-    $(MAKE) MAKE=$(shell which $(MAKE)) -C $(dir $(NVIDIA_NVMAKE_MODULE)) -f Makefile clean; \
-    $(NVIDIA_NVMAKE_RM_MODULE_MAKE)
+    cd $(dir $(NVIDIA_NVMAKE_MODULE)) && \
+    $(NVIDIA_NVMAKE_RM_MODULE_MAKE) clean && \
+    $(NVIDIA_NVMAKE_RM_MODULE_MAKE) nv-linux.o
 else
   $(NVIDIA_NVMAKE_MODULE): NVIDIA_NVMAKE_POST_BUILD_COMMAND :=
 endif
@@ -110,12 +141,12 @@ endif
 # This target needs to be forced, nvmake will do its own dependency checking
 $(NVIDIA_NVMAKE_MODULE): $(LOCAL_ADDITIONAL_DEPENDENCIES) FORCE
 	@echo "Build with nvmake: $(PRIVATE_MODULE) ($@)"
-	+$(hide) $(NVIDIA_NVMAKE_COMMAND)
+	+$(hide) $(NVIDIA_NVMAKE_COMMAND) $(NVIDIA_NVMAKE_COMMON_BUILD_PARAMS) MAKEFLAGS=$(MAKEFLAGS)
 	+$(hide) $(NVIDIA_NVMAKE_POST_BUILD_COMMAND)
 
 $(LOCAL_MODULE)_nvmakeclean:
 	@echo "Clean nvmake build files: $(PRIVATE_MODULE)"
-	+$(hide) $(NVIDIA_NVMAKE_COMMAND) clobber
+	+$(hide) $(NVIDIA_NVMAKE_COMMAND) MAKEFLAGS=$(MAKEFLAGS) clobber
 
 .PHONY: $(LOCAL_MODULE)_nvmakeclean
 
@@ -200,3 +231,4 @@ NVIDIA_NVMAKE_TARGET_OS :=
 NVIDIA_NVMAKE_MODULE_PRIVATE_PATH :=
 NVIDIA_NVMAKE_RM_KERNEL_INTERFACE_PATH :=
 NVIDIA_NVMAKE_RM_INSTALLER_OBJ_FILES :=
+NVIDIA_NVMAKE_UNIX_BUILD_COMMAND :=
