@@ -1,3 +1,6 @@
+#
+# Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+#
 
 ifeq ($(NVIDIA_CLEARED),false)
 $(error $(LOCAL_PATH): NVIDIA variables not cleared)
@@ -17,6 +20,48 @@ endif
 # Protect against ../ in paths in LOCAL_SRC_FILES
 ifneq ($(findstring ../, $(dir $(LOCAL_SRC_FILES))),)
 $(error $(LOCAL_PATH): ../ in path is not allowed for LOCAL_SRC_FILES)
+endif
+
+ifeq ($(LOCAL_IS_HOST_MODULE),true)
+#
+# Nvidia host code debug flag fixup
+#
+# Default debug flags are set in defaults.mk based on $(TARGET_BUILD_TYPE),
+# which are incorrect for host code if $(HOST_BUILD_TYPE) is different. But
+# some components expect to be able to override the debug settings from
+# so it can't be removed from defaults.mk.
+#
+# check if fixup is needed
+ifneq ($(TARGET_BUILD_TYPE),$(HOST_BUILD_TYPE))
+
+# component uses own set of debug flags -> don't touch them
+ifneq ($(LOCAL_NVIDIA_OVERRIDE_HOST_DEBUG_FLAGS),1)
+
+# NOTE: this conditional needs to be kept in sync with the one in defaults.mk!
+ifeq ($(HOST_BUILD_TYPE),debug)
+
+# TARGET_BUILD_TYPE == release
+LOCAL_CFLAGS += -UNV_DEBUG -DNV_DEBUG=1
+# TODO: fix source that relies on these
+LOCAL_CFLAGS += -UDEBUG -DDEBUG
+LOCAL_CFLAGS += -U_DEBUG -D_DEBUG
+
+else
+
+# TARGET_BUILD_TYPE == debug
+LOCAL_CFLAGS += -UNV_DEBUG -DNV_DEBUG=0
+LOCAL_CFLAGS += -UDEBUG
+LOCAL_CFLAGS += -U_DEBUG
+
+endif
+endif
+
+ifeq ($(HOST_BUILD_TYPE),debug)
+# disable all optimizations and enable gdb debugging extensions
+LOCAL_CFLAGS += -O0 -ggdb
+endif
+
+endif
 endif
 
 # output directory for generated files
