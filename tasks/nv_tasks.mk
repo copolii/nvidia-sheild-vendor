@@ -21,27 +21,38 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
 .PHONY: update-tegratab-build-fingerprint
 droidcore: update-tegratab-build-fingerprint
 
-# We are changing TARGET_PRODUCT values to NV_PRODUCT_NAME just for build.prop usage
+# We are changing TARGET_PRODUCT values to NV_PRODUCT_NAME
+# and TARGET_DEVICE value to NV_PRODUCT_DEVICE just for build.prop usage
 
-ifneq ($(NV_PRODUCT_NAME),)
+# original build_desc is reset just after use, re-constructing it here to use
+NV_BUILD_DESC_ORIG := $(TARGET_PRODUCT)-$(TARGET_BUILD_VARIANT) $(PLATFORM_VERSION) $(BUILD_ID) $(BUILD_NUMBER) $(BUILD_VERSION_TAGS)
+
 # The string used to uniquely identify this build;  used by the OTA server.
+ifneq ($(NV_PRODUCT_NAME),)
+ifneq ($(NV_PRODUCT_DEVICE),)
+NV_BUILD_FINGERPRINT := $(PRODUCT_BRAND)/$(NV_PRODUCT_NAME)/$(NV_PRODUCT_DEVICE):$(PLATFORM_VERSION)/$(BUILD_ID)/$(BUILD_NUMBER):$(TARGET_BUILD_VARIANT)/$(BUILD_VERSION_TAGS)
+else # NV_PRODUCT_DEVICE is not defined
 NV_BUILD_FINGERPRINT := $(PRODUCT_BRAND)/$(NV_PRODUCT_NAME)/$(TARGET_DEVICE):$(PLATFORM_VERSION)/$(BUILD_ID)/$(BUILD_NUMBER):$(TARGET_BUILD_VARIANT)/$(BUILD_VERSION_TAGS)
+endif
+
 ifneq ($(words $(NV_BUILD_FINGERPRINT)),1)
-  $(error NV_BUILD_FINGERPRINT cannot contain spaces: "$(NV_BUILD_FINGERPRINT)")
+$(error NV_BUILD_FINGERPRINT cannot contain spaces: "$(NV_BUILD_FINGERPRINT)")
 endif
 
 # Change build description which uses TARGET_PRODUCT
-# original build_desc is reset just after use, re-constructing to show what it was
-NV_BUILD_DESC_ORIG := $(TARGET_PRODUCT)-$(TARGET_BUILD_VARIANT) $(PLATFORM_VERSION) $(BUILD_ID) $(BUILD_NUMBER) $(BUILD_VERSION_TAGS)
 NV_BUILD_DESC := $(NV_PRODUCT_NAME)-$(TARGET_BUILD_VARIANT) $(PLATFORM_VERSION) $(BUILD_ID) $(BUILD_NUMBER) $(BUILD_VERSION_TAGS)
+
+else # NV_PRODUCT_NAME is not defined
+NV_BUILD_FINGERPRINT := $(BUILD_FINGERPRINT)
+NV_BUILD_DESC := $(NV_BUILD_DESC_ORIG)
+endif
 
 # Display parameters shown under Settings -> About Phone
 ifeq ($(TARGET_BUILD_VARIANT),user)
-  NV_BUILD_DISPLAY_ID := $(BUILD_DISPLAY_ID)
+NV_BUILD_DISPLAY_ID := $(BUILD_DISPLAY_ID)
 else
-  # Non-user builds should show detailed build information
-  NV_BUILD_DISPLAY_ID := $(NV_BUILD_DESC)
-endif
+# Non-user builds should show detailed build information
+NV_BUILD_DISPLAY_ID := $(NV_BUILD_DESC)
 endif
 
 # The mangle tool which changes the value of properties in build.prop
@@ -49,13 +60,26 @@ NV_PROP_MANGLE_TOOL := vendor/nvidia/build/tasks/post_process_props.py
 
 update-tegratab-build-fingerprint: $(INSTALLED_BUILD_PROP_TARGET) $(NV_PROP_MANGLE_TOOL)
 ifeq ($(TARGET_DEVICE),tegratab)
-ifneq ($(NV_PRODUCT_NAME),)
 	@echo $@ - Changing ro.product.name for $(TARGET_DEVICE)
 	@echo OLD ro.product.name - $(TARGET_PRODUCT)
 	@echo NEW ro.product.name - $(NV_PRODUCT_NAME)
 	$(hide) $(filter %.py,$^) \
 		-p ro.product.name \
 		-v "$(NV_PRODUCT_NAME)" \
+		$(filter %.prop,$^)
+	@echo $@ - Changing ro.product.device for $(TARGET_DEVICE)
+	@echo OLD ro.product.device - $(TARGET_DEVICE)
+	@echo NEW ro.product.device - $(NV_PRODUCT_DEVICE)
+	$(hide) $(filter %.py,$^) \
+		-p ro.product.device \
+		-v "$(NV_PRODUCT_DEVICE)" \
+		$(filter %.prop,$^)
+	@echo $@ - Changing ro.build.product for $(TARGET_DEVICE)
+	@echo OLD ro.build.product - $(TARGET_DEVICE)
+	@echo NEW ro.build.product - $(NV_PRODUCT_DEVICE)
+	$(hide) $(filter %.py,$^) \
+		-p ro.build.product \
+		-v "$(NV_PRODUCT_DEVICE)" \
 		$(filter %.prop,$^)
 	@echo $@ - Changing ro.build.fingerprint for $(TARGET_DEVICE)
 	@echo OLD ro.build.fingerprint - $(BUILD_FINGERPRINT)
@@ -79,9 +103,6 @@ ifneq ($(BUILD_DISPLAY_ID),$(NV_BUILD_DISPLAY_ID))
 		-p ro.build.display.id \
 		-v "$(NV_BUILD_DISPLAY_ID)" \
 		$(filter %.prop,$^)
-endif
-else # NV_PRODUCT_NAME is null
-	@echo $@ - Skiping for $(TARGET_DEVICE), Null NV_PRODUCT_NAME=$(NV_PRODUCT_NAME)
 endif
 else # other boards, no need to do anything
 	@echo $@ - Skiping for $(TARGET_DEVICE)
