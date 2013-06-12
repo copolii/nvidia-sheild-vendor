@@ -72,6 +72,7 @@ $(NVIDIA_NVMAKE_MODULE) $(LOCAL_MODULE)_nvmakeclean: NVIDIA_NVMAKE_COMMAND := $(
     NV_UNIX_BUILD_CHROOT=$(P4ROOT)/sw/tools/unix/hosts/Linux-x86/unix-build \
     NV_SOURCE=$(NVIDIA_NVMAKE_TOP) \
     NV_TOOLS=$(P4ROOT)/sw/tools \
+    NVUB_SUPPORTS_T124=1 \
     NV_HOST_OS=Linux \
     NV_HOST_ARCH=x86 \
     NV_TARGET_OS=$(NVIDIA_NVMAKE_TARGET_OS) \
