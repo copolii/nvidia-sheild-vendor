@@ -108,6 +108,7 @@ ifeq ($(TARGET_USE_DTB),true)
         KERNEL_DTS_PATH := $(call dts-files-under,$(KERNEL_PATH)/arch/$(TARGET_ARCH)/boot/dts,$(call word-dash,1,$(TARGET_KERNEL_DT_NAME)))
         KERNEL_DT_NAME := $(subst .dts,,$(notdir $(KERNEL_DTS_PATH)))
         BUILT_KERNEL_DTB := $(addprefix $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/,$(addsuffix .dtb,$(KERNEL_DT_NAME)))
+        TARGET_BUILT_KERNEL_DTB := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/$(TARGET_KERNEL_DT_NAME).dtb
         INSTALLED_DTB_TARGET := $(addprefix $(OUT)/,$(addsuffix .dtb, $(KERNEL_DT_NAME)))
         DTS_PATH_EXIST := $(foreach dts_file,$(KERNEL_DTS_PATH),$(if $(wildcard $(dts_file)),,$(error DTS file not found -- $(dts_file))))
     endif
@@ -216,13 +217,13 @@ ifeq ($(APPEND_DTB_TO_KERNEL),true)
 endif
 
 # TODO: figure out a way of not forcing kernel & module builds.
-$(BUILT_KERNEL_TARGET): $(dotconfig) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
+$(BUILT_KERNEL_TARGET): $(dotconfig) $(TARGET_BUILT_KERNEL_DTB) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel build"
 	+$(hide) $(kernel-make) zImage
 	+$(hide) $(EXTRA_BUILD_CMD)
 ifeq ($(APPEND_DTB_TO_KERNEL),true)
 	@echo "Appending DTB file to kernel image"
-	+$(hide) cat $(BUILT_KERNEL_DTB) >>$(BUILT_KERNEL_TARGET)
+	+$(hide) cat $(TARGET_BUILT_KERNEL_DTB) >>$(BUILT_KERNEL_TARGET)
 endif
 
 $(BUILT_KERNEL_DTB): $(BUILT_KERNEL_TARGET) FORCE
