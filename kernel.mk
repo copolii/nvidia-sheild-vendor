@@ -226,7 +226,7 @@ ifeq ($(APPEND_DTB_TO_KERNEL),true)
 	+$(hide) cat $(TARGET_BUILT_KERNEL_DTB) >>$(BUILT_KERNEL_TARGET)
 endif
 
-$(BUILT_KERNEL_DTB): $(BUILT_KERNEL_TARGET) FORCE
+$(BUILT_KERNEL_DTB): $(dotconfig) $(BUILT_KERNEL_TARGET) FORCE
 	@echo "Device tree build" $(notdir $@)
 	$(kernel-make) $(notdir $@)
 
