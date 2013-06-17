@@ -6,7 +6,7 @@ fi
 
 export GENERATE=0
 
-if [ $1 == generate ]; then
+if [ "$1" == "generate" ]; then
     export GENERATE=1
 fi
 
