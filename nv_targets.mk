@@ -56,10 +56,23 @@ endef
 
 # These are additional files for which we generate blobs only if they exists
 _blob_deps := \
-      $(PRODUCT_OUT)/microboot.bin \
+      $(PRODUCT_OUT)/flash.bct
+
+ifeq ($(TARGET_DEVICE),tegratab)
+# For tegratab
+ifeq ($(strip $(NV_TEGRATAB_DEVICE_TYPE)),basic)
+_blob_deps += \
+      $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME)-b.dtb
+else ifeq ($(strip $(NV_TEGRATAB_DEVICE_TYPE)),premium)
+_blob_deps += \
+      $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME).dtb
+endif
+else
+_blob_deps += \
       $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME).dtb \
-      $(PRODUCT_OUT)/flash.bct \
+      $(PRODUCT_OUT)/microboot.bin \
       $(PRODUCT_OUT)/xusb_sil_rel_fw
+endif
 
 # target to generate blob
 nv-blob: \
