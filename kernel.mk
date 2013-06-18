@@ -204,9 +204,10 @@ ifeq ($(NVIDIA_KERNEL_COVERAGE_ENABLED),1)
 		--enable GCOV_TOOLCHAIN_IS_ANDROID \
 		--disable GCOV_PROFILE_ALL
 endif
+# TODO TEGRA_DTV disabled as a workaround for bug 1313737
 ifeq ($(NV_MOBILE_DGPU),1)
 	@echo "dGPU enabled kernel"
-	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TASK_SIZE_3G_LESS_24M
+	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TASK_SIZE_3G_LESS_24M --disable TEGRA_DTV
 endif
 
 ifeq ($(APPEND_DTB_TO_KERNEL),true)
