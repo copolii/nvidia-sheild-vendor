@@ -55,6 +55,15 @@ product=$(echo ${PRODUCT_OUT%/} | grep -o '[a-zA-Z0-9]*$')
 
 ##################################
 # Setup functions per target board
+ardbeg() {
+    odmdata=0x9c000
+    bctfile=flash_e1780_408.cfg
+}
+
+bonaire() {
+    odmdata=0x84000
+    bctfile=bct.cfg
+}
 
 pluto() {
     odmdata=0x40098008
