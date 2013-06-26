@@ -118,11 +118,11 @@ tegratab() {
                 battery="no"
             fi
         fi
-        if [[ $DISPLAY_OFF_WHILE_FLASHING == "1" ]]; then
+        if [[ $LIMITEDPOWER_FLASH == "1" ]]; then
             odmlimitedpower="yes"
         else
-            if [[ "a$DISPLAY_OFF_WHILE_FLASHING" == "a" && _shell_is_interactive ]]; then
-                _choose "Turn off display while flashing?" "yes no" odmlimitedpower yes
+            if [[ "a$LIMITEDPOWER_FLASH" == "a" && _shell_is_interactive ]]; then
+                _choose "flashing in limited power?" "yes no" odmlimitedpower yes
             else
                 odmlimitedpower="no"
             fi
@@ -238,11 +238,12 @@ _set_cmdline() {
     cfgfile=${_cfgfile-${cfgfile-"flash.cfg"}}
 
     # Set last command toption
-    if [[ $odmoption == "--odm limitedpowermode" ]]; then
+    if [[ $product == tegratab ]]; then
         lastoption="--reset normal 0"
     else
         lastoption="--go"
     fi
+
 
     # Parse nvflash commandline
     cmdline=(
