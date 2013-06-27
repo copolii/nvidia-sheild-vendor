@@ -112,7 +112,7 @@ tegratab() {
         if [[ $POWER_FROM_BATTERY == "1" ]]; then
                 battery="yes"
         else
-            if [[ "a$POWER_FROM_BATTERY" == "a" && _shell_is_interactive ]]; then
+            if [[ "a$POWER_FROM_BATTERY" == "a" ]] && _shell_is_interactive; then
                 _choose "Your board has a battery?" "yes no" battery yes
             else
                 battery="no"
@@ -121,7 +121,7 @@ tegratab() {
         if [[ $LIMITEDPOWER_FLASH == "1" ]]; then
             odmlimitedpower="yes"
         else
-            if [[ "a$LIMITEDPOWER_FLASH" == "a" && _shell_is_interactive ]]; then
+            if [[ "a$LIMITEDPOWER_FLASH" == "a" ]] && _shell_is_interactive; then
                 _choose "flashing in limited power?" "yes no" odmlimitedpower yes
             else
                 odmlimitedpower="no"
