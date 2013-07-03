@@ -14,13 +14,15 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
 	   -k $(KEY_CERT_PAIR) \
 	   $(BUILT_TARGET_FILES_PACKAGE) $@
 
+.PHONY: update-build-properties
+# Make default target depend on specific targets required for tegratab
+ifeq ($(TARGET_DEVICE),tegratab)
+droidcore: update-build-properties factory_bundle
+endif
 
 #
 # Override fingerprint for tegratab
 #
-.PHONY: update-tegratab-build-fingerprint
-droidcore: update-tegratab-build-fingerprint
-
 # We are changing TARGET_PRODUCT values to NV_PRODUCT_NAME
 # and TARGET_DEVICE value to NV_PRODUCT_DEVICE just for build.prop usage
 
@@ -58,8 +60,7 @@ endif
 # The mangle tool which changes the value of properties in build.prop
 NV_PROP_MANGLE_TOOL := vendor/nvidia/build/tasks/post_process_props.py
 
-update-tegratab-build-fingerprint: $(INSTALLED_BUILD_PROP_TARGET) $(NV_PROP_MANGLE_TOOL)
-ifeq ($(TARGET_DEVICE),tegratab)
+update-build-properties: $(INSTALLED_BUILD_PROP_TARGET) $(NV_PROP_MANGLE_TOOL)
 	@echo $@ - Changing ro.product.name for $(TARGET_DEVICE)
 	@echo OLD ro.product.name - $(TARGET_PRODUCT)
 	@echo NEW ro.product.name - $(NV_PRODUCT_NAME)
@@ -104,7 +105,16 @@ ifneq ($(BUILD_DISPLAY_ID),$(NV_BUILD_DISPLAY_ID))
 		-v "$(NV_BUILD_DISPLAY_ID)" \
 		$(filter %.prop,$^)
 endif
-else # other boards, no need to do anything
-	@echo $@ - Skiping for $(TARGET_DEVICE)
-endif
 
+# Override factory bundle target so that we can copy an APK inside it
+# PRODUCT_FACTORY_BUNDLE_MODULES could not be used for target binaries
+# Also PRODUCT_COPY_FILES could not be used for prebuilt apk
+ifeq ($(TARGET_DEVICE),tegratab)
+factory_bundle_dir := $(PRODUCT_OUT)/factory_bundle
+$(eval $(call copy-one-file,$(TARGET_OUT_DATA_APPS)/tmc.apk,$(factory_bundle_dir)/tmc.apk))
+nv_factory_copied_files := $(factory_bundle_dir)/tmc.apk
+$(eval $(call copy-one-file,$(PRODUCT_OUT)/testcases.xml,$(factory_bundle_dir)/testcases.xml))
+nv_factory_copied_files += $(factory_bundle_dir)/testcases.xml
+
+$(INSTALLED_FACTORY_BUNDLE_TARGET): $(nv_factory_copied_files)
+endif
