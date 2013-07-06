@@ -86,6 +86,12 @@ endif
 ifdef PLATFORM_IS_JELLYBEAN_MR1
 LOCAL_CFLAGS += -DPLATFORM_IS_JELLYBEAN_MR1=1
 endif
+ifdef PLATFORM_IS_JELLYBEAN_MR2
+LOCAL_CFLAGS += -DPLATFORM_IS_JELLYBEAN_MR2=1
+endif
+ifdef PLATFORM_IS_KITKAT
+LOCAL_CFLAGS += -DPLATFORM_IS_KITKAT=1
+endif
 
 #########################################################
 #                  T30 Macros
