@@ -56,7 +56,7 @@ product=$(echo ${PRODUCT_OUT%/} | grep -o '[a-zA-Z0-9]*$')
 ##################################
 # Setup functions per target board
 ardbeg() {
-    odmdata=0x80098000
+    odmdata=0x98000
     bctfile=bct.cfg
 }
 
