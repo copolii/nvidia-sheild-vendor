@@ -285,7 +285,7 @@ function builddtb()
             _DTB_NAME=${_DTS_NAME/.dts/.dtb}
             echo $_DTB_NAME
             ksetup $_DTB_NAME
-            cp $OUT/obj/KERNEL/arch/arm/boot/$_DTB_NAME $OUT
+            cp $OUT/obj/KERNEL/arch/arm/boot/dts/$_DTB_NAME $OUT
             echo "$OUT/$_DTB_NAME created successfully."
         done
     fi
