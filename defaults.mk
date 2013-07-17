@@ -126,8 +126,6 @@ TEGRA_CFLAGS += -DNV_DYNAMIC_BCT=0
 LOCAL_CFLAGS += $(TEGRA_CFLAGS)
 LOCAL_ASFLAGS += $(TEGRA_CFLAGS)
 
-LOCAL_PRELINK_MODULE := false
-
 LOCAL_MODULE_TAGS := optional
 
 # clear nvidia local variables to defaults
