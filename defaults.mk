@@ -144,8 +144,6 @@ ifneq (,$(findstring _sim, $(TARGET_PRODUCT)))
 LOCAL_CFLAGS += -DBUILD_FOR_COSIM
 endif
 
-LOCAL_PRELINK_MODULE := false
-
 LOCAL_MODULE_TAGS := optional
 
 # clear nvidia local variables to defaults
