@@ -1,0 +1,38 @@
+From 20fdbb23d46a69a0c203c5759a39a932edbea83b Mon Sep 17 00:00:00 2001
+From: Mitch Luban <mluban@nvidia.com>
+Date: Wed, 20 Mar 2013 21:58:57 -0700
+Subject: [PATCH 08/10] power: add POWER_HINT_DISPLAY_ROTATION
+
+add POWER_HINT_DISPLAY_ROTATION hint.
+
+Bug 1232396
+
+Change-Id: I5e5cac3789baba15d711ac6a61993da19dfdedf3
+Reviewed-on: http://git-master/r/211461
+Reviewed-by: Donghan Ryu <dryu@nvidia.com>
+Reviewed-by: Automatic_Commit_Validation_User
+Reviewed-by: Mitch Luban <mluban@nvidia.com>
+Tested-by: Mitch Luban <mluban@nvidia.com>
+GVS: Gerrit_Virtual_Submit
+Reviewed-by: Bharat Nihalani <bnihalani@nvidia.com>
+---
+ include/hardware/power.h | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/include/hardware/power.h b/include/hardware/power.h
+index 45eefcb..baf3d6f 100644
+--- a/include/hardware/power.h
++++ b/include/hardware/power.h
+@@ -46,7 +46,8 @@ typedef enum {
+     POWER_HINT_SHIELD_STREAMING = 0x00000005,
+     POWER_HINT_HIGH_RES_VIDEO = 0x00000006,
+     POWER_HINT_MIRACAST = 0x00000007,
+-    POWER_HINT_COUNT = 0x00000008,
++    POWER_HINT_DISPLAY_ROTATION = 0x00000008,
++    POWER_HINT_COUNT = 0x00000009,
+ } power_hint_t;
+ 
+ /*
+-- 
+1.8.1.5
+

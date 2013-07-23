@@ -1,0 +1,48 @@
+From a9b1accf76616fba9b6abc1c0bf9b6a82abc27c7 Mon Sep 17 00:00:00 2001
+From: Mitch Luban <mluban@nvidia.com>
+Date: Fri, 8 Feb 2013 02:44:22 -0800
+Subject: [PATCH 03/10] power: Add app profile knobs to power.h
+
+Add app profile knobs to power.h, which allows for
+easier work flow.
+
+Reviewed-on: http://git-master/r/198735
+(cherry picked from commit d81a77c3911fe372bad1894c8e2f87a477de2e21)
+
+Change-Id: I3624a34b78e76ef0ea2b3090109814bc926826a9
+Reviewed-on: http://git-master/r/203507
+Reviewed-by: Simone Willett <swillett@nvidia.com>
+Tested-by: Simone Willett <swillett@nvidia.com>
+---
+ include/hardware/power.h | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/include/hardware/power.h b/include/hardware/power.h
+index 193ba68..743462b 100644
+--- a/include/hardware/power.h
++++ b/include/hardware/power.h
+@@ -45,6 +45,21 @@ typedef enum {
+     POWER_HINT_COUNT,
+ } power_hint_t;
+ 
++/*
++ * App profile knobs, passed as data with POWER_HINT_APP_PROFILE hint
++ */
++
++typedef enum {
++    APP_PROFILE_CPU_SCALING_MIN_FREQ,
++    APP_PROFILE_CPU_CORE_BIAS,
++    APP_PROFILE_CPU_MAX_NORMAL_FREQ,
++    APP_PROFILE_GPU_CBUS_CAP_LEVEL,
++    APP_PROFILE_GPU_SCALING,
++    APP_PROFILE_PBC_POWER,
++    APP_PROFILE_FAN_CAP,
++    APP_PROFILE_COUNT,
++} app_profile_knob;
++
+ /**
+  * Every hardware module must have a data structure named HAL_MODULE_INFO_SYM
+  * and the fields of this data structure must begin with hw_module_t
+-- 
+1.8.1.5
+

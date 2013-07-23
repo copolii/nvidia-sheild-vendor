@@ -1,0 +1,46 @@
+From c98e8f6da350009152a731c90dab25c8308d7b2d Mon Sep 17 00:00:00 2001
+From: Chong Zhang <chzhang@nvidia.com>
+Date: Fri, 8 Mar 2013 18:23:40 -0800
+Subject: [PATCH 07/10] power: add hint for Miracast
+
+bug 1249876
+
+Change-Id: If2887f08afa1ee425f30026f8b8faec5ddb5788f
+Reviewed-on: http://git-master/r/207811
+(cherry picked from commit d19d3e5cb21eacba451bb82e34e282dd7e3892ef)
+Reviewed-on: http://git-master/r/212170
+(cherry picked from commit 247b50442feff11bbed0c58dbdc41240b00bd61a)
+Reviewed-on: http://git-master/r/213140
+Tested-by: Chong Zhang <chzhang@nvidia.com>
+Reviewed-by: Automatic_Commit_Validation_User
+Reviewed-by: Thomas J. Meier <tmeier@nvidia.com>
+Reviewed-by: Amit Chaudhary <amitc@nvidia.com>
+Reviewed-by: Bharat Nihalani <bnihalani@nvidia.com>
+---
+ include/hardware/power.h | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/include/hardware/power.h b/include/hardware/power.h
+index a62a751..45eefcb 100644
+--- a/include/hardware/power.h
++++ b/include/hardware/power.h
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (C) 2012 The Android Open Source Project
++ * Copyright (C) 2012-2013 The Android Open Source Project
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+@@ -45,7 +45,8 @@ typedef enum {
+     POWER_HINT_APP_LAUNCH = 0x00000004,
+     POWER_HINT_SHIELD_STREAMING = 0x00000005,
+     POWER_HINT_HIGH_RES_VIDEO = 0x00000006,
+-    POWER_HINT_COUNT = 0x00000007,
++    POWER_HINT_MIRACAST = 0x00000007,
++    POWER_HINT_COUNT = 0x00000008,
+ } power_hint_t;
+ 
+ /*
+-- 
+1.8.1.5
+
