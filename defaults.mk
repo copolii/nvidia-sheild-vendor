@@ -16,8 +16,8 @@ include $(CLEAR_VARS)
 # Build variables common to all nvidia modules
 
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core/include
-LOCAL_C_INCLUDES += $(TEGRA_TOP)/core/drivers/hwinc/$(TARGET_TEGRA_FAMILY)
-LOCAL_C_INCLUDES += $(TEGRA_TOP)/core/drivers/hwinc
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/hwinc
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/hwinc/$(TARGET_TEGRA_FAMILY)
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/camera/core/include
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia/codecs/include
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia/tvmr/include
@@ -36,9 +36,8 @@ LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia-partner/utils/include
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia-partner/nvmm/include
 ifneq (,$(findstring core-private,$(LOCAL_PATH)))
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/include
-LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/drivers/hwinc/$(TARGET_TEGRA_FAMILY)
-LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/drivers/hwinc
-LOCAL_C_INCLUDES += $(TEGRA_TOP)/core-private/drivers/hwinc/$(TARGET_TEGRA_FAMILY)
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/hwinc-private
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/hwinc-private/$(TARGET_TEGRA_FAMILY)
 endif
 
 ifneq (,$(findstring tests,$(LOCAL_PATH)))
