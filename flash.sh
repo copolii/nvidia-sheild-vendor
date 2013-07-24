@@ -89,7 +89,7 @@ roth() {
         bctfile=flash_p2560_450Mhz.bct
         sif="--sysfile SIF.txt"
     fi
-    bypass="--fusebypass_config fuse_bypass.txt --sku_to_bypass T40T"
+    bypass="--fusebypass_config fuse_bypass.txt --sku_to_bypass 0x4"
 }
 
 kai() {
