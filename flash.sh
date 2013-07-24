@@ -60,6 +60,11 @@ ardbeg() {
     bctfile=bct.cfg
 }
 
+loki() {
+    odmdata=0x98000
+    bctfile=bct.cfg
+}
+
 bonaire() {
     odmdata=0x84000
     bctfile=bct.cfg
