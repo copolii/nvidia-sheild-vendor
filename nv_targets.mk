@@ -60,10 +60,10 @@ _blob_deps := \
 
 ifeq ($(TARGET_DEVICE),tegratab)
 # For tegratab
-ifeq ($(strip $(NV_TEGRATAB_DEVICE_TYPE)),basic)
+ifeq ($(strip $(NV_TN_PLATFORM)),basic)
 _blob_deps += \
       $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME)-b.dtb
-else ifeq ($(strip $(NV_TEGRATAB_DEVICE_TYPE)),premium)
+else ifeq ($(strip $(NV_TN_PLATFORM)),premium)
 _blob_deps += \
       $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME).dtb
 endif
