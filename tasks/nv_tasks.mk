@@ -14,97 +14,28 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
 	   -k $(KEY_CERT_PAIR) \
 	   $(BUILT_TARGET_FILES_PACKAGE) $@
 
-.PHONY: update-build-properties
 # Make default target depend on specific targets required for tegratab
 ifeq ($(TARGET_DEVICE),tegratab)
 droidcore: update-build-properties factory_bundle
 endif
 
 #
-# Override fingerprint for tegratab
+# Override properties in build.prop for tegratab
 #
-# We are changing TARGET_PRODUCT values to NV_PRODUCT_NAME
-# and TARGET_DEVICE value to NV_PRODUCT_DEVICE just for build.prop usage
+# Tool which changes the value of properties in build.prop
+NV_PROP_MANGLE_TOOL := vendor/nvidia/build/tasks/process_build_props.py
+# SKU manifest containing properties and values to change
+NV_SKU_MANIFEST := device/nvidia/$(TARGET_DEVICE)/skus/sku-properties.xml
 
-# original build_desc is reset just after use, re-constructing it here to use
-NV_BUILD_DESC_ORIG := $(TARGET_PRODUCT)-$(TARGET_BUILD_VARIANT) $(PLATFORM_VERSION) $(BUILD_ID) $(BUILD_NUMBER) $(BUILD_VERSION_TAGS)
-
-# The string used to uniquely identify this build;  used by the OTA server.
-ifneq ($(NV_PRODUCT_NAME),)
-ifneq ($(NV_PRODUCT_DEVICE),)
-NV_BUILD_FINGERPRINT := $(PRODUCT_BRAND)/$(NV_PRODUCT_NAME)/$(NV_PRODUCT_DEVICE):$(PLATFORM_VERSION)/$(BUILD_ID)/$(BUILD_NUMBER):$(TARGET_BUILD_VARIANT)/$(BUILD_VERSION_TAGS)
-else # NV_PRODUCT_DEVICE is not defined
-NV_BUILD_FINGERPRINT := $(PRODUCT_BRAND)/$(NV_PRODUCT_NAME)/$(TARGET_DEVICE):$(PLATFORM_VERSION)/$(BUILD_ID)/$(BUILD_NUMBER):$(TARGET_BUILD_VARIANT)/$(BUILD_VERSION_TAGS)
-endif
-
-ifneq ($(words $(NV_BUILD_FINGERPRINT)),1)
-$(error NV_BUILD_FINGERPRINT cannot contain spaces: "$(NV_BUILD_FINGERPRINT)")
-endif
-
-# Change build description which uses TARGET_PRODUCT
-NV_BUILD_DESC := $(NV_PRODUCT_NAME)-$(TARGET_BUILD_VARIANT) $(PLATFORM_VERSION) $(BUILD_ID) $(BUILD_NUMBER) $(BUILD_VERSION_TAGS)
-
-else # NV_PRODUCT_NAME is not defined
-NV_BUILD_FINGERPRINT := $(BUILD_FINGERPRINT)
-NV_BUILD_DESC := $(NV_BUILD_DESC_ORIG)
-endif
-
-# Display parameters shown under Settings -> About Phone
-ifeq ($(TARGET_BUILD_VARIANT),user)
-NV_BUILD_DISPLAY_ID := $(BUILD_DISPLAY_ID)
-else
-# Non-user builds should show detailed build information
-NV_BUILD_DISPLAY_ID := $(NV_BUILD_DESC)
-endif
-
-# The mangle tool which changes the value of properties in build.prop
-NV_PROP_MANGLE_TOOL := vendor/nvidia/build/tasks/post_process_props.py
-
-update-build-properties: $(INSTALLED_BUILD_PROP_TARGET) $(NV_PROP_MANGLE_TOOL)
-	@echo $@ - Changing ro.product.name for $(TARGET_DEVICE)
-	@echo OLD ro.product.name - $(TARGET_PRODUCT)
-	@echo NEW ro.product.name - $(NV_PRODUCT_NAME)
+.PHONY: update-build-properties
+update-build-properties: $(INSTALLED_BUILD_PROP_TARGET) \
+	                 $(NV_PROP_MANGLE_TOOL) \
+			 $(NV_SKU_MANIFEST)
+	@echo $@ - Changing properties for $(TARGET_PRODUCT)
 	$(hide) $(filter %.py,$^) \
-		-p ro.product.name \
-		-v "$(NV_PRODUCT_NAME)" \
-		$(filter %.prop,$^)
-	@echo $@ - Changing ro.product.device for $(TARGET_DEVICE)
-	@echo OLD ro.product.device - $(TARGET_DEVICE)
-	@echo NEW ro.product.device - $(NV_PRODUCT_DEVICE)
-	$(hide) $(filter %.py,$^) \
-		-p ro.product.device \
-		-v "$(NV_PRODUCT_DEVICE)" \
-		$(filter %.prop,$^)
-	@echo $@ - Changing ro.build.product for $(TARGET_DEVICE)
-	@echo OLD ro.build.product - $(TARGET_DEVICE)
-	@echo NEW ro.build.product - $(NV_PRODUCT_DEVICE)
-	$(hide) $(filter %.py,$^) \
-		-p ro.build.product \
-		-v "$(NV_PRODUCT_DEVICE)" \
-		$(filter %.prop,$^)
-	@echo $@ - Changing ro.build.fingerprint for $(TARGET_DEVICE)
-	@echo OLD ro.build.fingerprint - $(BUILD_FINGERPRINT)
-	@echo NEW ro.build.fingerprint - $(NV_BUILD_FINGERPRINT)
-	$(hide) $(filter %.py,$^) \
-		-p ro.build.fingerprint \
-		-v "$(NV_BUILD_FINGERPRINT)" \
-		$(filter %.prop,$^)
-	@echo $@ - Changing ro.build.description for $(TARGET_DEVICE)
-	@echo OLD ro.build.description - $(NV_BUILD_DESC_ORIG)
-	@echo NEW ro.build.description - $(NV_BUILD_DESC)
-	$(hide) $(filter %.py,$^) \
-		-p ro.build.description \
-		-v "$(NV_BUILD_DESC)" \
-		$(filter %.prop,$^)
-ifneq ($(BUILD_DISPLAY_ID),$(NV_BUILD_DISPLAY_ID))
-	@echo $@ - Changing ro.build.display.id for $(TARGET_DEVICE)
-	@echo OLD ro.build.display.id - $(BUILD_DISPLAY_ID)
-	@echo NEW ro.build.display.id - $(NV_BUILD_DISPLAY_ID)
-	$(hide) $(filter %.py,$^) \
-		-p ro.build.display.id \
-		-v "$(NV_BUILD_DISPLAY_ID)" \
-		$(filter %.prop,$^)
-endif
+		-s $(NV_TN_SKU) \
+		-m $(NV_SKU_MANIFEST) \
+		-b $(filter %.prop,$^)
 
 # Override factory bundle target so that we can copy an APK inside it
 # PRODUCT_FACTORY_BUNDLE_MODULES could not be used for target binaries
