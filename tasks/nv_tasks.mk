@@ -111,7 +111,7 @@ endif
 # Also PRODUCT_COPY_FILES could not be used for prebuilt apk
 ifeq ($(TARGET_DEVICE),tegratab)
 factory_bundle_dir := $(PRODUCT_OUT)/factory_bundle
-$(eval $(call copy-one-file,$(TARGET_OUT_DATA_APPS)/tmc.apk,$(factory_bundle_dir)/tmc.apk))
+$(eval $(call copy-one-file,$(PRODUCT_OUT)/tmc.apk,$(factory_bundle_dir)/tmc.apk))
 nv_factory_copied_files := $(factory_bundle_dir)/tmc.apk
 $(eval $(call copy-one-file,$(PRODUCT_OUT)/testcases.xml,$(factory_bundle_dir)/testcases.xml))
 nv_factory_copied_files += $(factory_bundle_dir)/testcases.xml
