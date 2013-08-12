@@ -99,11 +99,6 @@ macallan() {
 }
 
 tegratab() {
-    if [[ $POWER_FROM_BATTERY == 1 ]]; then
-        odmdata=0x4069C000
-    else
-        odmdata=0x4029C000
-    fi
     [[ -n $BOARD_IS_E1569 ]] && board=e1569
     if [[ -z $board ]] && _shell_is_interactive; then
         _choose "Which tegratab board revision to flash?" "p1640 e1569" board p1640
@@ -114,6 +109,34 @@ tegratab() {
         bctfile=flash_tegratab_e1569.bct
     elif [[ $board == p1640 ]]; then
         bctfile=flash_tegratab_p1640.bct
+        if [[ $POWER_FROM_BATTERY == "1" ]]; then
+                battery="yes"
+        else
+            if [[ -z $POWER_FROM_BATTERY ]] && _shell_is_interactive; then
+                _choose "Your board has a battery?" "yes no" battery yes
+            else
+                battery="no"
+            fi
+        fi
+        if [[ $LIMITEDPOWER_FLASH == "1" ]]; then
+            odmlimitedpower="yes"
+        else
+            if [[ -z $LIMITEDPOWER_FLASH ]] && _shell_is_interactive; then
+                _choose "flashing in limited power?" "yes no" odmlimitedpower yes
+            else
+                odmlimitedpower="no"
+            fi
+        fi
+    fi
+    if [[ $odmlimitedpower == "yes" ]]; then
+            odmoption="--odm limitedpowermode"
+    else
+            odmoption=""
+    fi
+    if [[ $battery == "yes" ]]; then
+        odmdata=0x4069C000
+    else
+        odmdata=0x4029C000
     fi
 }
 
@@ -214,15 +237,24 @@ _set_cmdline() {
     bctfile=${_bctfile-${bctfile-"bct.cfg"}}
     cfgfile=${_cfgfile-${cfgfile-"flash.cfg"}}
 
+    # Set last command toption
+    if [[ $product == tegratab ]]; then
+        lastoption="--reset normal 0"
+    else
+        lastoption="--go"
+    fi
+
+
     # Parse nvflash commandline
     cmdline=(
         --bct $bctfile
         --setbct
         --odmdata $odmdata
+        $odmoption
         --configfile $cfgfile
         --create
         --bl bootloader.bin
-        --go
+        $lastoption
     )
 }
 
