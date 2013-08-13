@@ -107,6 +107,7 @@ ifeq ($(TARGET_USE_DTB),true)
     else
         KERNEL_DTS_PATH := $(call dts-files-under,$(KERNEL_PATH)/arch/$(TARGET_ARCH)/boot/dts,$(call word-dash,1,$(TARGET_KERNEL_DT_NAME)))
         KERNEL_DT_NAME := $(subst .dts,,$(notdir $(KERNEL_DTS_PATH)))
+        KERNEL_DT_NAME_DTB := $(subst .dts,.dtb,$(notdir $(KERNEL_DTS_PATH)))
         BUILT_KERNEL_DTB := $(addprefix $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/dts/,$(addsuffix .dtb,$(KERNEL_DT_NAME)))
         TARGET_BUILT_KERNEL_DTB := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/dts/$(TARGET_KERNEL_DT_NAME).dtb
         INSTALLED_DTB_TARGET := $(addprefix $(OUT)/,$(addsuffix .dtb, $(KERNEL_DT_NAME)))
@@ -125,6 +126,7 @@ endef
 
 $(info ==============Kernel DTS/DTB================)
 $(info TARGET_USE_DTB = $(TARGET_USE_DTB))
+$(info KERNEL_DT_NAME_DTB = $(KERNEL_DT_NAME_DTB))
 $(info KERNEL_DTS_PATH = $(subst $(space),$(newline),$(KERNEL_DTS_PATH)))
 $(info BUILT_KERNEL_DTB = $(subst $(space),$(newline),$(BUILT_KERNEL_DTB)))
 $(info INSTALLED_DTB_TARGET = $(subst $(space),$(newline),$(INSTALLED_DTB_TARGET)))
@@ -218,6 +220,10 @@ ifeq ($(APPEND_DTB_TO_KERNEL),true)
 endif
 
 # TODO: figure out a way of not forcing kernel & module builds.
+$(TARGET_BUILT_KERNEL_DTB): $(dotconfig) $(BUILT_KERNEL_TARGET) FORCE
+	@echo "Device tree build" $(KERNEL_DT_NAME_DTB)
+	$(kernel-make) $(KERNEL_DT_NAME_DTB)
+
 $(BUILT_KERNEL_TARGET): $(dotconfig) $(TARGET_BUILT_KERNEL_DTB) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel build"
 	+$(hide) $(kernel-make) zImage
@@ -226,10 +232,6 @@ ifeq ($(APPEND_DTB_TO_KERNEL),true)
 	@echo "Appending DTB file to kernel image"
 	+$(hide) cat $(TARGET_BUILT_KERNEL_DTB) >>$(BUILT_KERNEL_TARGET)
 endif
-
-$(BUILT_KERNEL_DTB): $(dotconfig) $(BUILT_KERNEL_TARGET) FORCE
-	@echo "Device tree build" $(notdir $@)
-	$(kernel-make) $(notdir $@)
 
 kmodules-build_only: $(BUILT_KERNEL_TARGET) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel modules build"
@@ -295,14 +297,14 @@ $(NV_INSTALLED_SYSTEMIMAGE): $(BUILT_SYSTEMIMAGE_KMODULES)
 
 # $(INSTALLED_KERNEL_TARGET) is defined in
 # $(TOP)/build/target/board/Android.mk
-$(INSTALLED_DTB_TARGET): $(BUILT_KERNEL_DTB) | $(ACP)
+$(INSTALLED_DTB_TARGET): $(TARGET_BUILT_KERNEL_DTB) | $(ACP)
 ifeq ($(APPEND_DTB_TO_KERNEL),false)
 	@echo "Copying DTB file" $(notdir $@)
 	@mkdir -p $(dir $@)
 	+$(hide) $(ACP) -fp $(addprefix $(dir $<),$(@F)) $@
 endif
 
-$(INSTALLED_KERNEL_TARGET): $(BUILT_KERNEL_TARGET) $(BUILT_KERNEL_DTB) $(EXTRA_KERNEL_TARGETS) FORCE | $(ACP)
+$(INSTALLED_KERNEL_TARGET): $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB) $(EXTRA_KERNEL_TARGETS) FORCE | $(ACP)
 	$(copy-file-to-target)
 
 # Kernel build also includes some drivers as kernel modules which are
@@ -342,8 +344,8 @@ $(NV_KERNEL_BUILD_DIRECTORY_LIST):
 .PHONY: kernel kernel-% build_kernel_tests kmodules
 
 # Set private variables for all builds. TODO: Why?
-kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(BUILT_KERNEL_DTB): PRIVATE_SRC_PATH := $(KERNEL_PATH)
-kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(BUILT_KERNEL_DTB): PRIVATE_TOPDIR := $(CURDIR)
-kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(BUILT_KERNEL_DTB): PRIVATE_KERNEL_TOOLCHAIN := $(CURDIR)/$(KERNEL_TOOLCHAIN)
+kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_SRC_PATH := $(KERNEL_PATH)
+kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_TOPDIR := $(CURDIR)
+kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_KERNEL_TOOLCHAIN := $(CURDIR)/$(KERNEL_TOOLCHAIN)
 
 endif
