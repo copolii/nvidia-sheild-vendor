@@ -17,6 +17,7 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
 #
 # Override properties in build.prop
 #
+ifeq ($(TARGET_DEVICE),tegratab)
 ifneq ($(wildcard vendor/nvidia/$(TARGET_PRODUCT)/sku-properties.xml),)
 # SKU manifest containing properties and values to changes
 NV_SKU_MANIFEST := vendor/nvidia/$(TARGET_PRODUCT)/sku-properties.xml
@@ -35,18 +36,29 @@ update-build-properties: $(INSTALLED_BUILD_PROP_TARGET) \
 		-m $(NV_SKU_MANIFEST) \
 		-b $(filter %.prop,$^)
 endif
+endif
 
 # Override factory bundle target so that we can copy an APK inside it
 # PRODUCT_FACTORY_BUNDLE_MODULES could not be used for target binaries
 # Also PRODUCT_COPY_FILES could not be used for prebuilt apk
 ifeq ($(TARGET_DEVICE),tegratab)
+ifneq ($(wildcard vendor/nvidia/tegra/apps/mfgtest),)
 # Let the defaualt target depend on factory_bundle target
 droidcore: factory_bundle
 factory_bundle_dir := $(PRODUCT_OUT)/factory_bundle
 $(eval $(call copy-one-file,$(TARGET_OUT_DATA_APPS)/tmc.apk,$(factory_bundle_dir)/tmc.apk))
 nv_factory_copied_files := $(factory_bundle_dir)/tmc.apk
-$(eval $(call copy-one-file,$(PRODUCT_OUT)/testcases.xml,$(factory_bundle_dir)/testcases.xml))
-nv_factory_copied_files += $(factory_bundle_dir)/testcases.xml
+$(eval $(call copy-one-file,$(PRODUCT_OUT)/pcba_testcases.xml,$(factory_bundle_dir)/pcba_testcases.xml))
+nv_factory_copied_files += $(factory_bundle_dir)/pcba_testcases.xml
+$(eval $(call copy-one-file,$(PRODUCT_OUT)/postassembly_testcases.xml,$(factory_bundle_dir)/postassembly_testcases.xml))
+nv_factory_copied_files += $(factory_bundle_dir)/postassembly_testcases.xml
+$(eval $(call copy-one-file,$(PRODUCT_OUT)/preassembly_testcases.xml,$(factory_bundle_dir)/preassembly_testcases.xml))
+nv_factory_copied_files += $(factory_bundle_dir)/preassembly_testcases.xml
+$(eval $(call copy-one-file,$(PRODUCT_OUT)/audio_testcases.xml,$(factory_bundle_dir)/audio_testcases.xml))
+nv_factory_copied_files += $(factory_bundle_dir)/audio_testcases.xml
+$(eval $(call copy-one-file,$(PRODUCT_OUT)/usbhostumsread,$(factory_bundle_dir)/usbhostumsread))
+nv_factory_copied_files += $(factory_bundle_dir)/usbhostumsread
 
 $(INSTALLED_FACTORY_BUNDLE_TARGET): $(nv_factory_copied_files)
+endif
 endif
