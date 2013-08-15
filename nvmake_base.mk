@@ -64,6 +64,8 @@ NVIDIA_NVMAKE_EXTRADEFS :=
 #
 # Call into the nvmake build system to build the module
 #
+# Add NVUB_SUPPORTS_TXXX=1 to temporarily enable a chip
+#
 
 $(NVIDIA_NVMAKE_MODULE) $(LOCAL_MODULE)_nvmakeclean: NVIDIA_NVMAKE_COMMAND := $(MAKE) \
     MAKE=$(shell which $(MAKE)) \
@@ -72,7 +74,6 @@ $(NVIDIA_NVMAKE_MODULE) $(LOCAL_MODULE)_nvmakeclean: NVIDIA_NVMAKE_COMMAND := $(
     NV_UNIX_BUILD_CHROOT=$(P4ROOT)/sw/tools/unix/hosts/Linux-x86/unix-build \
     NV_SOURCE=$(NVIDIA_NVMAKE_TOP) \
     NV_TOOLS=$(P4ROOT)/sw/tools \
-    NVUB_SUPPORTS_T124=1 \
     NV_HOST_OS=Linux \
     NV_HOST_ARCH=x86 \
     NV_TARGET_OS=$(NVIDIA_NVMAKE_TARGET_OS) \
