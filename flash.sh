@@ -83,7 +83,25 @@ ardbeg() {
 
 loki() {
     odmdata=0x98000
-    bctfile=bct.cfg
+
+    # Set internal board identifier
+    [[ -n $BOARD_IS_E2548 ]] && board=e2548
+    [[ -n $BOARD_IS_E2549 ]] && board=e2549
+    if [[ -z $board ]] && _shell_is_interactive; then
+        # Prompt user for target board info
+        _choose "Which board to flash?" "e2548 e2549" board e2548
+    else
+        board=${board-e2549}
+    fi
+
+    # Set bctfile and cfgfile based on target board
+    if [[ $board == e2548 ]]; then
+        bctfile=bct.cfg
+        cfgfile=flash.cfg
+    elif [[ $board == e2549 ]]; then
+        bctfile=bct_thor1_9.cfg
+        cfgfile=flash_thor1_9.cfg
+    fi
 }
 
 bonaire() {
