@@ -1,0 +1,31 @@
+From 92eadbd5575116bdcbeaf7add444b84b1d138494 Mon Sep 17 00:00:00 2001
+From: Rakesh Iyer <riyer@nvidia.com>
+Date: Wed, 25 Jul 2012 14:14:03 -0700
+Subject: [PATCH] Enable use of ro.sf.lcd_density prop by system user
+
+This allow gralloc to initialize the lcd_density value under certain conditions.
+
+bug 1014380
+
+Change-Id: I014825eb5342a834af26863f9fbe88afe24559ab
+Reviewed-on: http://git-master/r/118434
+Reviewed-on: http://git-master/r/142765
+Reviewed-on: http://git-master/r/163414
+Reviewed-by: Dan Willemsen <dwillemsen@nvidia.com>
+Tested-by: Dan Willemsen <dwillemsen@nvidia.com>
+
+diff --git a/init/property_service.c b/init/property_service.c
+index e9cf1bb..6f8c7b7 100755
+--- a/init/property_service.c
++++ b/init/property_service.c
+@@ -93,6 +93,7 @@ struct {
+     { "persist.security.", AID_SYSTEM,   0 },
+     { "persist.service.bdroid.", AID_BLUETOOTH,   0 },
+     { "selinux."         , AID_SYSTEM,   0 },
++    { "sf.lcd_density",   AID_SYSTEM,   0 },
+     { NULL, 0, 0 }
+ };
+ 
+-- 
+1.8.1.5
+

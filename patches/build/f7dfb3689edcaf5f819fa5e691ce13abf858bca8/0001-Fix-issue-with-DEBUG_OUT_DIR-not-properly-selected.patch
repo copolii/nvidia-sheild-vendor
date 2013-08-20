@@ -1,0 +1,47 @@
+From f7dfb3689edcaf5f819fa5e691ce13abf858bca8 Mon Sep 17 00:00:00 2001
+From: Tom Cherry <tcherry@nvidia.com>
+Date: Thu, 14 Jun 2012 17:33:38 -0700
+Subject: [PATCH] Fix issue with DEBUG_OUT_DIR not properly selected
+X-NVConfidentiality: public
+
+Bug 1001236
+
+Change-Id: Ia37e0f6c9a7e240df1ec637d4c87492af1adb79d
+Reviewed-on: http://git-psac/r/261
+Reviewed-by: Dan Willemsen <dwillemsen@nvidia.com>
+Tested-by: Thomas Cherry <tcherry@nvidia.com>
+Reviewed-by: Simone Willett <swillett@nvidia.com>
+Tested-by: Simone Willett <swillett@nvidia.com>
+(cherry picked from commit 53fdfaf89fca499c36c71d29f25eb1a13b32d4d6)
+Reviewed-on: http://git-master/r/163402
+Reviewed-by: Automatic_Commit_Validation_User
+Tested-by: Dan Willemsen <dwillemsen@nvidia.com>
+---
+ core/pdk_config.mk | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/core/pdk_config.mk b/core/pdk_config.mk
+index 894b626..5c6367f 100644
+--- a/core/pdk_config.mk
++++ b/core/pdk_config.mk
+@@ -114,10 +114,17 @@ $(PRODUCT_OUT)/% : $(_pdk_fusion_intermediates)/% $(_pdk_fusion_stamp)
+ ifeq (true,$(TARGET_BUILD_PDK_JAVA_PLATFORM))
+ 
+ define JAVA_dependency_template
++ifeq (debug,$(TARGET_BUILD_TYPE))
++$(DEBUG_OUT_DIR)/$(strip $(1)): $(_pdk_fusion_intermediates)/$(strip $(1)) $(DEBUG_OUT_DIR)/$(strip $(2)) \
++  $(_pdk_fusion_stamp)
++	@mkdir -p $$(dir $$@)
++	$(hide) cp -fpPR $$< $$@
++else
+ $(OUT_DIR)/$(strip $(1)): $(_pdk_fusion_intermediates)/$(strip $(1)) $(OUT_DIR)/$(strip $(2)) \
+   $(_pdk_fusion_stamp)
+ 	@mkdir -p $$(dir $$@)
+ 	$(hide) cp -fpPR $$< $$@
++endif
+ endef
+ 
+ # needs explicit dependency as package-export.apk is not explicitly pulled
+-- 
+1.8.0.2
+
