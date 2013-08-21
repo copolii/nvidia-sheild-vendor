@@ -320,7 +320,7 @@ $(NV_KERNEL_BUILD_DIRECTORY_LIST):
 # Set private variables for all builds. TODO: Why?
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_SRC_PATH := $(KERNEL_PATH)
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_TOPDIR := $(CURDIR)
-ifeq ($(TARGET_TEGRA_VERSION),t132)
+ifeq ($(TARGET_ARCH_KERNEL),arm64)
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_KERNEL_TOOLCHAIN := $(ARM_EABI_TOOLCHAIN)/../../aarch64-linux-gnu/bin/aarch64-linux-gnu-
 else
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_KERNEL_TOOLCHAIN := $(ARM_EABI_TOOLCHAIN)/arm-eabi-
