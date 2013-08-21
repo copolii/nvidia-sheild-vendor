@@ -8,9 +8,10 @@
 # package flashing script.
 
 # Usage:
-#  flash.sh [-b <file.bct>] [-c <file.cfg>] [-o <odmdata>] [-C <cmdline>] -- [optional args]
+#  flash.sh [-n] [-b <file.bct>] [-c <file.cfg>] [-o <odmdata>] [-C <cmdline>] -- [optional args]
 # -C flag overrides the entire command line for nvflash, other three
 # options are for explicitly specifying bct, cfg and odmdata options.
+# -n skips using sudo on cmdline.
 # optional arguments after '--' are added as-is to end of nvflash cmdline.
 
 # Option precedence is as follows:
@@ -31,9 +32,11 @@ elif [[ ! -d ${PRODUCT_OUT} ]]; then
 fi
 
 # Optional arguments
-while getopts "b:c:o:C:" OPTION
+while getopts "nb:c:o:C:" OPTION
 do
     case $OPTION in
+    n) _nosudo=1;
+        ;;
     b) _bctfile=${OPTARG};
         ;;
     c) _cfgfile=${OPTARG};
@@ -265,7 +268,12 @@ else
     _set_cmdline
 fi
 
-cmdline=(sudo $NVFLASH_BINARY ${cmdline[@]})
+# If -n is set, don't use sudo when calling nvflash
+if [[ -n $_nosudo ]]; then
+    cmdline=($NVFLASH_BINARY ${cmdline[@]})
+else
+    cmdline=(sudo $NVFLASH_BINARY ${cmdline[@]})
+fi
 
 if [[ $_args ]]; then
     # This assumes '--go' is last in cmdline
