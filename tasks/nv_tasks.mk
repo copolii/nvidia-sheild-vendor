@@ -14,20 +14,18 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
 	   -k $(KEY_CERT_PAIR) \
 	   $(BUILT_TARGET_FILES_PACKAGE) $@
 
-# Make default target depend on specific targets required for tegratab
-ifeq ($(TARGET_DEVICE),tegratab)
-droidcore: update-build-properties factory_bundle
-endif
-
 #
-# Override properties in build.prop for tegratab
+# Override properties in build.prop
 #
+ifneq ($(wildcard vendor/nvidia/$(TARGET_PRODUCT)/sku-properties.xml),)
+# SKU manifest containing properties and values to changes
+NV_SKU_MANIFEST := vendor/nvidia/$(TARGET_PRODUCT)/sku-properties.xml
 # Tool which changes the value of properties in build.prop
 NV_PROP_MANGLE_TOOL := vendor/nvidia/build/tasks/process_build_props.py
-# SKU manifest containing properties and values to change
-NV_SKU_MANIFEST := device/nvidia/$(TARGET_DEVICE)/skus/sku-properties.xml
 
+droidcore: update-build-properties
 .PHONY: update-build-properties
+
 update-build-properties: $(INSTALLED_BUILD_PROP_TARGET) \
 	                 $(NV_PROP_MANGLE_TOOL) \
 			 $(NV_SKU_MANIFEST)
@@ -36,11 +34,14 @@ update-build-properties: $(INSTALLED_BUILD_PROP_TARGET) \
 		-s $(NV_TN_SKU) \
 		-m $(NV_SKU_MANIFEST) \
 		-b $(filter %.prop,$^)
+endif
 
 # Override factory bundle target so that we can copy an APK inside it
 # PRODUCT_FACTORY_BUNDLE_MODULES could not be used for target binaries
 # Also PRODUCT_COPY_FILES could not be used for prebuilt apk
 ifeq ($(TARGET_DEVICE),tegratab)
+# Let the defaualt target depend on factory_bundle target
+droidcore: factory_bundle
 factory_bundle_dir := $(PRODUCT_OUT)/factory_bundle
 $(eval $(call copy-one-file,$(PRODUCT_OUT)/tmc.apk,$(factory_bundle_dir)/tmc.apk))
 nv_factory_copied_files := $(factory_bundle_dir)/tmc.apk
