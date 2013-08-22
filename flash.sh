@@ -57,7 +57,25 @@ product=$(echo ${PRODUCT_OUT%/} | grep -o '[a-zA-Z0-9]*$')
 # Setup functions per target board
 ardbeg() {
     odmdata=0x98000
-    bctfile=bct.cfg
+
+    if [[ -z $board ]] && _shell_is_interactive; then
+        # prompt user for target board info
+        _choose "which board to flash?" "tn8 shield_ers laguna" board shield_ers
+    else
+        board=shield_ers
+    fi
+
+    # set bctfile and cfgfile based on target board
+    if [[ $board == tn8 ]]; then
+        bctfile=bct.cfg
+        cfgfile=tn8_flash.cfg
+    elif [[ $board == shield_ers ]]; then
+        bctfile=bct.cfg
+        cfgfile=flash.cfg
+    elif [[ $board == laguna ]]; then
+        bctfile=flash_pm358_792.cfg
+        cfgfile=laguna_flash.cfg
+    fi
 }
 
 loki() {
