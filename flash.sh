@@ -108,7 +108,20 @@ tegratab() {
     if [[ $board == e1569 ]]; then
         bctfile=flash_tegratab_e1569.bct
     elif [[ $board == p1640 ]]; then
-        bctfile=flash_tegratab_p1640.bct
+        if [[ -z $secureboot ]] && _shell_is_interactive; then
+            _choose "Your board is PVT or secure boot is enabled?" "yes no" secureboot yes
+        else
+            secureboot="no"
+        fi
+        if [[ $secureboot == "yes" ]]; then
+                echo "Please make sure that blob.bin, flash_signed.bct, flash_signed.cfg and bootloader_signed.bin are in out directory..... "
+                bctfile=flash_signed.bct
+                cfgfile=flash_signed.cfg
+                bootloader="bootloader_signed.bin"
+                blob="--blob blob.bin"
+        else
+                bctfile=flash_tegratab_p1640.bct
+        fi
         if [[ $POWER_FROM_BATTERY == "1" ]]; then
                 battery="yes"
         else
@@ -236,7 +249,9 @@ _set_cmdline() {
     # Set BCT and CFG files (with fallback defaults)
     bctfile=${_bctfile-${bctfile-"bct.cfg"}}
     cfgfile=${_cfgfile-${cfgfile-"flash.cfg"}}
-
+    if [[ -z $bootloader ]]; then
+        bootloader="bootloader.bin"
+    fi
     # Set last command toption
     if [[ $product == tegratab ]]; then
         lastoption="--reset normal 0"
@@ -247,13 +262,14 @@ _set_cmdline() {
 
     # Parse nvflash commandline
     cmdline=(
+        $blob
         --bct $bctfile
         --setbct
         --odmdata $odmdata
         $odmoption
         --configfile $cfgfile
         --create
-        --bl bootloader.bin
+        --bl $bootloader
         $lastoption
     )
 }
