@@ -298,12 +298,23 @@ _set_cmdline() {
         skubypass=""
     fi
 
+    # update dtb filename
+    dtbfile=$(sudo $ANDROID_HOST_OUT/bin/nvgetdtb)
+    if [ $? -eq 0 ]; then
+        echo "INFO: nvgetdtb: Using $dtbfile for $product product"
+    else
+        echo "INFO: nvgetdtb couldn't retrieve the dtbfile for $product product"
+        dtbfile=$(grep dtb ${PRODUCT_OUT}/$cfgfile | cut -d "=" -f 2)
+        echo "INFO: Using the default dtb file ($dtbfile) from configuration file"
+    fi
+
     # Parse nvflash commandline
     cmdline=(
         --bct $bctfile
         --setbct
         --odmdata $odmdata
         --configfile $cfgfile
+        --dtbfile $dtbfile
         --create
         --bl bootloader.bin
         $bypass
