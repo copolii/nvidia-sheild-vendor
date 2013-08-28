@@ -66,11 +66,16 @@ endif
 
 # Turn on warnings as errors
 ifneq ($(LOCAL_NVIDIA_NO_WARNINGS_AS_ERRORS),1)
+LOCAL_CFLAGS += -Wno-error=maybe-uninitialized
+LOCAL_CFLAGS += -Wno-error=narrowing
+LOCAL_CFLAGS += -Wno-error=missing-field-initializers
 # Add -Werror only if it is not already present
 ifeq (,$(findstring -Werror, $(LOCAL_CFLAGS)))
 LOCAL_CFLAGS += -Werror
 endif
 endif
+
+LOCAL_LDFLAGS += -Wl,--no-fatal-warnings
 
 # Filter out flags defined in LOCAL_NVIDIA_RM_WARNING_FLAGS from LOCAL_CFLAGS.
 # Only used for -Wundef as it can not be turned off with -Wno-error=undef

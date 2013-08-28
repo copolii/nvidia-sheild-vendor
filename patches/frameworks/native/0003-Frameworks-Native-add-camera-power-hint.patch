@@ -1,0 +1,460 @@
+From d5cfe690a5fcb1019ab22396c2f9c9ba59a3a418 Mon Sep 17 00:00:00 2001
+From: Jihoon Bang <jbang@nvidia.com>
+Date: Mon, 8 Apr 2013 18:06:59 -0700
+Subject: [PATCH 3/4] Frameworks: Native: add camera power hint
+
+Add interface to pass on camera power sub-hint.
+Register/Unregister client. It allows for resetting camera
+hint when camera app gets killed.
+
+Bug 1261629
+
+Change-Id: Idce8683d45924e0b8e58d574f2d69463dd4acdde
+Reviewed-on: http://git-master/r/217571
+(cherry picked from commit 1a01c5023aa66b8d8b8720776dd31fb713ffee23)
+Reviewed-on: http://git-master/r/221639
+Reviewed-by: Automatic_Commit_Validation_User
+Reviewed-by: Jihoon Bang <jbang@nvidia.com>
+Tested-by: Jihoon Bang <jbang@nvidia.com>
+Reviewed-by: Dan Willemsen <dwillemsen@nvidia.com>
+---
+ include/powerservice/IPowerService.h             | 12 +++--
+ include/powerservice/IPowerServiceClient.h       | 51 ++++++++++++++++++
+ include/powerservice/PowerServiceClient.h        | 12 +++--
+ libs/powerservice_client/Android.mk              |  3 +-
+ libs/powerservice_client/IPowerService.cpp       | 40 ++++++++++++--
+ libs/powerservice_client/IPowerServiceClient.cpp | 50 ++++++++++++++++++
+ libs/powerservice_client/PowerServiceClient.cpp  | 67 +++++++++++++++++++++---
+ 7 files changed, 215 insertions(+), 20 deletions(-)
+ create mode 100644 include/powerservice/IPowerServiceClient.h
+ create mode 100644 libs/powerservice_client/IPowerServiceClient.cpp
+
+diff --git a/include/powerservice/IPowerService.h b/include/powerservice/IPowerService.h
+index 89cc0ef..2003ac6 100644
+--- a/include/powerservice/IPowerService.h
++++ b/include/powerservice/IPowerService.h
+@@ -26,6 +26,7 @@
+ 
+ #include <binder/IInterface.h>
+ #include <hardware/power.h>
++#include <powerservice/IPowerServiceClient.h>
+ 
+ typedef enum {
+     APP_PROFILE_CPU_SCALING_MIN_FREQ,
+@@ -45,19 +46,22 @@ class PowerService;
+ class IPowerService : public IInterface
+ {
+ public:
+-DECLARE_META_INTERFACE(PowerService);
++    DECLARE_META_INTERFACE(PowerService);
+ 
+     virtual void sendPowerHint(int hint, void *arg) = 0;
+     virtual void* getData() = 0;
++    virtual void registerClient(const sp<IPowerServiceClient>& client) = 0;
++    virtual void unregisterClient(const sp<IPowerServiceClient>& client) = 0;
+ };
+ 
+ class BnPowerService : public BnInterface<IPowerService>
+ {
+-    public:
++public:
+     enum {
+-        sendPowerHintEnum
++        SEND_POWER_HINT,
++        REGISTER_CLIENT,
++        UNREGISTER_CLIENT,
+     };
+-
+     virtual status_t onTransact(uint32_t code,
+             const Parcel& data,
+             Parcel* reply,
+diff --git a/include/powerservice/IPowerServiceClient.h b/include/powerservice/IPowerServiceClient.h
+new file mode 100644
+index 0000000..e4f90e0
+--- /dev/null
++++ b/include/powerservice/IPowerServiceClient.h
+@@ -0,0 +1,51 @@
++/*
++ * Copyright (C) 2011-2012 The Android Open Source Project
++ * Copyright (C) 2013, NVIDIA CORPORATION.  All rights reserved.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef ANDROID_I_POWER_SERVICE_CLIENT_H
++#define ANDROID_I_POWER_SERVICE_CLIENT_H
++
++#include <stdint.h>
++#include <sys/types.h>
++
++#include <utils/RefBase.h>
++#include <utils/Errors.h>
++
++#include <binder/IInterface.h>
++#include <hardware/power.h>
++
++namespace android {
++
++
++class IPowerServiceClient : public IInterface
++{
++public:
++    DECLARE_META_INTERFACE(PowerServiceClient);
++
++};
++
++class BnPowerServiceClient : public BnInterface<IPowerServiceClient>
++{
++public:
++    virtual status_t onTransact(uint32_t code,
++            const Parcel& data,
++            Parcel* reply,
++            uint32_t flags = 0);
++};
++
++}; // namespace android
++
++#endif
+diff --git a/include/powerservice/PowerServiceClient.h b/include/powerservice/PowerServiceClient.h
+index e46143d..e4f9324 100644
+--- a/include/powerservice/PowerServiceClient.h
++++ b/include/powerservice/PowerServiceClient.h
+@@ -22,10 +22,12 @@
+ #include <utils/Errors.h>
+ 
+ #include <powerservice/IPowerService.h>
++#include <powerservice/IPowerServiceClient.h>
+ 
+ namespace android {
+ 
+-class PowerServiceClient {
++class PowerServiceClient : public BnPowerServiceClient
++{
+ public:
+     PowerServiceClient();
+ 
+@@ -46,9 +48,13 @@ private:
+     static const nsecs_t MINIMUM_POKE_WAIT_NS;
+     static const nsecs_t MINIMUM_CONNECTION_DELAY_NS;
+     static const int MAXIMUM_CONNECTION_ATTEMPTS;
+-    sp<IPowerService> mInterface;
+-};
+ 
++    Mutex mLock;
++    sp<IPowerService> mInterface;
++    bool mCameraClientRegistered;
++    void registerCameraClient(camera_hint_t camera_hint);
++    void unregisterCameraClient(camera_hint_t camera_hint);
+ };
+ 
++};  // namespace android
+ #endif
+diff --git a/libs/powerservice_client/Android.mk b/libs/powerservice_client/Android.mk
+index f982f62..82ebc9c 100644
+--- a/libs/powerservice_client/Android.mk
++++ b/libs/powerservice_client/Android.mk
+@@ -3,7 +3,8 @@ include $(CLEAR_VARS)
+ 
+ LOCAL_SRC_FILES:= \
+ 	IPowerService.cpp \
+-	PowerServiceClient.cpp
++	PowerServiceClient.cpp \
++	IPowerServiceClient.cpp
+ 
+ LOCAL_SHARED_LIBRARIES := \
+ 	libcutils \
+diff --git a/libs/powerservice_client/IPowerService.cpp b/libs/powerservice_client/IPowerService.cpp
+index 1430576..c5bd643 100644
+--- a/libs/powerservice_client/IPowerService.cpp
++++ b/libs/powerservice_client/IPowerService.cpp
+@@ -15,7 +15,7 @@
+  * limitations under the License.
+  */
+ 
+-#define LOG_TAG "PowerService"
++#define LOG_TAG "IPowerService"
+ 
+ #include <stdint.h>
+ #include <sys/types.h>
+@@ -49,21 +49,40 @@ public:
+                     data.writeInt32(hintData[i]);
+                 }
+                 break;
++            case POWER_HINT_CAMERA:
++                data.writeInt32(hintData[0]);
++                break;
+             default:
+                 break;
+         }
+ 
+-        remote()->transact(BnPowerService::sendPowerHintEnum, data, &reply, IBinder::FLAG_ONEWAY);
++        remote()->transact(BnPowerService::SEND_POWER_HINT, data, &reply, IBinder::FLAG_ONEWAY);
++    }
++
++    virtual void registerClient(const sp<IPowerServiceClient>& client)
++    {
++        Parcel data, reply;
++        data.writeInterfaceToken(IPowerService::getInterfaceDescriptor());
++        data.writeStrongBinder(client->asBinder());
++        remote()->transact(BnPowerService::REGISTER_CLIENT, data, &reply);
++    }
++
++    virtual void unregisterClient(const sp<IPowerServiceClient>& client)
++    {
++        Parcel data, reply;
++        data.writeInterfaceToken(IPowerService::getInterfaceDescriptor());
++        data.writeStrongBinder(client->asBinder());
++        remote()->transact(BnPowerService::UNREGISTER_CLIENT, data, &reply);
+     }
+ };
+ 
+-IMPLEMENT_META_INTERFACE(PowerService, "android.IPowerService") ;
++IMPLEMENT_META_INTERFACE(PowerService, "android.IPowerService");
+ 
+ status_t BnPowerService::onTransact(
+     uint32_t code, const Parcel& data, Parcel* reply, uint32_t flags)
+ {
+     switch(code) {
+-        case sendPowerHintEnum: {
++        case SEND_POWER_HINT: {
+             CHECK_INTERFACE(IPowerService, data, reply);
+             int hint = data.readInt32();
+             int *hintData = (int*)getData();
+@@ -74,12 +93,25 @@ status_t BnPowerService::onTransact(
+                         hintData[i] = data.readInt32();
+                     }
+                     break;
++                case POWER_HINT_CAMERA:
++                    hintData[0] = data.readInt32();
++                    break;
+                 default:
+                     break;
+             }
+ 
+             sendPowerHint(hint, (void*)hintData);
+         } break;
++        case REGISTER_CLIENT: {
++            CHECK_INTERFACE(IPowerService, data, reply);
++            sp<IPowerServiceClient> client = interface_cast<IPowerServiceClient>(data.readStrongBinder());
++            registerClient(client);
++        } break;
++        case UNREGISTER_CLIENT: {
++            CHECK_INTERFACE(IPowerService, data, reply);
++            sp<IPowerServiceClient> client = interface_cast<IPowerServiceClient>(data.readStrongBinder());
++            unregisterClient(client);
++        } break;
+         default:
+             return BBinder::onTransact(code, data, reply, flags);
+     }
+diff --git a/libs/powerservice_client/IPowerServiceClient.cpp b/libs/powerservice_client/IPowerServiceClient.cpp
+new file mode 100644
+index 0000000..eb0effa
+--- /dev/null
++++ b/libs/powerservice_client/IPowerServiceClient.cpp
+@@ -0,0 +1,50 @@
++/*
++ * Copyright (C) 2011-2012 The Android Open Source Project
++ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#define LOG_TAG "IPowerServiceClient"
++
++#include <stdint.h>
++#include <sys/types.h>
++
++#include <binder/Parcel.h>
++#include <binder/IMemory.h>
++#include <binder/IPCThreadState.h>
++#include <binder/IServiceManager.h>
++
++#include <powerservice/IPowerServiceClient.h>
++
++namespace android {
++
++class BpPowerServiceClient : public BpInterface<IPowerServiceClient> {
++public:
++    BpPowerServiceClient(const sp<IBinder>& impl)
++        : BpInterface<IPowerServiceClient>(impl) { }
++};
++
++IMPLEMENT_META_INTERFACE(PowerServiceClient, "android.IPowerServiceClient");
++
++status_t BnPowerServiceClient::onTransact(
++    uint32_t code, const Parcel& data, Parcel* reply, uint32_t flags)
++{
++    switch(code) {
++        default:
++            return BBinder::onTransact(code, data, reply, flags);
++    }
++    return NO_ERROR;
++}
++
++}; //namespace android
+diff --git a/libs/powerservice_client/PowerServiceClient.cpp b/libs/powerservice_client/PowerServiceClient.cpp
+index 1a014fa..a88f893 100644
+--- a/libs/powerservice_client/PowerServiceClient.cpp
++++ b/libs/powerservice_client/PowerServiceClient.cpp
+@@ -15,24 +15,26 @@
+  * limitations under the License.
+  */
+ 
+-#include <powerservice/PowerServiceClient.h>
++#define LOG_TAG "PowerServiceCient"
+ 
+ #include <binder/IServiceManager.h>
++#include <powerservice/PowerServiceClient.h>
++
+ 
+-#undef LOG_TAG
+-#define LOG_TAG "PowerServiceClient"
+ 
+ namespace android {
+ 
+ PowerServiceClient::PowerServiceClient() :
+     failedConnectionAttempts(0),
+-    lastConnectionAttempt(0) {}
++    lastConnectionAttempt(0),
++    mCameraClientRegistered(false) {}
+ 
+ const nsecs_t PowerServiceClient::MINIMUM_POKE_WAIT_NS = 40 * 1000000LL;
+ const nsecs_t PowerServiceClient::MINIMUM_CONNECTION_DELAY_NS = 5000 * 1000000LL;
+ const int PowerServiceClient::MAXIMUM_CONNECTION_ATTEMPTS = 100;
+ 
+ status_t PowerServiceClient::tryBindToService() {
++    ALOGV("%s: ++", __func__);
+     sp<IServiceManager> sm = defaultServiceManager();
+     if (sm == 0)
+         return FAILED_TRANSACTION;
+@@ -42,11 +44,12 @@ status_t PowerServiceClient::tryBindToService() {
+     mInterface = IPowerService::asInterface(binder);
+     if (mInterface == 0)
+         return BAD_VALUE;
+-    LOGI("Successfully bound to service");
++    ALOGI("Successfully bound to service");
+     return NO_ERROR;
+ }
+ 
+ status_t PowerServiceClient::bindToService() {
++    ALOGV("%s: ++", __func__);
+     sp<IServiceManager> sm = defaultServiceManager();
+     if (sm == 0)
+         return FAILED_TRANSACTION;
+@@ -56,11 +59,12 @@ status_t PowerServiceClient::bindToService() {
+     mInterface = IPowerService::asInterface(binder);
+     if (mInterface == 0)
+         return BAD_VALUE;
+-    LOGI("Successfully bound to service");
++    ALOGI("Successfully bound to service");
+     return NO_ERROR;
+ }
+ 
+ void PowerServiceClient::checkAndTryReconnect(nsecs_t now) {
++    ALOGV("%s: ++", __func__);
+     if (mInterface != 0)
+         return;
+     if (failedConnectionAttempts > MAXIMUM_CONNECTION_ATTEMPTS)
+@@ -70,12 +74,13 @@ void PowerServiceClient::checkAndTryReconnect(nsecs_t now) {
+     lastConnectionAttempt = now;
+     status_t res = tryBindToService();
+     if (res != NO_ERROR) {
+-        LOGW("Failed to bind to service");
++        ALOGE("Failed to bind to service");
+         failedConnectionAttempts++;
+     }
+ }
+ 
+ bool PowerServiceClient::rateLimitAndCheckConnection(nsecs_t* last, nsecs_t now) {
++    ALOGV("%s: ++", __func__);
+     if (now - *last < MINIMUM_POKE_WAIT_NS)
+         return false;
+     *last = now;
+@@ -86,17 +91,63 @@ bool PowerServiceClient::rateLimitAndCheckConnection(nsecs_t* last, nsecs_t now)
+ }
+ 
+ void PowerServiceClient::sendPowerHint(int hint, void* data) {
++
++    Mutex::Autolock lock(&mLock);
+     checkAndTryReconnect(systemTime(SYSTEM_TIME_MONOTONIC));
++    camera_hint_t *camera_hint = (camera_hint_t*)data;
++
++    ALOGV("%s: ++ this=%p hint=%d", __func__, this, hint);
++
+     if (mInterface == 0) {
+         return;
+     }
+ 
++    // If hint is camera and camera_hint is not CAMERA_HINT_RESET,
++    // then register this client before sending hint.
++    // If hint is not camera, then we don't have to worry about registering and
++    // unregistering client because other hints works with timeout value.
++    // Effect of hint will go away after timeout.
++    if ((hint == POWER_HINT_CAMERA) && (camera_hint[0] != CAMERA_HINT_RESET))
++    {
++        registerCameraClient(camera_hint[0]);
++    }
++
+     mInterface->sendPowerHint(hint, data);
++
++    // If hint is camera and camera_hint is CAMERA_HINT_RESET,
++    // then unregister this client after sending hint.
++    if ((hint == POWER_HINT_CAMERA) && (camera_hint[0] == CAMERA_HINT_RESET))
++    {
++        unregisterCameraClient(camera_hint[0]);
++    }
++
+ }
+ 
+ void PowerServiceClient::breakConnection() {
+-    LOGW("Lost connection to service");
++    ALOGE("Lost connection to service");
+     mInterface = NULL;
+ }
+ 
++void PowerServiceClient::registerCameraClient(camera_hint_t camera_hint)
++{
++    ALOGV("%s: ++", __func__);
++
++    if (mCameraClientRegistered == false)
++    {
++        mInterface->registerClient(this);
++        mCameraClientRegistered = true;
++    }
++}
++
++void PowerServiceClient::unregisterCameraClient(camera_hint_t camera_hint)
++{
++    ALOGV("%s: ++", __func__);
++
++    if (mCameraClientRegistered == true)
++    {
++        mInterface->unregisterClient(this);
++        mCameraClientRegistered = false;
++    }
++}
++
+ };
+-- 
+1.8.1.5
+

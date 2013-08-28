@@ -1,0 +1,84 @@
+From 04a7bcc76011cf5f849b2fc755da96c30b1b3418 Mon Sep 17 00:00:00 2001
+From: Ruchit Sharma <ruchits@nvidia.com>
+Date: Mon, 20 Aug 2012 16:33:52 -0700
+Subject: [PATCH 1/4] frameworks: native: add extra dalvik heap configs
+
+Add new heap configuration for devices that have Cardhu and Enterprise like
+attributes.
+Currently, in JB the performance of apps like Gallery takes a hit with a heap
+size of 48M on both Cardhu and Enterprise. Increasing this size to 64M in order
+to accomodate excessive memory requests from an app.
+
+Bug 1036662
+
+Change-Id: Ibc9f78af28e070e40dc80764ed9e605d5d5b9ff0
+Reviewed-on: http://git-master/r/124965
+Reviewed-on: http://git-master/r/163406
+Reviewed-by: Dan Willemsen <dwillemsen@nvidia.com>
+Tested-by: Dan Willemsen <dwillemsen@nvidia.com>
+---
+ build/phone-hdpi-1024-dalvik-heap.mk  | 22 ++++++++++++++++++++++
+ build/tablet-10in-mdpi-dalvik-heap.mk | 22 ++++++++++++++++++++++
+ 2 files changed, 44 insertions(+)
+ create mode 100644 build/phone-hdpi-1024-dalvik-heap.mk
+ create mode 100644 build/tablet-10in-mdpi-dalvik-heap.mk
+
+diff --git a/build/phone-hdpi-1024-dalvik-heap.mk b/build/phone-hdpi-1024-dalvik-heap.mk
+new file mode 100644
+index 0000000..66ff30b
+--- /dev/null
++++ b/build/phone-hdpi-1024-dalvik-heap.mk
+@@ -0,0 +1,22 @@
++#
++# Copyright (C) 2011 The Android Open Source Project
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#      http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++#
++
++# Provides overrides to configure the Dalvik heap for a standard phone device.
++
++PRODUCT_PROPERTY_OVERRIDES += \
++    dalvik.vm.heapstartsize=8m \
++    dalvik.vm.heapgrowthlimit=64m \
++    dalvik.vm.heapsize=256m
+diff --git a/build/tablet-10in-mdpi-dalvik-heap.mk b/build/tablet-10in-mdpi-dalvik-heap.mk
+new file mode 100644
+index 0000000..b598262
+--- /dev/null
++++ b/build/tablet-10in-mdpi-dalvik-heap.mk
+@@ -0,0 +1,22 @@
++#
++# Copyright (C) 2010 The Android Open Source Project
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#      http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++#
++
++# Provides overrides to configure the Dalvik heap for a standard tablet device.
++
++PRODUCT_PROPERTY_OVERRIDES += \
++    dalvik.vm.heapstartsize=8m \
++    dalvik.vm.heapgrowthlimit=64m \
++    dalvik.vm.heapsize=384m
+-- 
+1.8.1.5
+
