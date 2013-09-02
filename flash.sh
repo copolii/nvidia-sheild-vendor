@@ -8,7 +8,9 @@
 # package flashing script.
 
 # Usage:
-#  flash.sh [-n] [-b <file.bct>] [-c <file.cfg>] [-o <odmdata>] [-C <cmdline>] -- [optional args]
+#  flash.sh [-n] [-b <file.bct>] [-c <file.cfg>] [-o <odmdata>] [-C <cmdline>]
+#           [-s <skuid> [forcebypass]] -- [optional args]
+#
 # -C flag overrides the entire command line for nvflash, other three
 # options are for explicitly specifying bct, cfg and odmdata options.
 # -n skips using sudo on cmdline.
@@ -32,7 +34,7 @@ elif [[ ! -d ${PRODUCT_OUT} ]]; then
 fi
 
 # Optional arguments
-while getopts "nb:c:o:C:" OPTION
+while getopts "nb:c:o:C:s:" OPTION
 do
     case $OPTION in
     n) _nosudo=1;
@@ -42,6 +44,12 @@ do
     c) _cfgfile=${OPTARG};
         ;;
     o) _odmdata=${OPTARG};
+        ;;
+    s) _skuid=${OPTARG};
+        if [ "$3" == "forcebypass" ]; then
+            _skuid="$_skuid $3"
+            shift
+        fi
         ;;
     C) shift ; _cmdline=$@;
         ;;
@@ -60,6 +68,7 @@ product=$(echo ${PRODUCT_OUT%/} | grep -o '[a-zA-Z0-9]*$')
 # Setup functions per target board
 ardbeg() {
     odmdata=0x98000
+    skuid=auto
 
     if [[ -z $board ]] && _shell_is_interactive; then
         # prompt user for target board info
@@ -110,12 +119,14 @@ bonaire() {
 }
 
 pluto() {
+    skuid=auto
     odmdata=0x40098008
     bctfile=common_bct.cfg
 }
 
 roth() {
     odmdata=0x8049C000
+    skuid=auto
 
     # set internal board identifier
     [[ -n $board_is_p2454 ]] && board=p2454
@@ -141,17 +152,20 @@ kai() {
 }
 
 ceres() {
+    skuid=auto
     odmdata=0x40080008
     bctfile=common_bct.cfg
 }
 
 dalmore() {
+    skuid=auto
     # Set default ODM data
     odmdata=0x00098000
     bctfile=common_bct.cfg
 }
 
 macallan() {
+    skuid=auto
     odmdata=0x00098000
 }
 
@@ -254,6 +268,18 @@ _set_cmdline() {
     bypass=${bypass-" "}
     sif=${sif-" "}
 
+    # set sku id only if it was previously intialized
+    skuid=${_skuid-${skuid}}
+    if [[ -n $skuid ]]; then
+        skubypass="-s "$skuid
+    fi
+
+    # if fuse_bypass.txt is not present in out directory
+    # then do not bypass sku.
+    if [ ! -f $PRODUCT_OUT/fuse_bypass.txt ]; then
+        skubypass=""
+    fi
+
     # Parse nvflash commandline
     cmdline=(
         --bct $bctfile
@@ -264,6 +290,7 @@ _set_cmdline() {
         --bl bootloader.bin
         $bypass
         $sif
+        $skubypass
         --go
     )
 }
@@ -278,7 +305,7 @@ if [[ $_cmdline ]]; then
         $_cmdline
     )
 # If -b, -c and -o are set, use them
-elif [[ $_bctfile ]] && [[ $_cfgfile ]] && [[ $_odmdata ]]; then
+elif [[ $_bctfile ]] && [[ $_cfgfile ]] && [[ $_odmdata ]] && [[ $_skuid ]]; then
     _set_cmdline
 else
     # Run product function to set needed parameters
