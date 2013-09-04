@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
 #
 # NVIDIA Corporation and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
@@ -18,7 +18,7 @@ export FASTBOOT_VID=0x955
 if [ "$ODMDATA_OVERRIDE" ]; then
     export NVFLASH_ODM_DATA=$ODMDATA_OVERRIDE
 else
-    export NVFLASH_ODM_DATA=0x80098000
+    export NVFLASH_ODM_DATA=0x00098000
 fi
 
 if [ "$BOARD_IS_E1613" == "1" ]

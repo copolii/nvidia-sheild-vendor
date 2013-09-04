@@ -147,12 +147,12 @@ ceres() {
 
 dalmore() {
     # Set default ODM data
-    odmdata=0x80098000
+    odmdata=0x00098000
     bctfile=common_bct.cfg
 }
 
 macallan() {
-    odmdata=0x80098000
+    odmdata=0x00098000
 }
 
 cardhu() {
