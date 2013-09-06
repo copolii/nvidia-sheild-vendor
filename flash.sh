@@ -62,6 +62,7 @@ roth() {
     if [[ -z $board ]] && _shell_is_interactive; then
         # prompt user for target board info
         _choose "which roth board revision to flash?" "p2560 p2454" board p2560
+        _choose "which bootloader to flash?" "tot binary"  bootloader tot
     else
         board=${board-p2454}
     fi
@@ -73,6 +74,27 @@ roth() {
         bctfile=flash_p2560_450Mhz.bct
         sif="--sysfile SIF.txt"
     fi
+
+    if [[ ! -f $PRODUCT_OUT/bootloader_TOT.bin ]]; then
+        cp $PRODUCT_OUT/bootloader.bin $PRODUCT_OUT/bootloader_TOT.bin
+    fi
+
+    diff $PRODUCT_OUT/bootloader.bin $PRODUCT_OUT/bootloader_TOT.bin > 0
+    ret1=$?
+    diff $PRODUCT_OUT/bootloader.bin $PRODUCT_OUT/bootloader_BIN.bin > 0
+    ret2=$?
+
+    if [[ $ret1 == 2 && $ret2 == 2 ]]; then
+        cp $PRODUCT_OUT/bootloader.bin $PRODUCT_OUT/bootloader_TOT.bin
+    fi
+
+    # set bootloader based on selection
+    if [[ $bootloader == tot ]]; then
+        cp $PRODUCT_OUT/bootloader_TOT.bin $PRODUCT_OUT/bootloader.bin
+    elif [[ $bootloader == binary ]]; then
+        cp $PRODUCT_OUT/bootloader_BIN.bin $PRODUCT_OUT/bootloader.bin
+    fi
+
     bypass="--fusebypass_config fuse_bypass.txt --sku_to_bypass T40T"
 }
 
