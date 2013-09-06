@@ -170,32 +170,40 @@ nvidia-tests: $(NVIDIA_TARGET_NAME)
 ifneq ($(filter nvidia-tests,$(MAKECMDGOALS)),)
 # If we're explicitly building nvidia-tests, install the tests.
 ALL_NVIDIA_TESTS += $(NVIDIA_TARGET_NAME)
+ifeq ($(LOCAL_MODULE_CLASS),JAVA_LIBRARIES)
+# We want Nvidia java test libraries to be installed into same
+# location as normal java libraries. Android build system would in
+# default place them in location pointed by
+# TARGET_OUT_DATA_JAVA_LIBRARIES (since LOCAL_MODULE_TAGS indicates
+# them to be 'tests' components).
+LOCAL_MODULE_PATH := $(TARGET_OUT_JAVA_LIBRARIES)
 endif
+endif
+
 ifneq ($(filter nvidia-tests-automation,$(MAKECMDGOALS)),)
 # If we're explicitly building nvidia-tests-automation, redirect the tests.
 ALL_NVIDIA_TESTS += $(NVIDIA_TARGET_NAME)
 ifeq ($(LOCAL_MODULE_CLASS),EXECUTABLES)
-  LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/bin
-else
-  ifeq ($(LOCAL_MODULE_CLASS),SHARED_LIBRARIES)
-    LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/lib
-  else
-    ifneq ($(LOCAL_MODULE_PATH),)
-      ifeq ($(findstring nvidia_tests,$(LOCAL_MODULE_PATH)),)
-        # Insert nvidia_tests in the installation path.
-        LOCAL_MODULE_PATH := $(subst $(PRODUCT_OUT),$(PRODUCT_OUT)/nvidia_tests,$(LOCAL_MODULE_PATH))
-      endif
-    else
-      # Specify default install location for everything else.
-      LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests
+LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/bin
+else ifeq ($(LOCAL_MODULE_CLASS),SHARED_LIBRARIES)
+LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/lib
+else ifeq ($(LOCAL_MODULE_CLASS),JAVA_LIBRARIES)
+LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/framework
+else ifneq ($(LOCAL_MODULE_PATH),)
+    ifeq ($(findstring nvidia_tests,$(LOCAL_MODULE_PATH)),)
+      # Insert nvidia_tests in the installation path.
+      LOCAL_MODULE_PATH := $(subst $(PRODUCT_OUT),$(PRODUCT_OUT)/nvidia_tests,$(LOCAL_MODULE_PATH))
     endif
-  endif
-endif
-endif
-LOCAL_MODULE_TAGS := $(filter-out nvidia_tests,$(LOCAL_MODULE_TAGS)) tests
 else
+# Specify default install location for everything else.
+LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests
+endif # ifeq ($(LOCAL_MODULE_CLASS),EXECUTABLES)
+endif # ifneq ($(filter nvidia-tests-automation,$(MAKECMDGOALS)),)
+
+LOCAL_MODULE_TAGS := $(filter-out nvidia_tests,$(LOCAL_MODULE_TAGS)) tests
+else # not nvidia-test component
 nvidia-modules: $(NVIDIA_TARGET_NAME)
-endif
+endif # ifneq ($(findstring nvidia_tests,$(LOCAL_MODULE_TAGS)),)
 
 nvidia-tests-automation: nvidia-tests
 
