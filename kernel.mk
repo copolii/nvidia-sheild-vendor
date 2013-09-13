@@ -38,14 +38,6 @@ else
     REAL_TARGET_ARCH := $(TARGET_ARCH)
 endif
 
-ifeq ($(REAL_TARGET_ARCH),arm64)
-    BOOT_WRAPPER_DIR := $(TEGRA_TOP)/core-private/system/boot-wrapper-aarch64
-    BOOT_WRAPPER_CMD := $(MAKE) -C $(BOOT_WRAPPER_DIR);
-    BOOT_WRAPPER_CMD += $(MAKE) -C $(BOOT_WRAPPER_DIR) EMMC_BOOT=1
-else
-    BOOT_WRAPPER_CMD :=
-endif
-
 # Always use absolute path for NV_KERNEL_INTERMEDIATES_DIR
 ifneq ($(filter /%, $(TARGET_OUT_INTERMEDIATES)),)
 NV_KERNEL_INTERMEDIATES_DIR := $(TARGET_OUT_INTERMEDIATES)/KERNEL
