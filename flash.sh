@@ -91,7 +91,7 @@ loki() {
         # Prompt user for target board info
         _choose "Which board to flash?" "e2548 e2549" board e2548
     else
-        board=${board-e2549}
+        board=${board-e2548}
     fi
 
     # Set bctfile and cfgfile based on target board
