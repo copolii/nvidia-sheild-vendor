@@ -75,6 +75,9 @@ sim-image: nvidia-tests
 	    -s 2048 -z \
 	    -o $(PRODUCT_OUT)/sdmmc_full_fs.img \
 	    -c device/nvidia/common/sdmmc_full_fs.cfg
+ifneq ("$(BOOT_WRAPPER_RAMDISK)","")
+	$(BOOT_WRAPPER_RAMDISK)
+endif
 
 # This macro lists all modules filtering those which
 # 1. Are in a path which contains 'nvidia'

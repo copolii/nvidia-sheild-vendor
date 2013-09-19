@@ -192,6 +192,17 @@ ifeq ($(NV_MOBILE_DGPU),1)
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TASK_SIZE_3G_LESS_24M
 endif
 
+
+ifeq ($(REAL_TARGET_ARCH),arm64)
+    BOOT_WRAPPER_DIR := $(TEGRA_TOP)/core-private/system/boot-wrapper-aarch64
+    BOOT_WRAPPER_CMD := $(MAKE) -C $(BOOT_WRAPPER_DIR) FDT_SRC=$(KERNEL_DTS_PATH);
+    BOOT_WRAPPER_CMD += $(MAKE) -C $(BOOT_WRAPPER_DIR) FDT_SRC=$(KERNEL_DTS_PATH) EMMC_BOOT=1
+    BOOT_WRAPPER_RAMDISK := $(MAKE) -C $(BOOT_WRAPPER_DIR) FDT_SRC=$(KERNEL_DTS_PATH) RAMDISK_BOOT=1
+else
+    BOOT_WRAPPER_CMD :=
+    BOOT_WRAPPER_RAMDISK :=
+endif
+
 # TODO: figure out a way of not forcing kernel & module builds.
 $(TARGET_BUILT_KERNEL_DTB): $(dotconfig) $(BUILT_KERNEL_TARGET) FORCE
 	@echo "Device tree build" $(KERNEL_DT_NAME_DTB)
@@ -200,6 +211,7 @@ $(TARGET_BUILT_KERNEL_DTB): $(dotconfig) $(BUILT_KERNEL_TARGET) FORCE
 $(BUILT_KERNEL_TARGET): $(dotconfig) $(TARGET_BUILT_KERNEL_DTB) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel build"
 	+$(hide) $(kernel-make) zImage
+	+$(hide) $(BOOT_WRAPPER_CMD)
 
 kmodules-build_only: $(BUILT_KERNEL_TARGET) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel modules build"
