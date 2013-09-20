@@ -101,6 +101,8 @@ loki() {
         _choose "Which board to flash?" "e2548 e2549" board e2548
     else
         board=${board-e2548}
+        # Re-flash NCT partition in automation use
+        nct="--nct NCT_loki.txt"
     fi
 
     # Set bctfile and cfgfile based on target board
@@ -265,8 +267,9 @@ _set_cmdline() {
     # Set BCT and CFG files (with fallback defaults)
     bctfile=${_bctfile-${bctfile-"bct.cfg"}}
     cfgfile=${_cfgfile-${cfgfile-"flash.cfg"}}
-    bypass=${bypass-" "}
-    sif=${sif-" "}
+    bypass=${bypass-""}
+    sif=${sif-""}
+    nct=${nct-""}
 
     # set sku id only if it was previously intialized
     skuid=${_skuid-${skuid}}
@@ -291,6 +294,7 @@ _set_cmdline() {
         $bypass
         $sif
         $skubypass
+        $nct
         --go
     )
 }
