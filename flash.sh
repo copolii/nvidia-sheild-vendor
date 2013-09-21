@@ -121,14 +121,12 @@ bonaire() {
 }
 
 pluto() {
-    skuid=auto
     odmdata=0x40098008
     bctfile=common_bct.cfg
 }
 
 roth() {
     odmdata=0x8049C000
-    skuid=auto
 
     # set internal board identifier
     [[ -n $board_is_p2454 ]] && board=p2454
@@ -154,20 +152,17 @@ kai() {
 }
 
 ceres() {
-    skuid=auto
     odmdata=0x40080008
     bctfile=common_bct.cfg
 }
 
 dalmore() {
-    skuid=auto
     # Set default ODM data
     odmdata=0x00098000
     bctfile=common_bct.cfg
 }
 
 macallan() {
-    skuid=auto
     odmdata=0x00098000
 }
 
