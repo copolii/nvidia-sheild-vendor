@@ -44,7 +44,6 @@ _module_has_cpp_sources = $(strip $(filter %.cpp,$(LOCAL_SRC_FILES)))
 
 ifneq ($(LOCAL_NVIDIA_NO_EXTRA_WARNINGS),1)
 LOCAL_CFLAGS += -Wmissing-declarations
-LOCAL_CFLAGS += -Wcast-align
 LOCAL_CFLAGS += -Wundef
 #LOCAL_CFLAGS += -Wredundant-decls
 
