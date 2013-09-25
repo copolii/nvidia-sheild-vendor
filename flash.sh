@@ -151,11 +151,6 @@ kai() {
     odmdata=0x40098000
 }
 
-ceres() {
-    odmdata=0x40080008
-    bctfile=common_bct.cfg
-}
-
 dalmore() {
     # Set default ODM data
     odmdata=0x00098000
