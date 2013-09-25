@@ -97,7 +97,6 @@ $(NVIDIA_NVMAKE_MODULE) $(LOCAL_MODULE)_nvmakeclean: NVIDIA_NVMAKE_COMMON_BUILD_
     TEGRA_TOP=$(TEGRA_TOP) \
     ANDROID_BUILD_TOP=$(ANDROID_BUILD_TOP) \
     OUT=$(OUT) \
-    NV_ANDROID_TOOLS=$(P4ROOT)/sw/mobile/tools/linux/android/nvmake \
     NV_SOURCE=$(NVIDIA_NVMAKE_TOP) \
     NV_TOOLS=$(P4ROOT)/sw/tools \
     NV_HOST_OS=Linux \
@@ -107,6 +106,10 @@ $(NVIDIA_NVMAKE_MODULE) $(LOCAL_MODULE)_nvmakeclean: NVIDIA_NVMAKE_COMMON_BUILD_
     NV_BUILD_TYPE=$(NVIDIA_NVMAKE_BUILD_TYPE) \
     $(NVIDIA_NVMAKE_PROFILE) \
     NV_MANGLE_GLSI=0 \
+    TARGET_TOOLS_PREFIX=$(abspath $(TARGET_TOOLS_PREFIX)) \
+    TARGET_C_INCLUDES="$(foreach inc,$(TARGET_C_INCLUDES) external/stlport/stlport bionic,$(abspath $(inc)))" \
+    TARGET_OUT_INTERMEDIATE_LIBRARIES=$(abspath $(TARGET_OUT_INTERMEDIATE_LIBRARIES)) \
+    TARGET_LIBGCC=$(TARGET_LIBGCC) \
     $(NVIDIA_NVMAKE_VERBOSE) \
     $(LOCAL_NVIDIA_NVMAKE_ARGS)
 
@@ -147,6 +150,19 @@ else
   $(NVIDIA_NVMAKE_MODULE): NVIDIA_NVMAKE_POST_BUILD_COMMAND :=
 endif
 
+# We always link nvmake components against these few libraries.
+# LOCAL_SHARED_LIBRARIES will enforce the install requirement, but
+# LOCAL_ADDITIONAL_DEPENDENCIES will enforce that they are built before nvmake runs
+LOCAL_SHARED_LIBRARIES += libc libdl libm libstdc++ libz
+LOCAL_ADDITIONAL_DEPENDENCIES += \
+	$(foreach l,$(LOCAL_SHARED_LIBRARIES),$(TARGET_OUT_INTERMEDIATE_LIBRARIES)/$(l).so)
+
+# This rule avoids breaking incremental builds when switching nvmake builds from GCC 4.6 to 4.7
+# TODO Remove after transition period (see bug 872779).
+ifneq ($(shell strings -a $(NVIDIA_NVMAKE_MODULE) | grep "GCC: (GNU) 4.6.x"),)
+$(NVIDIA_NVMAKE_MODULE): $(LOCAL_MODULE)_nvmakeclean
+endif
+
 # This target needs to be forced, nvmake will do its own dependency checking
 $(NVIDIA_NVMAKE_MODULE): $(LOCAL_ADDITIONAL_DEPENDENCIES) FORCE
 	@echo "Build with nvmake: $(PRIVATE_MODULE) ($@)"
@@ -155,7 +171,7 @@ $(NVIDIA_NVMAKE_MODULE): $(LOCAL_ADDITIONAL_DEPENDENCIES) FORCE
 
 $(LOCAL_MODULE)_nvmakeclean:
 	@echo "Clean nvmake build files: $(PRIVATE_MODULE)"
-	+$(hide) $(NVIDIA_NVMAKE_COMMAND) MAKEFLAGS=$(MAKEFLAGS) clobber
+	+$(hide) $(NVIDIA_NVMAKE_COMMAND) $(NVIDIA_NVMAKE_COMMON_BUILD_PARAMS) MAKEFLAGS=$(MAKEFLAGS) clobber
 
 .PHONY: $(LOCAL_MODULE)_nvmakeclean
 
