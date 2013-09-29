@@ -72,7 +72,7 @@ ardbeg() {
 
     if [[ -z $board ]] && _shell_is_interactive; then
         # prompt user for target board info
-        _choose "which board to flash?" "tn8 shield_ers laguna" board shield_ers
+        _choose "which board to flash?" "tn8 tn8b shield_ers laguna" board shield_ers
     else
         board=shield_ers
     fi
@@ -81,6 +81,11 @@ ardbeg() {
     if [[ $board == tn8 ]]; then
         bctfile=bct.cfg
         cfgfile=tn8_flash.cfg
+        nct="--nct nct_tn8.txt"
+    elif [[ $board == tn8b ]]; then
+        bctfile=bct.cfg
+        cfgfile=tn8b_flash.cfg
+        nct="--nct nct_tn8b.txt"
     elif [[ $board == shield_ers ]]; then
         bctfile=bct.cfg
         cfgfile=flash.cfg
