@@ -1,0 +1,8 @@
+---
+
+# START_OF_DUMMY_KEY
+# illusionist doesn't accept an empty nvub.blacklist file
+# PLEASE remove this dummy key if you add a real key to this file!
+NVUB_SUPPORTS_TXX_DUMMY:
+-
+# END_OF_DUMMY_KEY
