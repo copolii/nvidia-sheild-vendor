@@ -178,6 +178,10 @@ ifeq ($(SECURE_OS_BUILD),y)
 	@echo "SecureOS enabled kernel"
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TRUSTED_FOUNDATIONS
 endif
+ifeq ($(TARGET_NO_KMODULES),true)
+	@echo "Disabled kernel modules"
+	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --disable MODULES
+endif
 ifeq ($(NVIDIA_KERNEL_COVERAGE_ENABLED),1)
 	@echo "Explicitly enabling coverage support in kernel config on user request"
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ \
@@ -204,10 +208,14 @@ $(BUILT_KERNEL_DTB): $(BUILT_KERNEL_TARGET) FORCE
 	+$(hide) $(kernel-make) $(TARGET_KERNEL_DT_NAME).dtb
 
 kmodules-build_only: $(BUILT_KERNEL_TARGET) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
+ifneq ($(TARGET_NO_KMODULES),true)
 	@echo "Kernel modules build"
 	+$(hide) $(kernel-make) modules
 ifneq ( , $(findstring $(BOARD_WLAN_DEVICE), wl12xx_mac80211 wl18xx_mac80211))
 	+$(hide) $(compat-kernel-make)
+endif
+else
+	@echo "Kernel modules build skipped per CTS requirement"
 endif
 
 # This will add all kernel modules we build for inclusion the system
@@ -243,6 +251,7 @@ $(BUILT_SYSTEMIMAGE_KMODULES): build_kernel_tests
 endif
 
 build_kernel_tests: kmodules FORCE | $(NV_KERNEL_MODULES_TARGET_DIR) $(NV_KERNEL_BIN_TARGET_DIR)
+ifneq ($(TARGET_NO_KMODULES),true)
 	@echo "Kernel space tests build"
 	@echo "Tests at $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests"
 	+$(hide) $(kernel-make) M=$(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests
@@ -250,6 +259,9 @@ build_kernel_tests: kmodules FORCE | $(NV_KERNEL_MODULES_TARGET_DIR) $(NV_KERNEL
 	for f in `find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "*.sh"` ; do cp -v "$$f" $(NV_KERNEL_BIN_TARGET_DIR) ; done
 	+$(hide) $(kernel-make) M=$(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests clean
 	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests/linux/kernel_space_tests -name "modules.order" -print0 | xargs -0 rm -rf
+else
+	@echo "Kernel space tests build skipped without module support"
+endif
 
 # Unless we hardcode the list of kernel modules, we cannot create
 # a proper dependency from systemimage to the kernel modules.
