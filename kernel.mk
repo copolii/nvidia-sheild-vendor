@@ -20,12 +20,6 @@ KERNEL_PATH ?= $(CURDIR)/kernel
 #kernel_version := $(strip $(shell head $(KERNEL_PATH)/Makefile | \
 #	grep "SUBLEVEL =" | cut -d= -f2))
 
-TARGET_USE_DTB ?= false
-BOOTLOADER_SUPPORTS_DTB ?= false
-APPEND_DTB_TO_KERNEL ?= false
-EXTRA_KERNEL_TARGETS :=
-EXTRA_BUILD_CMD :=
-
 REAL_TARGET_ARCH := $(TARGET_ARCH)
 
 # Special handling for ARM64 kernel (diff arch/ and built-in bootloader)
@@ -77,21 +71,6 @@ endif
 
 KERNEL_DEFCONFIG_PATH := $(KERNEL_PATH)/arch/$(REAL_TARGET_ARCH)/configs/$(TARGET_KERNEL_CONFIG)
 
-# If we don't have kernel or bootloader support for DTB loading, we won't be using it
-ifeq ($(BOOTLOADER_SUPPORTS_DTB),false)
-ifeq ($(APPEND_DTB_TO_KERNEL),false)
-ifeq ($(TARGET_USE_DTB),true)
-    $(warning No support to pass Device Tree to kernel, disabling DT)
-    TARGET_USE_DTB := false
-endif
-endif
-endif
-
-# If we are not using DTB, don't append DTB to kernel
-ifeq ($(TARGET_USE_DTB),false)
-    APPEND_DTB_TO_KERNEL := false
-endif
-
 define dts-files-under
 $(patsubst ./%,%,$(shell find $(1) -name "$(2)-*.dts"))
 endef
@@ -101,22 +80,16 @@ $(word $(1),$(subst -,$(space),$(2)))
 endef
 
 # The target must provide a name for the DT file (sources located in arch/arm/boot/dts/*)
-ifeq ($(TARGET_USE_DTB),true)
-    ifeq ($(TARGET_KERNEL_DT_NAME),)
-        $(error Must provide a DT file name in TARGET_KERNEL_DT_NAME -- <kernel>/arch/arm/boot/dts/*)
-    else
-        KERNEL_DTS_PATH := $(call dts-files-under,$(KERNEL_PATH)/arch/$(TARGET_ARCH)/boot/dts,$(call word-dash,1,$(TARGET_KERNEL_DT_NAME)))
-        KERNEL_DT_NAME := $(subst .dts,,$(notdir $(KERNEL_DTS_PATH)))
-        KERNEL_DT_NAME_DTB := $(subst .dts,.dtb,$(notdir $(KERNEL_DTS_PATH)))
-        BUILT_KERNEL_DTB := $(addprefix $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/dts/,$(addsuffix .dtb,$(KERNEL_DT_NAME)))
-        TARGET_BUILT_KERNEL_DTB := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/dts/$(TARGET_KERNEL_DT_NAME).dtb
-        INSTALLED_DTB_TARGET := $(addprefix $(OUT)/,$(addsuffix .dtb, $(KERNEL_DT_NAME)))
-        DTS_PATH_EXIST := $(foreach dts_file,$(KERNEL_DTS_PATH),$(if $(wildcard $(dts_file)),,$(error DTS file not found -- $(dts_file))))
-    endif
-
-    ifeq ($(APPEND_DTB_TO_KERNEL),false)
-        EXTRA_KERNEL_TARGETS := $(INSTALLED_DTB_TARGET)
-    endif
+ifeq ($(TARGET_KERNEL_DT_NAME),)
+    $(error Must provide a DT file name in TARGET_KERNEL_DT_NAME -- <kernel>/arch/arm/boot/dts/*)
+else
+    KERNEL_DTS_PATH := $(call dts-files-under,$(KERNEL_PATH)/arch/$(TARGET_ARCH)/boot/dts,$(call word-dash,1,$(TARGET_KERNEL_DT_NAME)))
+    KERNEL_DT_NAME := $(subst .dts,,$(notdir $(KERNEL_DTS_PATH)))
+    KERNEL_DT_NAME_DTB := $(subst .dts,.dtb,$(notdir $(KERNEL_DTS_PATH)))
+    BUILT_KERNEL_DTB := $(addprefix $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/dts/,$(addsuffix .dtb,$(KERNEL_DT_NAME)))
+    TARGET_BUILT_KERNEL_DTB := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/dts/$(TARGET_KERNEL_DT_NAME).dtb
+    INSTALLED_DTB_TARGET := $(addprefix $(OUT)/,$(addsuffix .dtb, $(KERNEL_DT_NAME)))
+    DTS_PATH_EXIST := $(foreach dts_file,$(KERNEL_DTS_PATH),$(if $(wildcard $(dts_file)),,$(error DTS file not found -- $(dts_file))))
 endif
 
 define newline
@@ -125,13 +98,10 @@ define newline
 endef
 
 $(info ==============Kernel DTS/DTB================)
-$(info TARGET_USE_DTB = $(TARGET_USE_DTB))
 $(info KERNEL_DT_NAME_DTB = $(KERNEL_DT_NAME_DTB))
 $(info KERNEL_DTS_PATH = $(subst $(space),$(newline),$(KERNEL_DTS_PATH)))
 $(info BUILT_KERNEL_DTB = $(subst $(space),$(newline),$(BUILT_KERNEL_DTB)))
 $(info INSTALLED_DTB_TARGET = $(subst $(space),$(newline),$(INSTALLED_DTB_TARGET)))
-$(info EXTRA_KERNEL_TARGETS = $(subst $(space),$(newline),$(EXTRA_KERNEL_TARGETS)))
-$(info APPEND_DTB_TO_KERNEL = $(APPEND_DTB_TO_KERNEL))
 $(info ============================================)
 
 KERNEL_EXTRA_ARGS=
@@ -216,13 +186,6 @@ ifeq ($(NV_MOBILE_DGPU),1)
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TASK_SIZE_3G_LESS_24M
 endif
 
-ifeq ($(APPEND_DTB_TO_KERNEL),true)
-	@echo "Enable configs to handle DTB appended kernel image (zImage)"
-	$(hide) $(KERNEL_PATH)/scripts/config --file $@ \
-		--enable ARM_APPENDED_DTB \
-		--enable ARM_ATAG_DTB_COMPAT
-endif
-
 # TODO: figure out a way of not forcing kernel & module builds.
 $(TARGET_BUILT_KERNEL_DTB): $(dotconfig) $(BUILT_KERNEL_TARGET) FORCE
 	@echo "Device tree build" $(KERNEL_DT_NAME_DTB)
@@ -231,11 +194,6 @@ $(TARGET_BUILT_KERNEL_DTB): $(dotconfig) $(BUILT_KERNEL_TARGET) FORCE
 $(BUILT_KERNEL_TARGET): $(dotconfig) $(TARGET_BUILT_KERNEL_DTB) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel build"
 	+$(hide) $(kernel-make) zImage
-	+$(hide) $(EXTRA_BUILD_CMD)
-ifeq ($(APPEND_DTB_TO_KERNEL),true)
-	@echo "Appending DTB file to kernel image"
-	+$(hide) cat $(TARGET_BUILT_KERNEL_DTB) >>$(BUILT_KERNEL_TARGET)
-endif
 
 kmodules-build_only: $(BUILT_KERNEL_TARGET) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel modules build"
@@ -302,13 +260,11 @@ $(NV_INSTALLED_SYSTEMIMAGE): $(BUILT_SYSTEMIMAGE_KMODULES)
 # $(INSTALLED_KERNEL_TARGET) is defined in
 # $(TOP)/build/target/board/Android.mk
 $(INSTALLED_DTB_TARGET): $(TARGET_BUILT_KERNEL_DTB) | $(ACP)
-ifeq ($(APPEND_DTB_TO_KERNEL),false)
 	@echo "Copying DTB file" $(notdir $@)
 	@mkdir -p $(dir $@)
 	+$(hide) $(ACP) -fp $(addprefix $(dir $<),$(@F)) $@
-endif
 
-$(INSTALLED_KERNEL_TARGET): $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB) $(EXTRA_KERNEL_TARGETS) FORCE | $(ACP)
+$(INSTALLED_KERNEL_TARGET): $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB) $(INSTALLED_DTB_TARGET) FORCE | $(ACP)
 	$(copy-file-to-target)
 
 # Kernel build also includes some drivers as kernel modules which are
