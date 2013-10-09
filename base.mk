@@ -135,6 +135,33 @@ else
 LOCAL_ADDITIONAL_DEPENDENCIES += $(NVIDIA_MAKEFILE)
 endif
 
+# If modules are in vendor/nvidia, but not 3rdparty, then they should be ours
+ifneq ($(findstring vendor/nvidia,$(LOCAL_PATH)),)
+ifeq ($(findstring 3rdparty,$(LOCAL_PATH)),)
+LOCAL_PROPRIETARY_MODULE := true
+
+ifeq ($(LOCAL_MODULE_OWNER),)
+LOCAL_MODULE_OWNER := nvidia
+endif
+endif
+
+ifneq ($(findstring cpl,$(LOCAL_PATH)),)
+LOCAL_PROPRIETARY_MODULE := false
+endif
+ifneq ($(findstring cpl_updater/tests,$(LOCAL_PATH)),)
+LOCAL_PROPRIETARY_MODULE := false
+endif
+
+ifneq ($(findstring cpl_updater,$(LOCAL_PATH)),)
+LOCAL_PROPRIETARY_MODULE := false
+endif
+
+ifneq ($(findstring wfd,$(LOCAL_PATH)),)
+LOCAL_PROPRIETARY_MODULE := false
+endif
+
+endif
+
 # Add to nvidia goals
 nvidia-clean: clean-$(NVIDIA_TARGET_NAME)
 
