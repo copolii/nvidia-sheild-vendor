@@ -66,11 +66,6 @@ NVIDIA_AR20SHADERLAYOUT    := $(HOST_OUT_EXECUTABLES)/ar20shaderlayout
 
 NVIDIA_GETEXPORTS          := $(NVIDIA_BUILD_ROOT)/getexports.py
 NVIDIA_HEXIFY              := $(NVIDIA_BUILD_ROOT)/hexify.py
-ifneq ($(TEGRA_TOP),hardware/tegra)
-NVIDIA_NVIDL               := $(HOST_OUT_EXECUTABLES)/nvidl
-else
-NVIDIA_NVIDL               := hardware/tegra/prebuilt/host/$(HOST_OS)-x86/bin/nvidl
-endif
 
 # global vars
 ALL_NVIDIA_MODULES :=
@@ -80,14 +75,6 @@ NVIDIA_APICHECK := 1
 endif
 
 # rule generation to be used via $(call)
-
-define nvidl-rule
-$(3): PRIVATE_IDLFLAGS := $(1) $(LOCAL_IDLFLAGS) $(addprefix -I ,$(LOCAL_IDL_INCLUDES))
-$(3): $(2) $(NVIDIA_NVIDL) $(LOCAL_ADDITIONAL_DEPENDENCIES)
-	@echo "IDL Generated file: $$@"
-	@mkdir -p $$(dir $$@)
-	$(hide) $(NVIDIA_NVIDL) $$(PRIVATE_IDLFLAGS) -o $$@ $$<
-endef
 
 define transform-shader-to-cgbin
 @echo "Compiling shader $@ from $<"

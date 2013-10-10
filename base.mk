@@ -70,33 +70,6 @@ ifneq ($(findstring $(LOCAL_MODULE_CLASS),EXECUTABLES STATIC_LIBRARIES SHARED_LI
 
 intermediates := $(local-intermediates-dir)
 
-# idl rules
-
-$(foreach stub,$(LOCAL_NVIDIA_STUBS), \
-  $(eval _stubFrom := $(TEGRA_TOP)/core/include/$(patsubst %_stub.c,%.idl,$(stub))) \
-  $(eval _stubTo := $(intermediates)/$(stub)) \
-  $(eval $(call nvidl-rule,-s,$(_stubFrom),$(_stubTo))) \
-  $(eval LOCAL_GENERATED_SOURCES += $(_stubTo)) \
- )
-_stubFrom :=
-_stubTo :=
-
-$(foreach disp,$(LOCAL_NVIDIA_DISPATCHERS), \
-  $(eval _dispFrom := $(TEGRA_TOP)/core/include/$(patsubst %_dispatch.c,%.idl,$(disp))) \
-  $(eval _dispTo := $(intermediates)/$(disp)) \
-  $(eval $(call nvidl-rule,-d,$(_dispFrom),$(_dispTo))) \
-  $(eval LOCAL_GENERATED_SOURCES += $(_dispTo)) \
- )
-_dispFrom :=
-_dispTo :=
-
-ifneq ($(strip $(LOCAL_NVIDIA_PKG_DISPATCHER)),)
-$(eval $(call nvidl-rule,-g, \
-	$(TEGRA_TOP)/core/include/$(LOCAL_NVIDIA_PKG).idl, \
-	$(intermediates)/$(LOCAL_NVIDIA_PKG_DISPATCHER)))
-LOCAL_GENERATED_SOURCES += $(intermediates)/$(LOCAL_NVIDIA_PKG_DISPATCHER)
-endif
-
 # shader rules
 
 # LOCAL_NVIDIA_SHADERS is relative to LOCAL_PATH
