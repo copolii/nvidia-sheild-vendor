@@ -4,6 +4,8 @@ include $(NVIDIA_BASE)
 include $(NVIDIA_WARNINGS)
 include $(NVIDIA_COVERAGE)
 
+LOCAL_LDFLAGS += -Wl,--build-id=sha1
+
 # try guessing the .export file if not given
 ifeq ($(LOCAL_NVIDIA_EXPORTS),)
 LOCAL_NVIDIA_EXPORTS := $(strip $(wildcard $(LOCAL_PATH)/$(LOCAL_MODULE)_*.export) $(wildcard $(LOCAL_PATH)/$(LOCAL_MODULE).export))
