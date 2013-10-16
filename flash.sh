@@ -99,23 +99,29 @@ loki() {
     odmdata=0x98000
 
     # Set internal board identifier
-    [[ -n $BOARD_IS_E2548 ]] && board=e2548
-    [[ -n $BOARD_IS_E2549 ]] && board=e2549
+    [[ -n $BOARD_IS_E2548 ]] && board=e2548_a02
+    [[ -n $BOARD_IS_E2549 ]] && board=e2549_b00
+    [[ -n $BOARD_IS_E2548_B00 ]] && board=e2548_b00
     if [[ -z $board ]] && _shell_is_interactive; then
         # Prompt user for target board info
-        _choose "Which board to flash?" "e2548 e2549" board e2548
+        _choose "Which board to flash?" "e2548_a02 e2548_b00 e2549_b00" board e2548_b00
     else
-        board=${board-e2548}
-        # Re-flash NCT partition in automation use
-        nct="--nct NCT_loki.txt"
+        board=${board-e2548_b00}
     fi
 
-    # Set bctfile and cfgfile based on target board
+    # Set bctfile and cfgfile based on target board.
+    # TEMP: always flash NCT for the boards until
+    # final flashing procedure is fully implemented
     cfgfile=flash.cfg
-    if [[ $board == e2548 ]]; then
+    if [[ $board == e2548_a02 ]]; then
+        nct="--nct NCT_loki.txt"
         bctfile=bct.cfg
-    elif [[ $board == e2549 ]]; then
-        bctfile=bct_thor1_9.cfg
+    elif [[ $board == e2548_b00 ]]; then
+        nct="--nct NCT_loki_b00.txt"
+        bctfile=bct_loki_b00.cfg
+    elif [[ $board == e2549_b00 ]]; then
+        nct="--nct NCT_thor1_95.txt"
+        bctfile=bct_thor1_95.cfg
     fi
 }
 
