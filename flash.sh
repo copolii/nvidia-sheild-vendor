@@ -111,12 +111,11 @@ loki() {
     fi
 
     # Set bctfile and cfgfile based on target board
+    cfgfile=flash.cfg
     if [[ $board == e2548 ]]; then
         bctfile=bct.cfg
-        cfgfile=flash.cfg
     elif [[ $board == e2549 ]]; then
         bctfile=bct_thor1_9.cfg
-        cfgfile=flash_thor1_9.cfg
     fi
 }
 
