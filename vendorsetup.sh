@@ -265,29 +265,24 @@ function krebuild()
 
 function builddtb()
 {
-    local TARGET_USE_DTB=$(get_build_var TARGET_USE_DTB)
-    local APPEND_DTB_TO_KERNEL=$(get_build_var APPEND_DTB_TO_KERNEL)
+    local TARGET_KERNEL_DT_NAME=$(get_build_var TARGET_KERNEL_DT_NAME)
+    local KERNEL_DT_NAME=${TARGET_KERNEL_DT_NAME%%-*}
+    local SRC=${KERNEL_PATH:-"$T/kernel"}
 
-    if [ "$TARGET_USE_DTB" == true ] && [ "$APPEND_DTB_TO_KERNEL" == false ]; then
-        local TARGET_KERNEL_DT_NAME=$(get_build_var TARGET_KERNEL_DT_NAME)
-        local KERNEL_DT_NAME=${TARGET_KERNEL_DT_NAME%%-*}
-        local SRC=${KERNEL_PATH:-"$T/kernel"}
-
-        if [ ! -d "$SRC" ] ; then
-            echo "$SRC not found."
-            return 1
-        fi
-
-        for _DTS_PATH in $SRC/arch/arm/boot/dts/$KERNEL_DT_NAME-*.dts
-        do
-            _DTS_NAME=${_DTS_PATH##*/}
-            _DTB_NAME=${_DTS_NAME/.dts/.dtb}
-            echo $_DTB_NAME
-            ksetup $_DTB_NAME
-            cp $OUT/obj/KERNEL/arch/arm/boot/dts/$_DTB_NAME $OUT
-            echo "$OUT/$_DTB_NAME created successfully."
-        done
+    if [ ! -d "$SRC" ] ; then
+        echo "$SRC not found."
+        return 1
     fi
+
+    for _DTS_PATH in $SRC/arch/arm/boot/dts/$KERNEL_DT_NAME-*.dts
+    do
+        _DTS_NAME=${_DTS_PATH##*/}
+        _DTB_NAME=${_DTS_NAME/.dts/.dtb}
+        echo $_DTB_NAME
+        ksetup $_DTB_NAME
+        cp $OUT/obj/KERNEL/arch/arm/boot/dts/$_DTB_NAME $OUT
+        echo "$OUT/$_DTB_NAME created successfully."
+    done
 }
 
 function buildsysimg()
