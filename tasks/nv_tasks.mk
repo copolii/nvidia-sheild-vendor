@@ -43,6 +43,7 @@ endif
 # Also PRODUCT_COPY_FILES could not be used for prebuilt apk
 ifeq ($(TARGET_DEVICE),tegratab)
 ifneq ($(wildcard vendor/nvidia/tegra/apps/mfgtest),)
+ifneq ($(wildcard vendor/nvidia/tegra/apps/tfc),)
 # Let the defaualt target depend on factory_bundle target
 droidcore: factory_bundle
 factory_bundle_dir := $(PRODUCT_OUT)/factory_bundle
@@ -62,5 +63,6 @@ $(eval $(call copy-one-file,$(PRODUCT_OUT)/usbhostumsread,$(factory_bundle_dir)/
 nv_factory_copied_files += $(factory_bundle_dir)/usbhostumsread
 
 $(INSTALLED_FACTORY_BUNDLE_TARGET): $(nv_factory_copied_files)
+endif
 endif
 endif
