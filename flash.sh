@@ -25,13 +25,28 @@
 # 4. If shell is non-interactive, use default values
 
 # Mandatory arguments, passed from calling scripts.
-if [[ ! -x ${NVFLASH_BINARY} ]]; then
-    echo "error: \${NVFLASH_BINARY} not set or not an executable file"
-    exit 1
-elif [[ ! -d ${PRODUCT_OUT} ]]; then
+if [[ ! -d ${PRODUCT_OUT} ]]; then
     echo "error: \${PRODUCT_OUT} not set or not a directory"
     exit 1
 fi
+
+# Detect OS, then set/verify nvflash binary accordingly.
+case $OSTYPE in
+    cygwin)
+        NVFLASH_BINARY="nvflash.exe"
+        _nosudo=1
+        ;;
+    linux*)
+        if [[ ! -x ${NVFLASH_BINARY} ]]; then
+            echo "error: \${NVFLASH_BINARY} not set or not an executable file"
+            exit 1
+        fi
+        ;;
+    *)
+        echo "error: unsupported OS type $OSTYPE detected"
+        exit 1
+        ;;
+esac
 
 # Optional arguments
 while getopts "nb:c:o:C:s:" OPTION
@@ -305,7 +320,6 @@ _set_cmdline() {
 # If -C is set, override all others
 if [[ $_cmdline ]]; then
     cmdline=(
-        $NVFLASH_BINARY
         $_cmdline
     )
 # If -b, -c and -o are set, use them
