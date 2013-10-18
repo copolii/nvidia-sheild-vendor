@@ -410,11 +410,7 @@ function fflash()
     local SYSTEMIMAGE=$T/$OUTDIR/system.img
     local FASTBOOT=$T/$HOST_OUTDIR/bin/fastboot
 
-    local TARGET_USE_DTB=$(get_build_var TARGET_USE_DTB)
-    local APPEND_DTB_TO_KERNEL=$(get_build_var APPEND_DTB_TO_KERNEL)
-    if [ "$TARGET_USE_DTB" == true ] && [ "$APPEND_DTB_TO_KERNEL" == false ]; then
-        local DTBIMAGE=$T/$OUTDIR/$(get_build_var TARGET_KERNEL_DT_NAME).dtb
-    fi
+    local DTBIMAGE=$T/$OUTDIR/$(get_build_var TARGET_KERNEL_DT_NAME).dtb
     local vendor_id=${FASTBOOT_VID:-"0x955"}
 
     if [ ! "$FASTBOOT" ]; then
