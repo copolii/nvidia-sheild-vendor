@@ -19,6 +19,12 @@ endif
 
 NVIDIA_BUILD_ROOT          := vendor/nvidia/build
 
+#Bug 1266062: Temporary switch to use new ODM repo sync location path
+#This needs to be removed later
+ifndef NV_BUILD_WAR_1266062
+NV_BUILD_WAR_1266062 := 1
+endif
+
 ifndef NV_GPUDRV_SOURCE
 NV_GPUDRV_SOURCE := $(TEGRA_TOP)/gpu/drv
 endif
