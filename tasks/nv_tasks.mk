@@ -48,6 +48,8 @@ droidcore: factory_bundle
 factory_bundle_dir := $(PRODUCT_OUT)/factory_bundle
 $(eval $(call copy-one-file,$(PRODUCT_OUT)/tst.apk,$(factory_bundle_dir)/tst.apk))
 nv_factory_copied_files := $(factory_bundle_dir)/tst.apk
+$(eval $(call copy-one-file,$(PRODUCT_OUT)/tdc.apk,$(factory_bundle_dir)/tdc.apk))
+nv_factory_copied_files += $(factory_bundle_dir)/tdc.apk
 $(eval $(call copy-one-file,$(PRODUCT_OUT)/tmc.apk,$(factory_bundle_dir)/tmc.apk))
 nv_factory_copied_files += $(factory_bundle_dir)/tmc.apk
 $(eval $(call copy-one-file,$(PRODUCT_OUT)/pcba_testcases.xml,$(factory_bundle_dir)/pcba_testcases.xml))
