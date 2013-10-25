@@ -189,7 +189,7 @@ endif
 # TODO: figure out a way of not forcing kernel & module builds.
 $(TARGET_BUILT_KERNEL_DTB): $(dotconfig) $(BUILT_KERNEL_TARGET) FORCE
 	@echo "Device tree build" $(KERNEL_DT_NAME_DTB)
-	$(kernel-make) $(KERNEL_DT_NAME_DTB)
+	+$(hide) $(kernel-make) $(KERNEL_DT_NAME_DTB)
 
 $(BUILT_KERNEL_TARGET): $(dotconfig) $(TARGET_BUILT_KERNEL_DTB) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel build"
