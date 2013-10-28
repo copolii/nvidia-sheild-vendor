@@ -52,14 +52,10 @@ function _karch()
 function _ktoolchain()
 {
     local build_id=$(get_build_var BUILD_ID)
-    if [[ "${build_id}" =~ ^J ]]; then
-        if [[ "$(_karch)" == arm64 ]]; then
-            echo "CROSS_COMPILE=$T/prebuilts/gcc/$HOSTTYPE/arm/aarch64-linux-gnu/bin/aarch64-linux-gnu-"
-        else
-            echo "CROSS_COMPILE=$T/prebuilts/gcc/$HOSTTYPE/arm/arm-eabi-4.6/bin/arm-eabi-"
-        fi
+    if [[ "$(_karch)" == arm64 ]]; then
+         echo "CROSS_COMPILE=$T/prebuilts/gcc/$HOSTTYPE/arm/aarch64-linux-gnu/bin/aarch64-linux-gnu-"
     else
-        echo "CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
+         echo "CROSS_COMPILE=${ARM_EABI_TOOLCHAIN}/arm-eabi-"
     fi
 }
 
