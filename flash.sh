@@ -111,17 +111,18 @@ ardbeg() {
 }
 
 loki() {
-    odmdata=0x98000
+    odmdata=0x69c000
 
     # Set internal board identifier
     [[ -n $BOARD_IS_E2548 ]] && board=e2548_a02
-    [[ -n $BOARD_IS_E2549 ]] && board=e2549_b00
-    [[ -n $BOARD_IS_E2548_B00 ]] && board=e2548_b00
+    [[ -n $BOARD_IS_THOR_195 ]] && board=thor_195
+    [[ -n $BOARD_IS_LOKI_NFF_B00 ]] && board=loki_nff_b00
+    [[ -n $BOARD_IS_LOKI_NFF_B00_2GB ]] && board=loki_nff_b00_2gb
     if [[ -z $board ]] && _shell_is_interactive; then
         # Prompt user for target board info
-        _choose "Which board to flash?" "e2548_a02 e2548_b00 e2549_b00" board e2548_b00
+        _choose "Which board to flash?" "e2548_a02 loki_nff_b00 loki_nff_b00_2gb thor_195" board loki_nff_b00
     else
-        board=${board-e2548_b00}
+        board=${board-loki_nff_b00}
     fi
 
     # Set bctfile and cfgfile based on target board.
@@ -131,10 +132,13 @@ loki() {
     if [[ $board == e2548_a02 ]]; then
         nct="--nct NCT_loki.txt"
         bctfile=bct.cfg
-    elif [[ $board == e2548_b00 ]]; then
+    elif [[ $board == loki_nff_b00 ]]; then
         nct="--nct NCT_loki_b00.txt"
         bctfile=bct_loki_b00.cfg
-    elif [[ $board == e2549_b00 ]]; then
+    elif [[ $board == loki_nff_b00_2gb ]]; then
+        nct="--nct NCT_loki_b00_sku100.txt"
+        bctfile=bct_loki_b00_sku100.cfg
+    elif [[ $board == thor_195 ]]; then
         nct="--nct NCT_thor1_95.txt"
         bctfile=bct_thor1_95.cfg
     fi
