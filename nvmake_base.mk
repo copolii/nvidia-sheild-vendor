@@ -98,7 +98,7 @@ $(NVIDIA_NVMAKE_MODULE) $(LOCAL_MODULE)_nvmakeclean: NVIDIA_NVMAKE_COMMON_BUILD_
     NV_BUILD_TYPE=$(NVIDIA_NVMAKE_BUILD_TYPE) \
     NV_MANGLE_GLSI=0 \
     TARGET_TOOLS_PREFIX=$(abspath $(TARGET_TOOLS_PREFIX)) \
-    TARGET_C_INCLUDES="$(foreach inc,$(TARGET_C_INCLUDES) external/stlport/stlport bionic,$(abspath $(inc)))" \
+    TARGET_C_INCLUDES="$(foreach inc,external/stlport/stlport $(TARGET_C_INCLUDES) bionic,$(abspath $(inc)))" \
     TARGET_OUT_INTERMEDIATE_LIBRARIES=$(abspath $(TARGET_OUT_INTERMEDIATE_LIBRARIES)) \
     TARGET_LIBGCC=$(TARGET_LIBGCC) \
     $(NVIDIA_NVMAKE_VERBOSE) \
