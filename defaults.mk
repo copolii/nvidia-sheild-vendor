@@ -48,6 +48,8 @@ endif
 
 TEGRA_CFLAGS :=
 
+# Following line has been added to prevent redefinition of NV_DEBUG
+LOCAL_CFLAGS += -UNV_DEBUG
 # NOTE: this conditional needs to be kept in sync with the one in base.mk!
 ifeq ($(TARGET_BUILD_TYPE),debug)
 LOCAL_CFLAGS += -DNV_DEBUG=1
