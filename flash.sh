@@ -140,11 +140,6 @@ loki() {
     fi
 }
 
-bonaire() {
-    odmdata=0x84000
-    bctfile=bct.cfg
-}
-
 pluto() {
     odmdata=0x40098008
     bctfile=common_bct.cfg
