@@ -95,10 +95,11 @@ function ksetup()
     (cd $T && mkdir -p $KOUT ; make -C $SRC $KARCH $CROSS O=$KOUT $1)
 
     if [ "$SECURE_OS_BUILD" == "y" ] || [ "$SECURE_OS_BUILD" == "tf" ]; then
-        $SRC/scripts/config --file $KOUT/.config --enable TRUSTED_FOUNDATIONS
+        $SRC/scripts/config --file $KOUT/.config --enable TRUSTED_FOUNDATIONS \
+             --enable TEGRA_USE_SECURE_KERNEL
     elif [ "$SECURE_OS_BUILD" == "tlk" ]; then
         $SRC/scripts/config --file $KOUT/.config --enable TRUSTED_LITTLE_KERNEL \
-             --enable OTE_ENABLE_LOGGER
+             --enable OTE_ENABLE_LOGGER --enable TEGRA_USE_SECURE_KERNEL
     fi
     if [ "$NVIDIA_KERNEL_COVERAGE_ENABLED" == "1" ]; then
         echo "Explicitly enabling coverage support in kernel config on user request"
@@ -185,6 +186,7 @@ function ksavedefconfig()
     $SRC/scripts/config --file $KOUT/.config \
         --disable TRUSTED_FOUNDATIONS \
         --disable TRUSTED_LITTLE_KERNEL \
+        --disable TEGRA_USE_SECURE_KERNEL \
         --disable GCOV_KERNEL \
         --disable OTE_ENABLE_LOGGER \
         --disable TEGRA_USE_SECURE_KERNEL
