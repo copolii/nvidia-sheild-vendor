@@ -186,7 +186,8 @@ function ksavedefconfig()
         --disable TRUSTED_FOUNDATIONS \
         --disable TRUSTED_LITTLE_KERNEL \
         --disable GCOV_KERNEL \
-        --disable OTE_ENABLE_LOGGER
+        --disable OTE_ENABLE_LOGGER \
+        --disable TEGRA_USE_SECURE_KERNEL
 
     echo "make -C $SRC $KARCH $CROSS O=$KOUT savedefconfig"
     (cd $T && make -C $SRC $KARCH $CROSS O=$KOUT savedefconfig &&
