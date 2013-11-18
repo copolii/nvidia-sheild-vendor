@@ -49,9 +49,9 @@ $(foreach f,$(1), $(eval \
   _cmd += $(f) BCT 1
  else ifneq ($(filter %xusb_sil_rel_fw,$(f)),)
   _cmd += $(f) DFI 1
- else ifneq ($(filter %charged.bmp,$(f)),)
-  _cmd += $(f) CHG 1
  else ifneq ($(filter %charging.bmp,$(f)),)
+  _cmd += $(f) CHG 1
+ else ifneq ($(filter %charged.bmp,$(f)),)
   _cmd += $(f) FBP 1
  else ifneq ($(filter %lowbat.bmp,$(f)),)
   _cmd += $(f) LBP 1
