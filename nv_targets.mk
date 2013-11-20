@@ -74,6 +74,22 @@ _blob_deps += \
       $(PRODUCT_OUT)/xusb_sil_rel_fw
 endif
 
+ifeq ($(TARGET_DEVICE),tegranote7c)
+# For tegranote7c
+ifeq ($(strip $(NV_TN_PLATFORM)),basic)
+_blob_deps += \
+      $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME)-b.dtb
+else ifeq ($(strip $(NV_TN_PLATFORM)),premium)
+_blob_deps += \
+      $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME).dtb
+endif
+else
+_blob_deps += \
+      $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME).dtb \
+      $(PRODUCT_OUT)/microboot.bin \
+      $(PRODUCT_OUT)/xusb_sil_rel_fw
+endif
+
 # target to generate blob
 nv-blob: \
       $(HOST_OUT_EXECUTABLES)/nvblob \
