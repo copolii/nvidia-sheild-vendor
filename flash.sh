@@ -83,26 +83,24 @@ product=$(echo ${PRODUCT_OUT%/} | grep -o '[a-zA-Z0-9]*$')
 # Setup functions per target board
 ardbeg() {
     odmdata=0x98000
+    bctfile=bct.cfg
     skuid=auto
 
     if [[ -z $board ]] && _shell_is_interactive; then
         # prompt user for target board info
         _choose "which board to flash?" "tn8 tn8b shield_ers laguna" board shield_ers
     else
-        board=shield_ers
+        board=${board-shield_ers}
     fi
 
     # set bctfile and cfgfile based on target board
     if [[ $board == tn8 ]]; then
-        bctfile=bct.cfg
         cfgfile=tn8_flash.cfg
         nct="--nct nct_tn8.txt"
     elif [[ $board == tn8b ]]; then
-        bctfile=bct.cfg
         cfgfile=tn8b_flash.cfg
         nct="--nct nct_tn8b.txt"
     elif [[ $board == shield_ers ]]; then
-        bctfile=bct.cfg
         cfgfile=flash.cfg
     elif [[ $board == laguna ]]; then
         bctfile=flash_pm358_792.cfg
