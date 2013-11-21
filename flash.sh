@@ -116,11 +116,13 @@ loki() {
     # Set internal board identifier
     [[ -n $BOARD_IS_E2548 ]] && board=e2548_a02
     [[ -n $BOARD_IS_THOR_195 ]] && board=thor_195
+    [[ -n $BOARD_IS_FOSTER_PRO ]] && board=foster_pro
     [[ -n $BOARD_IS_LOKI_NFF_B00 ]] && board=loki_nff_b00
+    [[ -n $BOARD_IS_LOKI_FFD_PREM ]] && board=loki_ffd_prem
     [[ -n $BOARD_IS_LOKI_NFF_B00_2GB ]] && board=loki_nff_b00_2gb
     if [[ -z $board ]] && _shell_is_interactive; then
         # Prompt user for target board info
-        _choose "Which board to flash?" "e2548_a02 loki_nff_b00 loki_nff_b00_2gb thor_195" board loki_nff_b00
+        _choose "Which board to flash?" "e2548_a02 loki_nff_b00 loki_nff_b00_2gb thor_195 loki_ffd_prem foster_pro" board loki_nff_b00
     else
         board=${board-loki_nff_b00}
     fi
@@ -135,6 +137,13 @@ loki() {
     elif [[ $board == loki_nff_b00 ]]; then
         nct="--nct NCT_loki_b00.txt"
         bctfile=bct_loki_b00.cfg
+    elif [[ $board == foster_pro ]]; then
+        nct="--nct NCT_foster.txt"
+        bctfile=bct_loki_ffd_sku0.cfg
+        odmdata=0x29c000
+    elif [[ $board == loki_ffd_prem ]]; then
+        nct="--nct NCT_loki_ffd_sku0.txt"
+        bctfile=bct_loki_ffd_sku0.cfg
     elif [[ $board == loki_nff_b00_2gb ]]; then
         nct="--nct NCT_loki_b00_sku100.txt"
         bctfile=bct_loki_b00_sku100.cfg
