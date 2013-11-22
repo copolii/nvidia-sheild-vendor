@@ -148,12 +148,6 @@ LOCAL_SHARED_LIBRARIES += libc libdl libm libstdc++ libz
 LOCAL_ADDITIONAL_DEPENDENCIES += \
 	$(foreach l,$(LOCAL_SHARED_LIBRARIES),$(TARGET_OUT_INTERMEDIATE_LIBRARIES)/$(l).so)
 
-# This rule avoids breaking incremental builds when switching nvmake builds from GCC 4.6 to 4.7
-# TODO Remove after transition period (see bug 872779).
-ifneq ($(shell strings -a $(NVIDIA_NVMAKE_MODULE) | grep "GCC: (GNU) 4.6.x"),)
-$(NVIDIA_NVMAKE_MODULE): $(LOCAL_MODULE)_nvmakeclean
-endif
-
 # This target needs to be forced, nvmake will do its own dependency checking
 $(NVIDIA_NVMAKE_MODULE): $(LOCAL_ADDITIONAL_DEPENDENCIES) FORCE
 	@echo "Build with nvmake: $(PRIVATE_MODULE) ($@)"
