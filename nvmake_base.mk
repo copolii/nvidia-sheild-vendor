@@ -97,6 +97,7 @@ $(NVIDIA_NVMAKE_MODULE) $(LOCAL_MODULE)_nvmakeclean: NVIDIA_NVMAKE_COMMON_BUILD_
     NV_TARGET_ARCH=ARMv7 \
     NV_BUILD_TYPE=$(NVIDIA_NVMAKE_BUILD_TYPE) \
     NV_MANGLE_GLSI=0 \
+    NV_COVERAGE_ENABLED=$(NVIDIA_COVERAGE_ENABLED) \
     TARGET_TOOLS_PREFIX=$(abspath $(TARGET_TOOLS_PREFIX)) \
     TARGET_C_INCLUDES="$(foreach inc,external/stlport/stlport $(TARGET_C_INCLUDES) bionic,$(abspath $(inc)))" \
     TARGET_OUT_INTERMEDIATE_LIBRARIES=$(abspath $(TARGET_OUT_INTERMEDIATE_LIBRARIES)) \
@@ -145,6 +146,17 @@ endif
 # LOCAL_SHARED_LIBRARIES will enforce the install requirement, but
 # LOCAL_ADDITIONAL_DEPENDENCIES will enforce that they are built before nvmake runs
 LOCAL_SHARED_LIBRARIES += libc libdl libm libstdc++ libz
+# Ensure libgcov_null.so is built if needed.
+ifeq ($(TARGET_BUILD_TYPE),debug)
+  ifneq ($(NVIDIA_COVERAGE_ENABLED),)
+    ifneq ($(LOCAL_NVIDIA_NO_COVERAGE),true)
+      ifeq ($(LOCAL_NVIDIA_NULL_COVERAGE),true)
+        LOCAL_SHARED_LIBRARIES += libgcov_null
+      endif
+    endif
+  endif
+endif
+
 LOCAL_ADDITIONAL_DEPENDENCIES += \
 	$(foreach l,$(LOCAL_SHARED_LIBRARIES),$(TARGET_OUT_INTERMEDIATE_LIBRARIES)/$(l).so)
 
