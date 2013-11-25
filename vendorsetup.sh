@@ -239,8 +239,8 @@ function krebuild()
         return 1
     fi
 
-    echo "make -j$NUMCPUS -C $SRC $* $KARCH $CROSS $KOUT"
-    (cd $T && make -j$NUMCPUS -C $SRC $* $KARCH $CROSS $KOUT)
+    echo "make -j$NUMCPUS -l$NUMCPUS -C $SRC $* $KARCH $CROSS $KOUT"
+    (cd $T && make -j$NUMCPUS -l$NUMCPUS -C $SRC $* $KARCH $CROSS $KOUT)
     local ERR=$?
 
     if [ $ERR -ne 0 ] ; then
@@ -340,13 +340,13 @@ function mm()
 function mp()
 {
     _getnumcpus
-    m -j$NUMCPUS $*
+    m -j$NUMCPUS -l$NUMCPUS $*
 }
 
 function mmp()
 {
     _getnumcpus
-    mm -j$NUMCPUS $*
+    mm -j$NUMCPUS -l$NUMCPUS $*
 }
 
 function fboot()
