@@ -16,6 +16,7 @@ import os
 import optparse
 import logging
 import re
+import codecs
 from xml.dom.minidom import parse
 
 # Functions
@@ -164,7 +165,7 @@ class BuildProp:
     def __init__(self, logger, buildprop):
         self.logger = logger
         self.buildprop = buildprop
-        f = open(self.buildprop)
+        f = codecs.open(self.buildprop, 'r', 'utf-8')
         self.lines = f.readlines()
         f.close()
         self.lines = [s[:-1] for s in self.lines]
@@ -172,6 +173,7 @@ class BuildProp:
     def get(self, name):
         key = name + "="
         for line in self.lines:
+            self.logger.debug("Line: %s" % line)
             if line.startswith(key):
                 return line[len(key):]
         return
@@ -185,7 +187,7 @@ class BuildProp:
         self.lines.append(key + value)
 
     def write(self):
-        f = open(self.buildprop, 'w+')
+        f = codecs.open(self.buildprop, 'w+', 'utf-8')
         f.write("\n".join(self.lines))
         f.write("\n")
         f.close
