@@ -7,7 +7,16 @@ ifeq ($(BUILD_STANDALONE_BOOTLOADER), 1)
 TARGET_NO_KERNEL := true
 endif
 
-ifneq ($(TARGET_NO_KERNEL),true)
+ifneq ($(filter kernel,$(BUILD_BRAIN_MODULAR_COMPONENTS)),)
+# Provide dummy targets for modular kernel builds
+.PHONY: build_kernel_tests kernel-tests
+
+# Provide a dummy kernel image
+$(INSTALLED_KERNEL_TARGET):
+	$(hide) mkdir -p $(dir $@)
+	$(hide) touch $@
+
+else ifneq ($(TARGET_NO_KERNEL),true)
 
 ifneq ($(TOP),.)
 $(error Kernel build assumes TOP == . i.e Android build has been started from TOP/Makefile )
