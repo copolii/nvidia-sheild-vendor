@@ -320,6 +320,7 @@ _set_cmdline() {
         --dtbfile $dtbfile
         --create
         --bl bootloader.bin
+        --wait
         $bypass
         $sif
         $skubypass
