@@ -81,8 +81,9 @@ done
 shift $(($OPTIND - 1))
 _args=$@
 
-# Fetch target board name
-product=$(echo ${PRODUCT_OUT%/} | grep -o '[a-zA-Z0-9]*$')
+# Fetch target board name.  Internal builds (*_int) share a board
+# with the external builds.
+product=$(echo ${PRODUCT_OUT%/} | sed -e 's#.*\/\(.*\)#\1#' -e 's#_int$##')
 
 ##################################
 # tnspec
