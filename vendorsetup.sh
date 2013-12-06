@@ -227,11 +227,7 @@ function krebuild()
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local HOSTOUT=$(get_build_var HOST_OUT)
     local MKBOOTIMG=$T/$HOSTOUT/bin/mkbootimg
-    if [[ "$(_karch)" == arm64 ]]; then
-        local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/$(_karch)/boot/Image
-    else
-        local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/$(_karch)/boot/zImage
-    fi
+    local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/$(_karch)/boot/zImage
     local RAMDISK=$T/$OUTDIR/ramdisk.img
 
     local KOUT="O=$T/$INTERMEDIATES/KERNEL"
@@ -266,7 +262,7 @@ function krebuild()
         local bwdir=$TEGRA_TOP/core-private/system/boot-wrapper-aarch64
         local TARGET_KERNEL_DT_NAME=$(get_build_var TARGET_KERNEL_DT_NAME)
 	local KERNEL_DT_PATH=$SRC/arch/arm64/boot/dts/${TARGET_KERNEL_DT_NAME}.dts
-        sh -c "make -C $bwdir FDT_SRC=${KERNEL_DT_PATH} && make -C $bwdir FDT_SRC=${KERNEL_DT_PATH} EMMC_BOOT=1"
+        sh -c "make -C $bwdir FDT_SRC=${KERNEL_DT_PATH} && make -C $bwdir FDT_SRC=${KERNEL_DT_PATH} EMMC_BOOT=1" &>/dev/null
         echo "$OUT/linux-system.axf created successfully."
     fi
 }
@@ -367,11 +363,7 @@ function fboot()
     local OUTDIR=$(get_build_var PRODUCT_OUT)
     local HOST_OUTDIR=$(get_build_var HOST_OUT)
 
-    if [[ "$(_karch)" == arm64 ]]; then
-        local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/$(_karch)/boot/Image
-    else
-        local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/$(_karch)/boot/zImage
-    fi
+    local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/$(_karch)/boot/zImage
     local RAMDISK=$T/$OUTDIR/ramdisk.img
     local FASTBOOT=$T/$HOST_OUTDIR/bin/fastboot
     local vendor_id=${FASTBOOT_VID:-"0x955"}
