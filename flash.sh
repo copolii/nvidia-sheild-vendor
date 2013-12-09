@@ -93,7 +93,7 @@ ardbeg() {
 
     if [[ -z $board ]] && _shell_is_interactive; then
         # prompt user for target board info
-        _choose "which board to flash?" "tn8 shield_ers laguna" board shield_ers
+        _choose "which board to flash?" "tn8 tn8-p1761 shield_ers laguna" board shield_ers
     else
         board=${board-shield_ers}
     fi
@@ -107,6 +107,10 @@ ardbeg() {
     elif [[ $board == laguna ]]; then
         bctfile=flash_pm358_792.cfg
         cfgfile=laguna_flash.cfg
+    elif [[ $board == tn8-p1761 ]]; then
+        bctfile=flash_e1761_4gb_792.cfg
+        cfgfile=tn8_flash.cfg
+        nct="--nct nct_tn8-ffd.txt"
     fi
 }
 
