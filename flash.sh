@@ -107,6 +107,7 @@ ardbeg() {
 
 loki() {
     odmdata=0x69c000
+    skuid=0x7
 
     # Set internal board identifier
     [[ -n $BOARD_IS_E2548 ]] && board=e2548_a02
