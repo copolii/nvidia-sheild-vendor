@@ -143,23 +143,18 @@ LOCAL_PROPRIETARY_MODULE := true
 ifeq ($(LOCAL_MODULE_OWNER),)
 LOCAL_MODULE_OWNER := nvidia
 endif
-endif
 
-ifneq ($(findstring cpl,$(LOCAL_PATH)),)
-LOCAL_PROPRIETARY_MODULE := false
+# For apps without a set path, force them back to /system/app, since dexopt fails in /vendor/app
+ifneq ($(filter APPS JAVA_LIBRARIES,$(LOCAL_MODULE_CLASS)),)
+  ifeq ($(LOCAL_MODULE_PATH),)
+    ifeq (true,$(LOCAL_PRIVILEGED_MODULE))
+      LOCAL_MODULE_PATH := $(TARGET_OUT_$(LOCAL_MODULE_CLASS)_PRIVILEGED)
+    else
+      LOCAL_MODULE_PATH := $(TARGET_OUT_$(LOCAL_MODULE_CLASS))
+    endif
+  endif
 endif
-ifneq ($(findstring cpl_updater/tests,$(LOCAL_PATH)),)
-LOCAL_PROPRIETARY_MODULE := false
 endif
-
-ifneq ($(findstring cpl_updater,$(LOCAL_PATH)),)
-LOCAL_PROPRIETARY_MODULE := false
-endif
-
-ifneq ($(findstring wfd,$(LOCAL_PATH)),)
-LOCAL_PROPRIETARY_MODULE := false
-endif
-
 endif
 
 # Add to nvidia goals
