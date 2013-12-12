@@ -34,11 +34,16 @@ fi
 case $OSTYPE in
     cygwin)
         NVFLASH_BINARY="nvflash.exe"
+        NVGETDTB_BINARY="nvgetdtb.exe"
         _nosudo=1
         ;;
     linux*)
         if [[ ! -x ${NVFLASH_BINARY} ]]; then
             echo "error: \${NVFLASH_BINARY} not set or not an executable file"
+            exit 1
+        fi
+        if [[ ! -x ${NVGETDTB_BINARY} ]]; then
+            echo "error: \${NVGETDTB_BINARY} not set or not an executable file"
             exit 1
         fi
         ;;
@@ -307,7 +312,7 @@ _set_cmdline() {
     fi
 
     # update dtb filename
-    dtbfile=$(sudo $ANDROID_HOST_OUT/bin/nvgetdtb)
+    dtbfile=$(sudo $NVGETDTB_BINARY)
     if [ $? -eq 0 ]; then
         echo "INFO: nvgetdtb: Using $dtbfile for $product product"
     else
