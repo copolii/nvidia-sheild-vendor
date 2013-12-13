@@ -142,6 +142,8 @@ class SkuProp:
             if s.hasAttribute("id") and s.getAttribute("id") == skuid:
                 logger.info("Processing node %s\n" % s.getAttribute("id"))
                 self.sku = s
+            else:
+                self.sku = None
 
     def getProperty(self, name):
         if self.sku:
