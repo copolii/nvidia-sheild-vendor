@@ -6,7 +6,7 @@
 
 dev: droidcore target-files-package
 ifneq ($(NO_ROOT_DEVICE),)
-	device/nvidia/common/generate_nvtest_ramdisk.sh $(TARGET_PRODUCT) $(TARGET_BUILD_TYPE)
+	device/nvidia/common/generate_nvtest_ramdisk.sh $(TARGET_DEVICE) $(TARGET_BUILD_TYPE)
 	device/nvidia/common/generate_full_filesystem.sh
 	device/nvidia/common/generate_asim_bootimg.sh
   ifneq ("$(BOOT_WRAPPER_RAMDISK)","")
