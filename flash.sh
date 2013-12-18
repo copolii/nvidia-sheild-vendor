@@ -106,6 +106,25 @@ tnspec() {
 }
 
 # Setup functions per target board
+t132() {
+    odmdata=0x98000
+    bctfile=bct_pm358_792.cfg
+
+    if [[ -z $board ]] && _shell_is_interactive; then
+        # prompt user for target board info
+        _choose "which board to flash?" "norrin laguna" board norrin
+    else
+        board=${board-norrin}
+    fi
+
+    # set bctfile and cfgfile based on target board
+    if [[ $board == norrin ]]; then
+        cfgfile=norrin_flash.cfg
+    elif [[ $board == laguna ]]; then
+        cfgfile=laguna_flash.cfg
+    fi
+}
+
 ardbeg() {
     odmdata=0x98000
     bctfile=bct.cfg
