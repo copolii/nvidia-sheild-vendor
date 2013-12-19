@@ -136,6 +136,7 @@ loki() {
     # TEMP: always flash NCT for the boards until
     # final flashing procedure is fully implemented
     cfgfile=flash.cfg
+    l_dtbfile=tegra124-loki.dtb
     if [[ $board == e2548_a02 ]]; then
         nct="--nct NCT_loki.txt"
         bctfile=bct.cfg
@@ -144,6 +145,7 @@ loki() {
         bctfile=bct_loki_b00.cfg
     elif [[ $board == foster_pro ]]; then
         nct="--nct NCT_foster.txt"
+        l_dtbfile=tegra124-foster.dtb
         bctfile=bct_loki_ffd_sku0.cfg
         odmdata=0x29c000
     elif [[ $board == loki_ffd_prem ]]; then
@@ -324,7 +326,8 @@ _set_cmdline() {
     else
         echo "INFO: nvgetdtb couldn't retrieve the dtbfile for $product product"
         dtbfile=$(grep dtb ${PRODUCT_OUT}/$cfgfile | cut -d "=" -f 2)
-        echo "INFO: Using the default dtb file ($dtbfile) from configuration file"
+        echo "INFO: Using the default product dtb file $l_dtbfile"
+        dtbfile=$l_dtbfile
     fi
 
     # Parse nvflash commandline
