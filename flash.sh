@@ -154,57 +154,72 @@ tegratab() {
 }
 
 tegranote7c() {
-    [[ -n $BOARD_IS_E1569 ]] && board=e1569
     if [[ -z $board ]] && _shell_is_interactive; then
-        _choose "Which tegranote7c board revision to flash?" "p1640 e1569" board p1640
+	_choose "Which tegranote7c board revision to flash?" "p1988" board p1988
     else
-        board=${board-p1640}
+	board=${board-p1988}
     fi
-    if [[ $board == e1569 ]]; then
-        bctfile=flash_tegranote7c_e1569.bct
-    elif [[ $board == p1640 ]]; then
-        if [[ -z $secureboot ]] && _shell_is_interactive; then
-            _choose "Your board is PVT or secure boot is enabled?" "yes no" secureboot yes
+
+    if [[ -z $secureboot ]] && _shell_is_interactive; then
+        _choose "Your board is PVT or secure boot is enabled?" "no yes" secureboot no
+    else
+        secureboot="no"
+    fi
+
+    if [[ $secureboot == "yes" ]]; then
+        echo "Please make sure that blob.bin, flash_signed.bct, flash_signed.cfg and bootloader_signed.bin are in out directory..... "
+        bctfile=flash_signed.bct
+        cfgfile=flash_signed.cfg
+        bootloader="bootloader_signed.bin"
+        blob="--blob blob.bin"
+    else
+        bctfile=flash_tegranote7c_p1988.bct
+    fi
+
+    if [[ -z $ENABLE_USD_DEBUGUART ]] && _shell_is_interactive; then
+        _choose "enable uSD debug UART?" "no yes" enable_uSD_DebugUART no
+    else
+        enable_uSD_DebugUART="no"
+    fi
+
+    if [[ $POWER_FROM_BATTERY == "1" ]]; then
+        battery="yes"
+    else
+        if [[ -z $POWER_FROM_BATTERY ]] && _shell_is_interactive; then
+            _choose "Your board has a battery?" "yes no" battery yes
         else
-            secureboot="no"
-        fi
-        if [[ $secureboot == "yes" ]]; then
-                echo "Please make sure that blob.bin, flash_signed.bct, flash_signed.cfg and bootloader_signed.bin are in out directory..... "
-                bctfile=flash_signed.bct
-                cfgfile=flash_signed.cfg
-                bootloader="bootloader_signed.bin"
-                blob="--blob blob.bin"
-        else
-                bctfile=flash_tegranote7c_p1640.bct
-        fi
-        if [[ $POWER_FROM_BATTERY == "1" ]]; then
-                battery="yes"
-        else
-            if [[ -z $POWER_FROM_BATTERY ]] && _shell_is_interactive; then
-                _choose "Your board has a battery?" "yes no" battery yes
-            else
-                battery="no"
-            fi
-        fi
-        if [[ $LIMITEDPOWER_FLASH == "1" ]]; then
-            odmlimitedpower="yes"
-        else
-            if [[ -z $LIMITEDPOWER_FLASH ]] && _shell_is_interactive; then
-                _choose "flashing in limited power?" "yes no" odmlimitedpower yes
-            else
-                odmlimitedpower="no"
-            fi
+            battery="no"
         fi
     fi
+
+    if [[ $LIMITEDPOWER_FLASH == "1" ]]; then
+        odmlimitedpower="yes"
+    else
+        if [[ -z $LIMITEDPOWER_FLASH ]] && _shell_is_interactive; then
+            _choose "flashing in limited power?" "yes no" odmlimitedpower yes
+        else
+            odmlimitedpower="no"
+        fi
+    fi
+
     if [[ $odmlimitedpower == "yes" ]]; then
-            odmoption="--odm limitedpowermode"
+        odmoption="--odm limitedpowermode"
     else
-            odmoption=""
+        odmoption=""
     fi
+
     if [[ $battery == "yes" ]]; then
-        odmdata=0x4069C000
+	if [[ $enable_uSD_DebugUART == "yes" ]]; then
+            odmdata=0x406AC008
+        else
+            odmdata=0x4069C008
+        fi
     else
-        odmdata=0x4029C000
+	if [[ $enable_uSD_DebugUART == "yes" ]]; then
+            odmdata=0x402AC008
+        else
+            odmdata=0x4029C008
+        fi
     fi
 }
 
