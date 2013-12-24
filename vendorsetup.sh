@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
 #
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
@@ -443,6 +443,7 @@ function _flash()
     if [[ "$1" == "bsp" ]]; then
         T="\$(pwd)"
         local FLASH_SH="$T/$PRODUCT_OUT/flash.sh \$@"
+        local USE_BSP="_bsp"
         shift
     else
         T=$(gettop)
@@ -452,6 +453,8 @@ function _flash()
     local cmdline=(
         NVFLASH_BINARY=$T/$HOST_OUT/bin/nvflash
         NVGETDTB_BINARY=$T/$HOST_OUT/bin/nvgetdtb
+        TNSPEC_BIN=$T/$(_tnspec_where bin$USE_BSP)
+        TNSPEC_SPEC=$T/$(_tnspec_where spec$USE_BSP)
         PRODUCT_OUT=$T/$PRODUCT_OUT
         $FLASH_SH
         $@
@@ -501,6 +504,43 @@ function stayon()
 {
     adbserver
     adb shell "svc power stayon true && echo main >/sys/power/wake_lock"
+}
+
+function _tnspec_where()
+{
+    if [ ! "$TARGET_PRODUCT" ]; then
+        echo "TARGET_PRODUCT not set. Try setting it." >&2
+        return ""
+    fi
+
+    if [ "$1" == "bin" ]; then
+        echo vendor/nvidia/build/tnspec.py
+    elif [ "$1" == "bin_bsp" ]; then
+        echo $HOST_OUT/bin/tnspec.py
+    elif [ "$1" == "spec" ]; then
+        echo vendor/nvidia/$TARGET_PRODUCT/tnspec.json
+    elif [ "$1" == "spec_bsp" ]; then
+        echo $(get_build_var PRODUCT_OUT)/tnspec.json
+    fi
+    echo  ""
+}
+
+function tnspec()
+{
+
+    local TNSPEC_BIN=$(_tnspec_where bin)
+    local TNSPEC_SPEC=$(_tnspec_where spec)
+    if [ ! -f "$TNSPEC_BIN" ]; then
+        echo "TNSPEC_BIN: Couldn't find $TNSPEC_BIN" >&2
+        return 1
+    fi
+
+    if [ ! -f "$TNSPEC_SPEC" ]; then
+        echo "TNSPEC_SPEC: Couldn't find $TNSPEC_SPEC" >&2
+        return 1
+    fi
+
+    $TNSPEC_BIN $* -s $TNSPEC_SPEC
 }
 
 # Remove TEGRA_ROOT, no longer required and should never be used.
