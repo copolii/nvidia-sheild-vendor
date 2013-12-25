@@ -227,7 +227,11 @@ function krebuild()
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local HOSTOUT=$(get_build_var HOST_OUT)
     local MKBOOTIMG=$T/$HOSTOUT/bin/mkbootimg
-    local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/$(_karch)/boot/zImage
+    if [[ $(_karch) = "arm64" ]]; then
+        local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/$(_karch)/boot/Image
+    else
+        local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/$(_karch)/boot/zImage
+    fi
     local RAMDISK=$T/$OUTDIR/ramdisk.img
 
     local KOUT="O=$T/$INTERMEDIATES/KERNEL"
