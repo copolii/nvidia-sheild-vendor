@@ -282,13 +282,13 @@ function builddtb()
         return 1
     fi
 
-    for _DTS_PATH in $SRC/arch/arm/boot/dts/$KERNEL_DT_NAME-*.dts
+    for _DTS_PATH in $SRC/arch/$(_karch)/boot/dts/$KERNEL_DT_NAME-*.dts
     do
         _DTS_NAME=${_DTS_PATH##*/}
         _DTB_NAME=${_DTS_NAME/.dts/.dtb}
         echo $_DTB_NAME
         ksetup $_DTB_NAME
-        cp $OUT/obj/KERNEL/arch/arm/boot/dts/$_DTB_NAME $OUT
+        cp $OUT/obj/KERNEL/arch/$(_karch)/boot/dts/$_DTB_NAME $OUT
         echo "$OUT/$_DTB_NAME created successfully."
     done
 }
