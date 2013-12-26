@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
 #
 # NVFlash wrapper script for flashing Android from either build environment
 # or from a BuildBrain output.tgz package. This script is not intended to be
@@ -85,31 +85,77 @@ _args=$@
 product=$(echo ${PRODUCT_OUT%/} | grep -o '[a-zA-Z0-9]*$')
 
 ##################################
+# tnspec
+tnspec() {
+    # return nothing if tnspec tool or spec file is missing
+    if [[ ! -x $TNSPEC_BIN ]]; then
+        echo "Error: tnspec.py (\"$TNSPEC_BIN\") doesn't exist or is not executable." >&2
+        return
+    fi
+    if [[ ! -f $TNSPEC_SPEC ]]; then
+        echo "Error: tnspec.json (\"$TNSPEC_SPEC\") doesn't exist." >&2
+        return
+    fi
+
+    $TNSPEC_BIN $* -s $TNSPEC_SPEC
+}
+
 # Setup functions per target board
 ardbeg() {
     odmdata=0x98000
     bctfile=bct.cfg
     skuid=auto
 
+    tn_boards=$(tnspec list)
+
+    if [[ -n $TNSPEC ]]; then
+        if _in_array $TNSPEC $tn_boards; then
+            echo "Selecting $TNSPEC"
+            board=$TNSPEC
+        else
+            echo "error: Invalid TN board name : TNSPEC=$TNSPEC"
+            echo "Supported TN board names:" $tn_boards
+            exit 1
+        fi
+    fi
+
     if [[ -z $board ]] && _shell_is_interactive; then
+        if [[ ! -z $tn_boards ]]; then
+            echo "For tn8-* boards,"
+            echo "Set \$TNSPEC to <board_name> to skip interactive mode."
+            echo "'tnspec info <board_name>' to get more information about the board"
+            echo ""
+        fi
+
         # prompt user for target board info
-        _choose "which board to flash?" "tn8 tn8-p1761 shield_ers laguna" board shield_ers
+        _choose "which board to flash?" "$tn_boards shield_ers laguna" board shield_ers
     else
         board=${board-shield_ers}
     fi
 
     # set bctfile and cfgfile based on target board
-    if [[ $board == tn8 ]]; then
-        cfgfile=tn8_flash.cfg
-        nct="--nct nct_tn8.txt"
+    if _in_array $board $tn_boards; then
+        cfgfile=$(tnspec cfg $board)
+        [[ ${#cfgfile} == 0 ]] && unset cfgfile
+        bctfile=$(tnspec bct $board)
+        [[ ${#bctfile} == 0 ]] && unset bctfile
+        dtbfile=$(tnspec dtb $board)
+        [[ ${#dtbfile} == 0 ]] && unset dtbfile
+        sku=$(tnspec sku $board)
+        [[ ${#sku} > 0 ]] && skuid=$sku
+
+        # generate NCT
+        tnspec nct $board > $PRODUCT_OUT/nct_$board.txt
+        if [ $? -eq 0 ]; then
+            nct="--nct nct_$board.txt"
+        else
+            echo "Failed to generate NCT file for $board"
+        fi
     elif [[ $board == shield_ers ]]; then
         cfgfile=flash.cfg
     elif [[ $board == laguna ]]; then
         bctfile=flash_pm358_792.cfg
         cfgfile=laguna_flash.cfg
-    elif [[ $board == tn8-p1761 ]]; then
-        cfgfile=tn8_flash.cfg
-        nct="--nct nct_tn8-ffd.txt"
     fi
 }
 
@@ -319,15 +365,17 @@ _set_cmdline() {
         skubypass=""
     fi
 
-    # update dtb filename
+    # update dtb filename if not previously set
     dtbfile=$(sudo $NVGETDTB_BINARY)
-    if [ $? -eq 0 ]; then
-        echo "INFO: nvgetdtb: Using $dtbfile for $product product"
-    else
-        echo "INFO: nvgetdtb couldn't retrieve the dtbfile for $product product"
-        dtbfile=$(grep dtb ${PRODUCT_OUT}/$cfgfile | cut -d "=" -f 2)
-        echo "INFO: Using the default product dtb file $l_dtbfile"
-        dtbfile=$l_dtbfile
+    if [[ -z $dtbfile ]]; then
+        if [ $? -eq 0 ]; then
+             echo "INFO: nvgetdtb: Using $dtbfile for $product product"
+        else
+            echo "INFO: nvgetdtb couldn't retrieve the dtbfile for $product product"
+            dtbfile=$(grep dtb ${PRODUCT_OUT}/$cfgfile | cut -d "=" -f 2)
+            echo "INFO: Using the default product dtb file $l_dtbfile"
+            dtbfile=$l_dtbfile
+        fi
     fi
 
     # Parse nvflash commandline
