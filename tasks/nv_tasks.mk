@@ -98,8 +98,10 @@ $(eval $(call copy-one-file,$(PRODUCT_OUT)/tst.apk,$(factory_bundle_dir)/tst.apk
 nv_factory_copied_files := $(factory_bundle_dir)/tst.apk
 $(eval $(call copy-one-file,$(PRODUCT_OUT)/tdc.apk,$(factory_bundle_dir)/tdc.apk))
 nv_factory_copied_files += $(factory_bundle_dir)/tdc.apk
-$(eval $(call copy-one-file,$(PRODUCT_OUT)/tmc.apk,$(factory_bundle_dir)/tmc.apk))
+
+$(eval $(call copy-one-file,$(TARGET_OUT_APPS)/tmc.apk,$(factory_bundle_dir)/tmc.apk))
 nv_factory_copied_files += $(factory_bundle_dir)/tmc.apk
+
 $(eval $(call copy-one-file,$(PRODUCT_OUT)/pcba_testcases.xml,$(factory_bundle_dir)/pcba_testcases.xml))
 nv_factory_copied_files += $(factory_bundle_dir)/pcba_testcases.xml
 $(eval $(call copy-one-file,$(PRODUCT_OUT)/postassembly_testcases.xml,$(factory_bundle_dir)/postassembly_testcases.xml))
