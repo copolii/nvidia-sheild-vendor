@@ -108,7 +108,9 @@ tnspec() {
 # Setup functions per target board
 t132() {
     odmdata=0x98000
-    bctfile=bct_pm358_792.cfg
+    bctfile=bct_pm374_792.cfg
+    preboot="--preboot mts_preboot_si"
+    bootpack="--bootpack mts_si"
 
     if [[ -z $board ]] && _shell_is_interactive; then
         # prompt user for target board info
@@ -120,8 +122,11 @@ t132() {
     # set bctfile and cfgfile based on target board
     if [[ $board == norrin ]]; then
         cfgfile=norrin_flash.cfg
+        dtbfile=tegra132-norrin.dtb
     elif [[ $board == laguna ]]; then
+        bctfile=bct_pm359_102.cfg
         cfgfile=laguna_flash.cfg
+        dtbfile=tegra132-laguna.dtb
     fi
 }
 
@@ -310,6 +315,8 @@ _set_cmdline() {
     bypass=${bypass-""}
     sif=${sif-""}
     nct=${nct-""}
+    preboot=${preboot-""}
+    bootpack=${bootpack-""}
 
     # set sku id only if it was previously intialized
     skuid=${_skuid-${skuid}}
@@ -350,6 +357,8 @@ _set_cmdline() {
         $sif
         $skubypass
         $nct
+        $preboot
+        $bootpack
         --go
     )
 }
