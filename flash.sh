@@ -108,7 +108,6 @@ ardbeg() {
         bctfile=flash_pm358_792.cfg
         cfgfile=laguna_flash.cfg
     elif [[ $board == tn8-p1761 ]]; then
-        bctfile=flash_e1761_4gb_792.cfg
         cfgfile=tn8_flash.cfg
         nct="--nct nct_tn8-ffd.txt"
     fi
