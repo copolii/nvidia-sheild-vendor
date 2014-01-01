@@ -25,6 +25,12 @@ ifndef NV_BUILD_WAR_1266062
 NV_BUILD_WAR_1266062 := 1
 endif
 
+# Bug 1251947: Choose which location to build NVogtest
+# This needs to be removed later
+ifndef NV_BUILD_WAR_1251947
+NV_BUILD_WAR_1251947 := apps-graphics
+endif
+
 ifndef NV_GPUDRV_SOURCE
 NV_GPUDRV_SOURCE := $(TEGRA_TOP)/gpu/drv
 endif
