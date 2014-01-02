@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
 #
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
@@ -42,7 +42,7 @@ function _getnumcpus ()
 function _ktoolchain()
 {
     local build_id=$(get_build_var BUILD_ID)
-    if [[ "${build_id}" =~ ^J ]]; then
+    if [[ "${build_id}" =~ ^K ]]; then
         echo "CROSS_COMPILE=$T/prebuilts/gcc/$HOSTTYPE/arm/arm-eabi-4.6/bin/arm-eabi-"
     else
         echo "CROSS_COMPILE=$T/prebuilt/$HOSTTYPE/toolchain/arm-eabi-4.4.3/bin/arm-eabi-"
