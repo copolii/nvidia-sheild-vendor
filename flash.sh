@@ -208,6 +208,7 @@ loki() {
         bctfile=bct_loki_b00_sku100.cfg
     elif [[ $board == thor_195 ]]; then
         nct="--nct NCT_thor1_95.txt"
+        l_dtbfile=tegra124-thor195.dtb
         bctfile=bct_thor1_95.cfg
     fi
 }
