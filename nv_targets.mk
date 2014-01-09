@@ -48,7 +48,7 @@ endef
 # These are additional files for which we generate blobs only if they exists
 _blob_deps := \
       $(PRODUCT_OUT)/microboot.bin \
-      $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME).dtb \
+      $(wildcard $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME)*.dtb) \
       $(PRODUCT_OUT)/flash.bct \
       $(PRODUCT_OUT)/xusb_sil_rel_fw
 
