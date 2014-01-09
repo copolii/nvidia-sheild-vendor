@@ -135,6 +135,9 @@ ardbeg() {
 
     # set bctfile and cfgfile based on target board
     if _in_array $board $tn_boards; then
+        tnspec info $board
+
+        odmdata=0x98008
         cfgfile=$(tnspec cfg $board)
         [[ ${#cfgfile} == 0 ]] && unset cfgfile
         bctfile=$(tnspec bct $board)

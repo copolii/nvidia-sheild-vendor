@@ -527,9 +527,9 @@ function _tnspec_where()
 
 function tnspec()
 {
-
-    local TNSPEC_BIN=$(_tnspec_where bin)
-    local TNSPEC_SPEC=$(_tnspec_where spec)
+    T=$(gettop)
+    local TNSPEC_BIN=$T/$(_tnspec_where bin)
+    local TNSPEC_SPEC=$T/$(_tnspec_where spec)
     if [ ! -f "$TNSPEC_BIN" ]; then
         echo "TNSPEC_BIN: Couldn't find $TNSPEC_BIN" >&2
         return 1
