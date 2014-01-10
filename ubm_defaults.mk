@@ -14,10 +14,6 @@ NVUB_SUPPORTS_FLAG_LIST :=
 #
 # This must be removed manually after all flaggings have been removed from code
 #
-# Temporary define to enable T13X code
-NVUB_SUPPORTS_T132 ?= 1
-NVUB_SUPPORTS_FLAG_LIST += NVUB_SUPPORTS_T132=$(NVUB_SUPPORTS_T132)
-LOCAL_CFLAGS += -DNVUB_SUPPORTS_T132=$(NVUB_SUPPORTS_T132)
 
 ifeq ($(NVUB_UNIFIED_BRANCHING_ENABLED),1)
 endif
