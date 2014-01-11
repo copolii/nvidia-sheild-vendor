@@ -17,11 +17,11 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
 #
 # Override properties in build.prop
 #
-ifeq ($(TARGET_DEVICE),ardbeg)
+ifeq ($(REFERENCE_DEVICE),ardbeg)
 ifneq ($(filter  wx_na_wf wx_na_mo wx_un_mo wx_un_do wx_zh_mo wx_diag, $(TARGET_PRODUCT)),)
-ifneq ($(wildcard vendor/nvidia/$(TARGET_DEVICE)/skus/sku-properties.xml),)
+ifneq ($(wildcard vendor/nvidia/$(REFERENCE_DEVICE)/skus/sku-properties.xml),)
 # SKU manifest containing properties and values to changes
-NV_SKU_MANIFEST := vendor/nvidia/$(TARGET_DEVICE)/skus/sku-properties.xml
+NV_SKU_MANIFEST := vendor/nvidia/$(REFERENCE_DEVICE)/skus/sku-properties.xml
 # Tool which changes the value of properties in build.prop
 NV_PROP_MANGLE_TOOL := vendor/nvidia/build/tasks/process_build_props.py
 
@@ -43,7 +43,7 @@ endif
 # Override factory bundle target so that we can copy an APK inside it
 # PRODUCT_FACTORY_BUNDLE_MODULES could not be used for target binaries
 # Also PRODUCT_COPY_FILES could not be used for prebuilt apk
-ifeq ($(TARGET_DEVICE),ardbeg)
+ifeq ($(REFERENCE_DEVICE),ardbeg)
 ifneq ($(wildcard vendor/nvidia/tegra/apps/mfgtest),)
 # Let the defaualt target depend on factory_bundle target
 droidcore: factory_bundle
