@@ -138,7 +138,6 @@ ardbeg() {
     if _in_array $board $tn_boards; then
         tnspec info $board
 
-        odmdata=0x98008
         cfgfile=$(tnspec cfg $board)
         [[ ${#cfgfile} == 0 ]] && unset cfgfile
         bctfile=$(tnspec bct $board)
@@ -147,6 +146,8 @@ ardbeg() {
         [[ ${#dtbfile} == 0 ]] && unset dtbfile
         sku=$(tnspec sku $board)
         [[ ${#sku} > 0 ]] && skuid=$sku
+        odm=$(tnspec odm $board)
+        [[ ${#odm} > 0 ]] && odmdata=$odm
 
         # generate NCT
         tnspec nct $board > $PRODUCT_OUT/nct_$board.txt
@@ -379,8 +380,8 @@ _set_cmdline() {
     fi
 
     # update dtb filename if not previously set
-    dtbfile=$(sudo $NVGETDTB_BINARY)
     if [[ -z $dtbfile ]]; then
+        dtbfile=$(sudo $NVGETDTB_BINARY)
         if [ $? -eq 0 ]; then
              echo "INFO: nvgetdtb: Using $dtbfile for $product product"
         else

@@ -38,10 +38,11 @@ def usage(out):
     pr(out, "")
     pr(out, "commands:")
     pr(out, "   nct  <product id> : generates a NCT file")
-    pr(out, "   dtb  <product id> : returns a corresponding DTB file name")
-    pr(out, "   bct  <product id> : returns a corresponding BCT file name")
-    pr(out, "   cfg  <product id> : returns a corresponding CFG file name")
-    pr(out, "   sku  <product id> : returns a corresponding chip SKU")
+    pr(out, "   dtb  <product id> : returns corresponding DTB file name")
+    pr(out, "   bct  <product id> : returns corresponding BCT file name")
+    pr(out, "   cfg  <product id> : returns corresponding CFG file name")
+    pr(out, "   sku  <product id> : returns corresponding chip SKU")
+    pr(out, "   odm  <product id> : returns corresponding ODM")
     pr(out, "   info <prodcut id> : prints products information.")
     pr(out, "                       -v prints extra information.")
     pr(out, "   list : lists all products.")
@@ -73,6 +74,11 @@ def cmd_sku(sd):
     specs = sd['specs']
     if specs[product_id].has_key('sku'):
         pr(1, specs[product_id]['sku'] )
+
+def cmd_odm(sd):
+    specs = sd['specs']
+    if specs[product_id].has_key('odm'):
+        pr(1, specs[product_id]['odm'] )
 
 def cmd_dtb(sd):
     specs = sd['specs']
@@ -304,6 +310,11 @@ def main(cmds, options):
                 {
                     'need_pid' : True,
                     'fn' : cmd_sku
+                },
+            'odm':
+                {
+                    'need_pid' : True,
+                    'fn' : cmd_odm
                 },
             'info':
                 {
