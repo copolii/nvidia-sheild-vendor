@@ -17,7 +17,7 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
 #
 # Override properties in build.prop
 #
-ifeq ($(TARGET_DEVICE),tegratab)
+ifneq ($(filter $(TARGET_DEVICE),tegratab tegranote7c),)
 ifneq ($(wildcard vendor/nvidia/$(TARGET_PRODUCT)/sku-properties.xml),)
 # SKU manifest containing properties and values to changes
 NV_SKU_MANIFEST := vendor/nvidia/$(TARGET_PRODUCT)/sku-properties.xml
@@ -37,28 +37,6 @@ update-build-properties: $(INSTALLED_BUILD_PROP_TARGET) \
 		-b $(filter %.prop,$^)
 endif
 endif
-
-ifeq ($(TARGET_DEVICE),tegranote7c)
-ifneq ($(wildcard vendor/nvidia/$(TARGET_PRODUCT)/sku-properties.xml),)
-# SKU manifest containing properties and values to changes
-NV_SKU_MANIFEST := vendor/nvidia/$(TARGET_PRODUCT)/sku-properties.xml
-# Tool which changes the value of properties in build.prop
-NV_PROP_MANGLE_TOOL := vendor/nvidia/build/tasks/process_build_props.py
-
-droidcore: update-build-properties
-.PHONY: update-build-properties
-
-update-build-properties: $(INSTALLED_BUILD_PROP_TARGET) \
-	                 $(NV_PROP_MANGLE_TOOL) \
-			 $(NV_SKU_MANIFEST)
-	@echo $@ - Changing properties for $(TARGET_PRODUCT)
-	$(hide) $(filter %.py,$^) \
-		-s $(NV_TN_SKU) \
-		-m $(NV_SKU_MANIFEST) \
-		-b $(filter %.prop,$^)
-endif
-endif
-
 
 # Override factory bundle target so that we can copy an APK inside it
 # PRODUCT_FACTORY_BUNDLE_MODULES could not be used for target binaries
