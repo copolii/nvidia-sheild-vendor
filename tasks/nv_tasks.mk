@@ -18,7 +18,7 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
 # Override properties in build.prop
 #
 ifeq ($(TARGET_DEVICE),ardbeg)
-ifneq ($(filter  wx_na_wf wx_na_mo wx_un_mo wx_zh_mo, $(TARGET_PRODUCT)),)
+ifneq ($(filter  wx_na_wf wx_na_mo wx_un_mo wx_un_do wx_zh_mo wx_diag, $(TARGET_PRODUCT)),)
 ifneq ($(wildcard vendor/nvidia/$(TARGET_DEVICE)/skus/sku-properties.xml),)
 # SKU manifest containing properties and values to changes
 NV_SKU_MANIFEST := vendor/nvidia/$(TARGET_DEVICE)/skus/sku-properties.xml

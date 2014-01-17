@@ -142,8 +142,10 @@ class SkuProp:
             if s.hasAttribute("id") and s.getAttribute("id") == skuid:
                 logger.info("Processing node %s\n" % s.getAttribute("id"))
                 self.sku = s
-            else:
-                self.sku = None
+                break
+        else:
+            logger.error("No matching node found in %s for skuid %s\n" % (manifest, skuid))
+            sys.exit(2)
 
     def getProperty(self, name):
         if self.sku:
