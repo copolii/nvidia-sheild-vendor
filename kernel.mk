@@ -209,6 +209,13 @@ else
     BOOT_WRAPPER_RAMDISK :=
 endif
 
+# core-private isn't present in cust builds, so we can't use files from there.
+# Turn off the boot wrapper stuff for cust builds.
+ifneq ($(wildcard vendor/nvidia/tegra/core-private),vendor/nvidia/tegra/core-private)
+    BOOT_WRAPPER_CMD :=
+    BOOT_WRAPPER_RAMDISK :=
+endif
+
 # TODO: figure out a way of not forcing kernel & module builds.
 $(TARGET_BUILT_KERNEL_DTB): $(dotconfig) $(BUILT_KERNEL_TARGET) FORCE
 	@echo "Device tree build" $(KERNEL_DT_NAME_DTB)
