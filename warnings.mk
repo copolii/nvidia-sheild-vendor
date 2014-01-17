@@ -68,6 +68,7 @@ ifneq ($(LOCAL_NVIDIA_NO_WARNINGS_AS_ERRORS),1)
 LOCAL_CFLAGS += -Wno-error=maybe-uninitialized
 LOCAL_CFLAGS += -Wno-error=narrowing
 LOCAL_CFLAGS += -Wno-error=missing-field-initializers
+LOCAL_CFLAGS += -Wno-error=unused-parameter
 # Add -Werror only if it is not already present
 ifeq (,$(findstring -Werror, $(LOCAL_CFLAGS)))
 LOCAL_CFLAGS += -Werror
