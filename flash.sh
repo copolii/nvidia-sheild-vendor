@@ -114,7 +114,7 @@ t132() {
 
     if [[ -z $board ]] && _shell_is_interactive; then
         # prompt user for target board info
-        _choose "which board to flash?" "norrin laguna" board norrin
+        _choose "which board to flash?" "norrin norrin_prod laguna" board norrin
     else
         board=${board-norrin}
     fi
@@ -123,6 +123,11 @@ t132() {
     if [[ $board == norrin ]]; then
         cfgfile=norrin_flash.cfg
         dtbfile=tegra132-norrin.dtb
+    elif [[ $board == norrin_prod ]]; then
+        cfgfile=norrin_prod_flash.cfg
+        dtbfile=tegra132-norrin.dtb
+	preboot="--preboot mts_preboot_prod"
+	bootpack="--bootpack mts_prod"
     elif [[ $board == laguna ]]; then
         bctfile=bct_pm359_102.cfg
         cfgfile=laguna_flash.cfg
