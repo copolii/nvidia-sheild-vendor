@@ -204,7 +204,7 @@ def nct_fn_not_implemented(sd, e):
 
 def nct_fn_serial(sd, e):
     spec = sd['specs'][product_id]
-    default_sn = "%s-ENG-FFFFFF" % sd['family'].upper()
+    default_sn = "%sENG8888888" % sd['family'].upper()
     sn = spec.get('sn', default_sn)
     #TODO dynamically generate this
     return nct_tmpl_entry % (e['name'], e['idx'], e['type'], sn)
