@@ -41,30 +41,7 @@ endif
 # Override factory bundle target so that we can copy an APK inside it
 # PRODUCT_FACTORY_BUNDLE_MODULES could not be used for target binaries
 # Also PRODUCT_COPY_FILES could not be used for prebuilt apk
-ifeq ($(TARGET_DEVICE),tegratab)
-ifneq ($(wildcard vendor/nvidia/tegra/apps/mfgtest),)
-# Let the defaualt target depend on factory_bundle target
-droidcore: factory_bundle
-factory_bundle_dir := $(PRODUCT_OUT)/factory_bundle
-$(eval $(call copy-one-file,$(PRODUCT_OUT)/tst.apk,$(factory_bundle_dir)/tst.apk))
-nv_factory_copied_files := $(factory_bundle_dir)/tst.apk
-
-$(eval $(call copy-one-file,$(PRODUCT_OUT)/pcba_testcases.xml,$(factory_bundle_dir)/pcba_testcases.xml))
-nv_factory_copied_files += $(factory_bundle_dir)/pcba_testcases.xml
-$(eval $(call copy-one-file,$(PRODUCT_OUT)/postassembly_testcases.xml,$(factory_bundle_dir)/postassembly_testcases.xml))
-nv_factory_copied_files += $(factory_bundle_dir)/postassembly_testcases.xml
-$(eval $(call copy-one-file,$(PRODUCT_OUT)/preassembly_testcases.xml,$(factory_bundle_dir)/preassembly_testcases.xml))
-nv_factory_copied_files += $(factory_bundle_dir)/preassembly_testcases.xml
-$(eval $(call copy-one-file,$(PRODUCT_OUT)/audio_testcases.xml,$(factory_bundle_dir)/audio_testcases.xml))
-nv_factory_copied_files += $(factory_bundle_dir)/audio_testcases.xml
-$(eval $(call copy-one-file,$(PRODUCT_OUT)/usbhostumsread,$(factory_bundle_dir)/usbhostumsread))
-nv_factory_copied_files += $(factory_bundle_dir)/usbhostumsread
-
-$(INSTALLED_FACTORY_BUNDLE_TARGET): $(nv_factory_copied_files)
-endif
-endif
-
-ifeq ($(TARGET_DEVICE),tegranote7c)
+ifneq ($(filter $(TARGET_DEVICE),tegratab tegranote7c),)
 ifneq ($(wildcard vendor/nvidia/tegra/apps/mfgtest),)
 # Let the defaualt target depend on factory_bundle target
 droidcore: factory_bundle
