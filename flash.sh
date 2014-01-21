@@ -14,7 +14,7 @@
 # -C flag overrides the entire command line for nvflash, other three
 # options are for explicitly specifying bct, cfg and odmdata options.
 # -n skips using sudo on cmdline.
-# optional arguments after '--' are added as-is to end of nvflash cmdline.
+# optional arguments after '--' are added as-is to nvflash cmdline.
 
 # Option precedence is as follows:
 #
@@ -23,6 +23,10 @@
 # 2. Shell environment variables (BOARD_IS_PM269, ENTERPRISE_A03 etc)
 # 3. If shell is interactive, prompt for input from user
 # 4. If shell is non-interactive, use default values
+
+######################################################
+# Shell is non-interactive in mobile sanity testing! #
+######################################################
 
 # Mandatory arguments, passed from calling scripts.
 if [[ ! -d ${PRODUCT_OUT} ]]; then
@@ -231,88 +235,9 @@ pluto() {
     bctfile=common_bct.cfg
 }
 
-roth() {
-    odmdata=0x8049C000
-
-    # set internal board identifier
-    [[ -n $board_is_p2454 ]] && board=p2454
-    if [[ -z $board ]] && _shell_is_interactive; then
-        # prompt user for target board info
-        _choose "which roth board revision to flash?" "p2560 p2454" board p2560
-    else
-        board=${board-p2454}
-    fi
-
-    # set bctfile and cfgfile based on target board
-    if [[ $board == p2454 ]]; then
-        bctfile=flash.bct
-    elif [[ $board == p2560 ]]; then
-        bctfile=flash_p2560_450Mhz.bct
-        sif="--sysfile SIF.txt"
-    fi
-    bypass="--fusebypass_config fuse_bypass.txt --sku_to_bypass 0x4"
-}
-
-kai() {
-    odmdata=0x40098000
-}
-
 dalmore() {
-    # Set default ODM data
     odmdata=0x00098000
     bctfile=common_bct.cfg
-}
-
-macallan() {
-    odmdata=0x00098000
-}
-
-cardhu() {
-    # Set default ODM data
-    odmdata=0x40080000
-
-    # Set internal board identifier
-    [[ -n $BOARD_IS_PM269 ]] && board=pm269
-    [[ -n $BOARD_IS_PM305 ]] && board=pm305
-    if [[ -z $board ]] && _shell_is_interactive; then
-        # Prompt user for target board info
-        _choose "Which board to flash?" "cardhu pm269 pm305" board cardhu
-    else
-        board=${board-cardhu}
-    fi
-
-    # Set bctfile and cfgfile based on target board
-    if [[ $board == pm269 ]]; then
-        bctfile=bct_pm269.cfg
-    elif [[ $board == pm305 ]]; then
-        bctfile=bct_pm305.cfg
-    elif [[ $board == cardhu ]]; then
-        bctfile=bct_cardhu.cfg
-    fi
-}
-
-enterprise() {
-    # Set internal board identifier
-    [[ -n $ENTERPRISE_A01 ]] && board=a01
-    [[ -n $ENTERPRISE_A03 ]] && board=a03
-    [[ -n $ENTERPRISE_A04 ]] && board=a03
-    if [[ -z $board ]] && _shell_is_interactive; then
-        _choose "Which Enterprise board revision to flash?" "a01 a02 a03" board a02
-    else
-        board=${board-a02}
-    fi
-
-    # Set bctfile, cfgfile and odmdata based on target board
-    if [[ $board == a01 ]]; then
-        bctfile=bct_a01.cfg
-        odmdata=0x3009A000
-    elif [[ $board == a02 ]]; then
-        bctfile=bct_a02.cfg
-        odmdata=0x3009A000
-    elif [[ $board == a03 ]]; then
-        bctfile=flash_a03.cfg
-        odmdata=0x4009A018
-    fi
 }
 
 ###################
