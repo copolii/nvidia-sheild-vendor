@@ -5,22 +5,30 @@
 # NVFlash wrapper script for flashing Android from either build environment
 # or from a BuildBrain output.tgz package. This script is not intended to be
 # called directly, but from vendorsetup.sh 'flash' function or BuildBrain
-# package flashing script.
-
-# Usage:
-#  flash.sh [-n] [-b <file.bct>] [-c <file.cfg>] [-o <odmdata>] [-C <cmdline>]
-#           [-s <skuid> [forcebypass]] -- [optional args]
+# package flashing script, which set required environment variables:
 #
-# -C flag overrides the entire command line for nvflash, other three
-# options are for explicitly specifying bct, cfg and odmdata options.
-# -n skips using sudo on cmdline.
-# optional arguments after '--' are added as-is to nvflash cmdline.
+#  PRODUCT_OUT      - target build output files
+#  NVFLASH_BINARY   - path to nvflash executable
+#  NVGETDTB_BINARY  - path to nvgetdtb executable
+#
+# Usage:
+#  flash.sh [-n] [-o <odmdata>] [-s <skuid> [forcebypass]] -- [optional args]
+#
+# -n
+#   skips using sudo on cmdline
+# -o <odbdata>
+#   specify ODM data to use
+# -s <sku> [forcebypass]
+#   specify SKU to use, with optional forcebypass flag to nvflash
+#
+# optional arguments after '--' are added as-is to nvflash cmdline before
+#  '--go' argument, which must be last.
 
 # Option precedence is as follows:
 #
-# 1. Command-line options (-b, -c, -o, -C) override all others.
+# 1. Command-line options override all others.
 #  (assuming there are alternative configurations to choose from:)
-# 2. Shell environment variables (BOARD_IS_PM269, ENTERPRISE_A03 etc)
+# 2. Shell environment variables (BOARD, for predefining target board)
 # 3. If shell is interactive, prompt for input from user
 # 4. If shell is non-interactive, use default values
 
@@ -58,14 +66,10 @@ case $OSTYPE in
 esac
 
 # Optional arguments
-while getopts "nb:c:o:C:s:" OPTION
+while getopts "no:s:" OPTION
 do
     case $OPTION in
     n) _nosudo=1;
-        ;;
-    b) _bctfile=${OPTARG};
-        ;;
-    c) _cfgfile=${OPTARG};
         ;;
     o) _odmdata=${OPTARG};
         ;;
@@ -75,8 +79,6 @@ do
             shift
         fi
         ;;
-    C) shift ; _cmdline=$@;
-        ;;
     esac
 done
 
@@ -84,6 +86,9 @@ done
 # flash -b my_flash.bct -- <args to nvflash>
 shift $(($OPTIND - 1))
 _args=$@
+
+# If BOARD is set, use it as predefined board name
+[[ -n $BOARD ]] && board="$BOARD"
 
 # Fetch target board name.  Internal builds (*_int) share a board
 # with the external builds.
@@ -137,31 +142,13 @@ t132() {
 
 ardbeg() {
     odmdata=0x98000
-    bctfile=bct.cfg
     skuid=auto
 
+    # Tegranote boards are handled by an external tnspec.py utility
     tn_boards=$(tnspec list)
 
-    if [[ -n $TNSPEC ]]; then
-        if _in_array $TNSPEC $tn_boards; then
-            echo "Selecting $TNSPEC"
-            board=$TNSPEC
-        else
-            echo "error: Invalid TN board name : TNSPEC=$TNSPEC"
-            echo "Supported TN board names:" $tn_boards
-            exit 1
-        fi
-    fi
-
     if [[ -z $board ]] && _shell_is_interactive; then
-        if [[ ! -z $tn_boards ]]; then
-            echo "For tn8-* boards,"
-            echo "Set \$TNSPEC to <board_name> to skip interactive mode."
-            echo "'tnspec info <board_name>' to get more information about the board"
-            echo ""
-        fi
-
-        # prompt user for target board info
+        # Prompt user for target board info
         _choose "which board to flash?" "$tn_boards shield_ers laguna" board shield_ers
     else
         board=${board-shield_ers}
@@ -169,6 +156,7 @@ ardbeg() {
 
     # set bctfile and cfgfile based on target board
     if _in_array $board $tn_boards; then
+        # Print information for selected board
         tnspec info $board
 
         cfgfile=$(tnspec cfg $board)
@@ -189,8 +177,13 @@ ardbeg() {
         else
             echo "Failed to generate NCT file for $board"
         fi
+    # Mobile sanity uses board name "tn8"
+    elif [[ $board == tn8 ]]; then
+        dtbfile="tegra124-tn8.dtb"
+        cfgfile="tn8_flash.cfg"
+        nct="--nct nct_tn8.txt"
     elif [[ $board == shield_ers ]]; then
-        cfgfile=flash.cfg
+        dtbfile="tegra124-ardbeg-a03-00.dtb"
     elif [[ $board == laguna ]]; then
         bctfile=flash_pm358_792.cfg
         cfgfile=laguna_flash.cfg
@@ -222,7 +215,7 @@ loki() {
     # TEMP: always flash NCT for the boards until
     # final flashing procedure is fully implemented
     cfgfile=flash.cfg
-    l_dtbfile=tegra124-loki.dtb
+    dtbfile=tegra124-loki.dtb
     if [[ $board == e2548_a02 ]]; then
         nct="--nct NCT_loki.txt"
         bctfile=bct.cfg
@@ -231,7 +224,7 @@ loki() {
         bctfile=bct_loki_b00.cfg
     elif [[ $board == foster_pro ]]; then
         nct="--nct NCT_foster.txt"
-        l_dtbfile=tegra124-foster.dtb
+        dtbfile=tegra124-foster.dtb
         bctfile=bct_loki_ffd_sku0.cfg
         odmdata=0x29c000
     elif [[ $board == loki_ffd_prem ]]; then
@@ -254,19 +247,9 @@ loki() {
         bctfile=bct_loki_b00_sku100.cfg
     elif [[ $board == thor_195 ]]; then
         nct="--nct NCT_thor1_95.txt"
-        l_dtbfile=tegra124-thor195.dtb
+        dtbfile=tegra124-thor195.dtb
         bctfile=bct_thor1_95.cfg
     fi
-}
-
-pluto() {
-    odmdata=0x40098008
-    bctfile=common_bct.cfg
-}
-
-dalmore() {
-    odmdata=0x00098000
-    bctfile=common_bct.cfg
 }
 
 ###################
@@ -306,46 +289,35 @@ _choose() {
 
 # Set all needed parameters
 _set_cmdline() {
-    # Set ODM data
-    if [[ -z $odmdata ]] && [[ -z $_odmdata ]]; then
-        echo "error: no ODM data found or provided for target product: $product"
-        exit 1
-    else
-        odmdata=${_odmdata-${odmdata}}
-    fi
+    # Set ODM data, BCT and CFG files (with fallback defaults)
+    odmdata=${_odmdata-${odmdata-"0x98000"}}
+    bctfile=${bctfile-"bct.cfg"}
+    cfgfile=${cfgfile-"flash.cfg"}
 
-    # Set BCT and CFG files (with fallback defaults)
-    bctfile=${_bctfile-${bctfile-"bct.cfg"}}
-    cfgfile=${_cfgfile-${cfgfile-"flash.cfg"}}
-    bypass=${bypass-""}
-    sif=${sif-""}
+    # Set NCT option, defaults to empty
     nct=${nct-""}
     preboot=${preboot-""}
     bootpack=${bootpack-""}
 
-    # set sku id only if it was previously intialized
-    skuid=${_skuid-${skuid}}
-    if [[ -n $skuid ]]; then
-        skubypass="-s "$skuid
-    fi
+    # Set SKU ID, default to empty
+    skuid=${_skuid-${skuid-""}}
+    [[ -n $skuid ]] && skuid="-s $skuid"
 
-    # if fuse_bypass.txt is not present in out directory
-    # then do not bypass sku.
-    if [ ! -f $PRODUCT_OUT/fuse_bypass.txt ]; then
-        skubypass=""
-    fi
-
-    # update dtb filename if not previously set
-    if [[ -z $dtbfile ]]; then
-        dtbfile=$(sudo $NVGETDTB_BINARY)
+    # Update DTB filename if not previously set. Note that nvgetdtb is never executed
+    # in mobile sanity testing (Bug 1439258)
+    if [[ -z $dtbfile ]] && _shell_is_interactive; then
+        local _dtbfile=$(sudo $NVGETDTB_BINARY)
         if [ $? -eq 0 ]; then
-             echo "INFO: nvgetdtb: Using $dtbfile for $product product"
+            echo "INFO: nvgetdtb: Using $dtbfile for $product product"
         else
             echo "INFO: nvgetdtb couldn't retrieve the dtbfile for $product product"
-            dtbfile=$(grep dtb ${PRODUCT_OUT}/$cfgfile | cut -d "=" -f 2)
-            echo "INFO: Using the default product dtb file $l_dtbfile"
-            dtbfile=$l_dtbfile
+            _dtbfile=$(grep dtb ${PRODUCT_OUT}/$cfgfile | cut -d "=" -f 2)
+            echo "INFO: Using the default product dtb file $_dtbfile"
+            dtbfile=$_dtbfile
         fi
+    else
+        # Default used in automated sanity testing is "unknown"
+        dtbfile=${dtbfile-"unknown"}
     fi
 
     # Parse nvflash commandline
@@ -358,9 +330,7 @@ _set_cmdline() {
         --create
         --bl bootloader.bin
         --wait
-        $bypass
-        $sif
-        $skubypass
+        $skuid
         $nct
         $preboot
         $bootpack
@@ -371,19 +341,9 @@ _set_cmdline() {
 ###########
 # Main code
 
-# If -C is set, override all others
-if [[ $_cmdline ]]; then
-    cmdline=(
-        $_cmdline
-    )
-# If -b, -c and -o are set, use them
-elif [[ $_bctfile ]] && [[ $_cfgfile ]] && [[ $_odmdata ]] && [[ $_skuid ]]; then
-    _set_cmdline
-else
-    # Run product function to set needed parameters
-    eval $product
-    _set_cmdline
-fi
+# Run product function to set needed parameters
+eval $product
+_set_cmdline
 
 # If -n is set, don't use sudo when calling nvflash
 if [[ -n $_nosudo ]]; then
@@ -392,6 +352,7 @@ else
     cmdline=(sudo $NVFLASH_BINARY ${cmdline[@]})
 fi
 
+# Add optional command-line arguments
 if [[ $_args ]]; then
     # This assumes '--go' is last in cmdline
     unset cmdline[${#cmdline[@]}-1]
