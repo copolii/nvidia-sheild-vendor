@@ -227,7 +227,11 @@ function krebuild()
     local INTERMEDIATES=$(get_build_var TARGET_OUT_INTERMEDIATES)
     local HOSTOUT=$(get_build_var HOST_OUT)
     local MKBOOTIMG=$T/$HOSTOUT/bin/mkbootimg
-    local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/$(_karch)/boot/zImage
+    if [[ $(_karch) = "arm64" ]]; then
+        local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/$(_karch)/boot/Image
+    else
+        local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/$(_karch)/boot/zImage
+    fi
     local RAMDISK=$T/$OUTDIR/ramdisk.img
 
     local KOUT="O=$T/$INTERMEDIATES/KERNEL"
@@ -260,7 +264,9 @@ function krebuild()
 
     if [[ $KARCH =~ "arm64" ]]; then
         local bwdir=$TEGRA_TOP/core-private/system/boot-wrapper-aarch64
-        sh -c "make -C $bwdir && make -C $bwdir EMMC_BOOT=1" &>/dev/null
+        local TARGET_KERNEL_DT_NAME=$(get_build_var TARGET_KERNEL_DT_NAME)
+	local KERNEL_DT_PATH=$SRC/arch/arm64/boot/dts/${TARGET_KERNEL_DT_NAME}.dts
+        sh -c "make -C $bwdir FDT_SRC=${KERNEL_DT_PATH} && make -C $bwdir FDT_SRC=${KERNEL_DT_PATH} EMMC_BOOT=1" &>/dev/null
         echo "$OUT/linux-system.axf created successfully."
     fi
 }
@@ -276,13 +282,13 @@ function builddtb()
         return 1
     fi
 
-    for _DTS_PATH in $SRC/arch/arm/boot/dts/$KERNEL_DT_NAME-*.dts
+    for _DTS_PATH in $SRC/arch/$(_karch)/boot/dts/$KERNEL_DT_NAME-*.dts
     do
         _DTS_NAME=${_DTS_PATH##*/}
         _DTB_NAME=${_DTS_NAME/.dts/.dtb}
         echo $_DTB_NAME
         ksetup $_DTB_NAME
-        cp $OUT/obj/KERNEL/arch/arm/boot/dts/$_DTB_NAME $OUT
+        cp $OUT/obj/KERNEL/arch/$(_karch)/boot/dts/$_DTB_NAME $OUT
         echo "$OUT/$_DTB_NAME created successfully."
     done
 }

@@ -32,6 +32,11 @@ KERNEL_PATH ?= $(CURDIR)/kernel
 REAL_TARGET_ARCH := $(TARGET_ARCH)
 
 # Special handling for ARM64 kernel (diff arch/ and built-in bootloader)
+ifdef TARGET_ARCH_KERNEL
+    REAL_TARGET_ARCH := $(TARGET_ARCH_KERNEL)
+else
+    REAL_TARGET_ARCH := $(TARGET_ARCH)
+endif
 
 # Always use absolute path for NV_KERNEL_INTERMEDIATES_DIR
 ifneq ($(filter /%, $(TARGET_OUT_INTERMEDIATES)),)
@@ -41,7 +46,11 @@ NV_KERNEL_INTERMEDIATES_DIR := $(CURDIR)/$(TARGET_OUT_INTERMEDIATES)/KERNEL
 endif
 
 dotconfig := $(NV_KERNEL_INTERMEDIATES_DIR)/.config
+ifeq ($(REAL_TARGET_ARCH),arm64)
+BUILT_KERNEL_TARGET := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(REAL_TARGET_ARCH)/boot/Image
+else
 BUILT_KERNEL_TARGET := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(REAL_TARGET_ARCH)/boot/zImage
+endif
 
 ifeq ($(TARGET_TEGRA_VERSION),t30)
     TARGET_KERNEL_CONFIG ?= tegra3_android_defconfig
@@ -51,6 +60,8 @@ else ifeq ($(TARGET_TEGRA_VERSION),t148)
     TARGET_KERNEL_CONFIG ?= tegra14_android_defconfig
 else ifeq ($(TARGET_TEGRA_VERSION),t124)
     TARGET_KERNEL_CONFIG ?= tegra12_android_defconfig
+else ifeq ($(TARGET_TEGRA_VERSION),t132)
+    TARGET_KERNEL_CONFIG ?= tegra13_android_defconfig
 endif
 
 ifeq ($(wildcard $(KERNEL_PATH)/arch/$(REAL_TARGET_ARCH)/configs/$(TARGET_KERNEL_CONFIG)),)
@@ -92,11 +103,11 @@ endef
 ifeq ($(TARGET_KERNEL_DT_NAME),)
     $(error Must provide a DT file name in TARGET_KERNEL_DT_NAME -- <kernel>/arch/arm/boot/dts/*)
 else
-    KERNEL_DTS_PATH := $(call dts-files-under,$(KERNEL_PATH)/arch/$(TARGET_ARCH)/boot/dts,$(call word-dash,1,$(TARGET_KERNEL_DT_NAME)))
+    KERNEL_DTS_PATH := $(call dts-files-under,$(KERNEL_PATH)/arch/$(REAL_TARGET_ARCH)/boot/dts,$(call word-dash,1,$(TARGET_KERNEL_DT_NAME)))
     KERNEL_DT_NAME := $(subst .dts,,$(notdir $(KERNEL_DTS_PATH)))
     KERNEL_DT_NAME_DTB := $(subst .dts,.dtb,$(notdir $(KERNEL_DTS_PATH)))
-    BUILT_KERNEL_DTB := $(addprefix $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/dts/,$(addsuffix .dtb,$(KERNEL_DT_NAME)))
-    TARGET_BUILT_KERNEL_DTB := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(TARGET_ARCH)/boot/dts/$(TARGET_KERNEL_DT_NAME).dtb
+    BUILT_KERNEL_DTB := $(addprefix $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(REAL_TARGET_ARCH)/boot/dts/,$(addsuffix .dtb,$(KERNEL_DT_NAME)))
+    TARGET_BUILT_KERNEL_DTB := $(NV_KERNEL_INTERMEDIATES_DIR)/arch/$(REAL_TARGET_ARCH)/boot/dts/$(TARGET_KERNEL_DT_NAME).dtb
     INSTALLED_DTB_TARGET := $(addprefix $(OUT)/,$(addsuffix .dtb, $(KERNEL_DT_NAME)))
     DTS_PATH_EXIST := $(foreach dts_file,$(KERNEL_DTS_PATH),$(if $(wildcard $(dts_file)),,$(error DTS file not found -- $(dts_file))))
 endif
@@ -187,6 +198,24 @@ ifeq ($(NV_MOBILE_DGPU),1)
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TASK_SIZE_3G_LESS_24M
 endif
 
+
+ifeq ($(REAL_TARGET_ARCH),arm64)
+    BOOT_WRAPPER_DIR := $(TEGRA_TOP)/core-private/system/boot-wrapper-aarch64
+    BOOT_WRAPPER_CMD := $(MAKE) -C $(BOOT_WRAPPER_DIR) FDT_SRC=$(KERNEL_DTS_PATH);
+    BOOT_WRAPPER_CMD += $(MAKE) -C $(BOOT_WRAPPER_DIR) FDT_SRC=$(KERNEL_DTS_PATH) EMMC_BOOT=1
+    BOOT_WRAPPER_RAMDISK := $(MAKE) -C $(BOOT_WRAPPER_DIR) FDT_SRC=$(KERNEL_DTS_PATH) RAMDISK_BOOT=1
+else
+    BOOT_WRAPPER_CMD :=
+    BOOT_WRAPPER_RAMDISK :=
+endif
+
+# core-private isn't present in cust builds, so we can't use files from there.
+# Turn off the boot wrapper stuff for cust builds.
+ifneq ($(wildcard vendor/nvidia/tegra/core-private),vendor/nvidia/tegra/core-private)
+    BOOT_WRAPPER_CMD :=
+    BOOT_WRAPPER_RAMDISK :=
+endif
+
 # TODO: figure out a way of not forcing kernel & module builds.
 $(TARGET_BUILT_KERNEL_DTB): $(dotconfig) $(BUILT_KERNEL_TARGET) FORCE
 	@echo "Device tree build" $(KERNEL_DT_NAME_DTB)
@@ -195,6 +224,7 @@ $(TARGET_BUILT_KERNEL_DTB): $(dotconfig) $(BUILT_KERNEL_TARGET) FORCE
 $(BUILT_KERNEL_TARGET): $(dotconfig) $(TARGET_BUILT_KERNEL_DTB) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel build"
 	+$(hide) $(kernel-make) zImage
+	+$(hide) $(BOOT_WRAPPER_CMD)
 
 kmodules-build_only: $(BUILT_KERNEL_TARGET) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel modules build"
@@ -307,6 +337,10 @@ $(NV_KERNEL_BUILD_DIRECTORY_LIST):
 # Set private variables for all builds. TODO: Why?
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_SRC_PATH := $(KERNEL_PATH)
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_TOPDIR := $(CURDIR)
+ifeq ($(TARGET_ARCH_KERNEL),arm64)
+kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_KERNEL_TOOLCHAIN := $(ARM_EABI_TOOLCHAIN)/../../../aarch64/aarch64-linux-android-4.8/bin/aarch64-linux-android-
+else
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_KERNEL_TOOLCHAIN := $(ARM_EABI_TOOLCHAIN)/arm-eabi-
+endif
 
 endif
