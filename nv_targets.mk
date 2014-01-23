@@ -55,11 +55,12 @@ $(foreach f,$(1), $(eval \
 endef
 
 # These are additional files for which we generate blobs only if they exists
+
+ifneq ($(filter $(TARGET_DEVICE),tegratab tegranote7c),)
+# For tegratab,tegranote7c
+ifeq ($(filter $(NV_TN_SKU),tn7_114gp_2014 tn7_114np_2014),)
 _blob_deps := \
       $(PRODUCT_OUT)/flash.bct
-
-ifeq ($(TARGET_DEVICE),tegratab)
-# For tegratab
 ifeq ($(strip $(NV_TN_PLATFORM)),basic)
 _blob_deps += \
       $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME)-b.dtb
@@ -69,19 +70,8 @@ _blob_deps += \
 endif
 else
 _blob_deps += \
-      $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME).dtb \
-      $(PRODUCT_OUT)/microboot.bin \
-      $(PRODUCT_OUT)/xusb_sil_rel_fw
-endif
-
-ifeq ($(TARGET_DEVICE),tegranote7c)
-# For tegranote7c
-ifeq ($(strip $(NV_TN_PLATFORM)),basic)
-_blob_deps += \
-      $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME)-b.dtb
-else ifeq ($(strip $(NV_TN_PLATFORM)),premium)
-_blob_deps += \
-      $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME).dtb
+      $(PRODUCT_OUT)/flash_tegratab_p1988.bct \
+      $(PRODUCT_OUT)/tegra114-tegratab-p1988.dtb
 endif
 else
 _blob_deps += \
