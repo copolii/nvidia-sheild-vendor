@@ -1,4 +1,14 @@
+###############################################################################
 #
+# Copyright (c) 2012-2014 NVIDIA CORPORATION.  All Rights Reserved.
+#
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+#
+###############################################################################
 # This file is included from $TOP/build/core/Makefile
 # It has those variables available which are set from above Makefile
 #
@@ -16,12 +26,14 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
 
 #
 # Override properties in build.prop
-#
-ifeq ($(REFERENCE_DEVICE),ardbeg)
-ifneq ($(filter  wx_na_wf wx_na_mo wx_un_mo wx_un_do wx_zh_mo wx_diag, $(TARGET_PRODUCT)),)
-ifneq ($(wildcard vendor/nvidia/$(REFERENCE_DEVICE)/skus/sku-properties.xml),)
+# *** Use of TARGET_DEVICE here is intentional ***
+ifeq ($(TARGET_DEVICE),ardbeg)
+ifneq ($(filter  wx_na_wf wx_na_mo wx_na_do wx_un_mo wx_un_do wx_zh_mo wx_diag, $(TARGET_PRODUCT)),)
+# *** Use of TARGET_DEVICE here is intentional ***
+ifneq ($(wildcard vendor/nvidia/$(TARGET_DEVICE)/skus/sku-properties.xml),)
 # SKU manifest containing properties and values to changes
-NV_SKU_MANIFEST := vendor/nvidia/$(REFERENCE_DEVICE)/skus/sku-properties.xml
+# *** Use of TARGET_DEVICE here is intentional ***
+NV_SKU_MANIFEST := vendor/nvidia/$(TARGET_DEVICE)/skus/sku-properties.xml
 # Tool which changes the value of properties in build.prop
 NV_PROP_MANGLE_TOOL := vendor/nvidia/build/tasks/process_build_props.py
 
