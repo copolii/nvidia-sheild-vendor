@@ -128,6 +128,22 @@ def getBuildDesc(logger, sObj, pObj):
 
     return buildDesc
 
+def getBuildDisp(logger, sObj, pObj):
+    """
+    Generate build display based on data in sku manifest
+    """
+    buildDisp = {}
+    regExp = r'(?P<product>.+?)(-.+)'
+    oldVal = pObj.get('ro.build.display.id')
+    regObj = re.compile(regExp).match(oldVal)
+    if oldVal and regObj:
+        product = regObj.group('product')
+        if sObj.getProperty('ro.product.name'):
+            product = sObj.getProperty('ro.product.name')
+        buildDisp['ro.build.display.id'] = product+regObj.group(2)
+
+    return buildDisp
+
 # Classes
 class SkuProp:
     """
@@ -208,6 +224,7 @@ def main():
     properties = skuObj.getAllProperties()
     properties.update(getBuildFingerprint(logger, skuObj, propObj))
     properties.update(getBuildDesc(logger, skuObj, propObj))
+    properties.update(getBuildDisp(logger, skuObj, propObj))
     for p in properties:
         changeProperties(logger, propObj, p, properties[p])
     propObj.write()
