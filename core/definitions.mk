@@ -39,6 +39,7 @@ include vendor/nvidia/build/detectversion.mk
 
 # links to build system files
 
+NVIDIA_CUDA_STATIC_LIBRARY := $(NVIDIA_BUILD_ROOT)/cuda_static_library.mk
 NVIDIA_BASE                := $(NVIDIA_BUILD_ROOT)/base.mk
 NVIDIA_DEBUG               := $(NVIDIA_BUILD_ROOT)/debug.mk
 NVIDIA_DEFAULTS            := $(NVIDIA_BUILD_ROOT)/defaults.mk
