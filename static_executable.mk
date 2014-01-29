@@ -10,6 +10,18 @@ LOCAL_MODULE_CLASS := EXECUTABLES
 LOCAL_FORCE_STATIC_EXECUTABLE := true
 LOCAL_MODULE_SUFFIX := .bin
 LOCAL_SYSTEM_SHARED_LIBRARIES :=
+LOCAL_NO_2ND_ARCH_MODULE_SUFFIX := true
+
+# Check the primary arch
+include $(BUILD_SYSTEM)/module_arch_supported.mk
+
+# Otherwise check the secondary arch
+ifneq ($(my_module_arch_supported),true)
+LOCAL_2ND_ARCH_VAR_PREFIX := $(TARGET_2ND_ARCH_VAR_PREFIX)
+include $(BUILD_SYSTEM)/module_arch_supported.mk
+endif
+
+ifeq ($(my_module_arch_supported),true)
 
 include $(NVIDIA_BASE)
 include $(NVIDIA_COVERAGE)
@@ -29,8 +41,8 @@ ifeq ($(LOCAL_NVIDIA_LINK_SCRIPT),)
 LOCAL_NVIDIA_LINK_SCRIPT := $(LOCAL_NVIDIA_LINK_SCRIPT_PATH)/$(LOCAL_MODULE).x
 endif
 
-$(LOCAL_BUILT_MODULE) : PRIVATE_TARGET_CC := $(TARGET_CC)
-$(LOCAL_BUILT_MODULE) : PRIVATE_TARGET_LD := $(TARGET_LD)
+$(LOCAL_BUILT_MODULE) : PRIVATE_TARGET_CC := $($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_CC)
+$(LOCAL_BUILT_MODULE) : PRIVATE_TARGET_LD := $($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_LD)
 $(LOCAL_BUILT_MODULE) : PRIVATE_ELF_FILE := $(intermediates)/$(PRIVATE_MODULE).elf
 $(LOCAL_BUILT_MODULE) : PRIVATE_LINK_SCRIPT := $(LOCAL_NVIDIA_LINK_SCRIPT)
 $(LOCAL_BUILT_MODULE) : PRIVATE_RAW_EXE_LDFLAGS := -static --entry=_start --gc-sections
@@ -59,8 +71,13 @@ $(LOCAL_BUILT_MODULE): $(all_objects) $(all_libraries) $(LOCAL_NVIDIA_LINK_SCRIP
 		--start-group $(PRIVATE_ALL_STATIC_LIBRARIES) --end-group
 	$(hide)$(TARGET_OBJCOPY) -O binary $(PRIVATE_OBJCOPY_FLAGS) $(PRIVATE_ELF_FILE) $@
 
+endif # my_module_arch_supported
+
 # Clear local variables
 _public_key_header :=
 _signkey :=
 _nvdumpublickey :=
+LOCAL_2ND_ARCH_VAR_PREFIX :=
+LOCAL_NO_2ND_ARCH_MODULE_SUFFIX :=
+my_module_arch_supported :=
 
