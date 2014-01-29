@@ -35,21 +35,10 @@ LOCAL_CFLAGS += $(LOCAL_MODULE_CFLAGS)
 
 -include $(NVIDIA_UBM_DEFAULTS)
 
-# Froyo arm-eabi-4.4.0 toolchain does not produce valid code for
-# ARMv4T ARM/Thumb interworking.
-ifeq ($(AVP_EXTERNAL_TOOLCHAIN),)
-  LOCAL_CFLAGS += -mno-thumb-interwork
-  ifneq ($(LOCAL_ARM_MODE),thumb)
-    LOCAL_CFLAGS += -marm
-    LOCAL_CFLAGS += -U__thumb
-  endif
-else
-  LOCAL_CFLAGS += -mthumb-interwork
-  ifneq ($(LOCAL_ARM_MODE),arm)
-    LOCAL_CFLAGS += -mthumb
-    LOCAL_CFLAGS += -D__thumb
-  endif
-  LOCAL_CC := $(AVP_EXTERNAL_TOOLCHAIN)gcc
+LOCAL_CFLAGS += -mno-thumb-interwork
+ifneq ($(LOCAL_ARM_MODE),thumb)
+  LOCAL_CFLAGS += -marm
+  LOCAL_CFLAGS += -U__thumb
 endif
 
 # Override the ARM vs. Thumb default above.
@@ -61,6 +50,8 @@ ifeq ($(LOCAL_ARM_MODE),thumb)
   LOCAL_CFLAGS += -mthumb
   LOCAL_CFLAGS += -D__thumb
 endif
+
+LOCAL_32_BIT_ONLY := true
 
 include $(NVIDIA_BASE)
 include $(BUILD_STATIC_LIBRARY)

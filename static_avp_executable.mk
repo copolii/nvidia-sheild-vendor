@@ -7,25 +7,19 @@ LOCAL_MODULE_SUFFIX := .bin
 # Do not include default libc etc
 LOCAL_SYSTEM_SHARED_LIBRARIES :=
 
-include $(BUILD_SYSTEM)/binary.mk
-
-# The c compiler in arm-eabi-4.4.0 toolchain that comes with Froyo apparently
-# does not contain patches to enable ARM/Thumb interworking for ARMv4T
-# architecture.  Therefore, we either need to compile all sources to ARM,
-# or to use an external toolchain for compilation to ARMv4T architecture.
-
-# You can define AVP_EXTERNAL_TOOLCHAIN in ../common/TegraConfig.mk.
-
-ifeq ($(AVP_EXTERNAL_TOOLCHAIN),)
-  $(LOCAL_BUILT_MODULE) : PRIVATE_TARGET_CC := $(TARGET_CC)
-  $(LOCAL_BUILT_MODULE) : PRIVATE_TARGET_LD := $(TARGET_LD)
+ifeq ($(TARGET_IS_64_BIT),true)
+LOCAL_2ND_ARCH_VAR_PREFIX := $(TARGET_2ND_ARCH_VAR_PREFIX)
 else
-  $(LOCAL_BUILT_MODULE) : PRIVATE_TARGET_CC := $(AVP_EXTERNAL_TOOLCHAIN)gcc
-  $(LOCAL_BUILT_MODULE) : PRIVATE_TARGET_LD := $(AVP_EXTERNAL_TOOLCHAIN)ld
+LOCAL_2ND_ARCH_VAR_PREFIX :=
 endif
 
+include $(BUILD_SYSTEM)/binary.mk
+
+$(LOCAL_BUILT_MODULE) : PRIVATE_TARGET_CC := $($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_CC)
+$(LOCAL_BUILT_MODULE) : PRIVATE_TARGET_LD := $($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_LD)
+
 $(LOCAL_BUILT_MODULE) : PRIVATE_ELF_FILE := $(intermediates)/$(PRIVATE_MODULE).elf
-$(LOCAL_BUILT_MODULE) : PRIVATE_LINK_SCRIPT := $(LOCAL_NVIDIA_LINK_SCRIPT_PATH)/$(PRIVATE_MODULE).x
+$(LOCAL_BUILT_MODULE) : PRIVATE_LINK_SCRIPT := $(LOCAL_NVIDIA_LINK_SCRIPT_PATH)/$(LOCAL_MODULE).x
 $(LOCAL_BUILT_MODULE) : PRIVATE_RAW_EXECUTABLE_LDFLAGS :=
 $(LOCAL_BUILT_MODULE) : PRIVATE_RAW_EXECUTABLE_LDFLAGS += --entry=_start --gc-sections
 $(LOCAL_BUILT_MODULE) : PRIVATE_RAW_EXECUTABLE_LDFLAGS += $(LOCAL_NVIDIA_RAW_EXECUTABLE_LDFLAGS)
@@ -59,3 +53,4 @@ $(LOCAL_BUILT_MODULE): $(all_objects) $(all_libraries)
 		$(PRIVATE_LIBS)
 	$(hide) $(TARGET_OBJCOPY) -O binary $(PRIVATE_OBJCOPY_FLAGS) $(PRIVATE_ELF_FILE) $@
 
+LOCAL_2ND_ARCH_VAR_PREFIX :=
