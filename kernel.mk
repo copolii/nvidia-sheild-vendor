@@ -205,6 +205,10 @@ ifeq ($(APPEND_DTB_TO_KERNEL),true)
 		--enable ARM_APPENDED_DTB \
 		--enable ARM_ATAG_DTB_COMPAT
 endif
+ifeq ($(HEADSET_AMP_TPA6130A2),true)
+	@echo "Enable TPA6130A2"
+	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable SND_SOC_TI_TPA6130A2
+endif
 
 # TODO: figure out a way of not forcing kernel & module builds.
 $(BUILT_KERNEL_TARGET): $(dotconfig) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
