@@ -15,20 +15,26 @@ endif
 
 # if .export files are given, add linker script to linker options
 ifneq ($(LOCAL_NVIDIA_EXPORTS),)
-LOCAL_LDFLAGS += -Wl,--version-script=$(intermediates)/$(LOCAL_MODULE).script
+GEN := $(generated_sources_dir)/$(LOCAL_MODULE).script
+
+$(GEN): PRIVATE_INPUT_FILE := $(LOCAL_NVIDIA_EXPORTS)
+$(GEN): PRIVATE_CUSTOM_TOOL = python $(NVIDIA_GETEXPORTS) -script none none none $(PRIVATE_INPUT_FILE) > $@
+$(GEN): $(LOCAL_NVIDIA_EXPORTS) $(NVIDIA_GETEXPORTS)
+	$(transform-generated-source)
+
+# This needs to be LOCAL_ADDITIONAL_DEPENDENCIES instead of LOCAL_GENERATED_SOURCES
+# in case you don't have any non-generated sources (as in the static_and_shared_library case)
+# The only thing that has an a order dependency on generated sources is normal objects,
+# which wouldn't exist if you don't have any non-generated sources.
+LOCAL_ADDITIONAL_DEPENDENCIES += $(GEN)
+
+LOCAL_LDFLAGS += -Wl,--version-script=$(GEN)
 endif
 
 include $(BUILD_SHARED_LIBRARY)
 
-# rule for building the linker script
-ifneq ($(LOCAL_NVIDIA_EXPORTS),)
-$(intermediates)/$(LOCAL_MODULE).script: $(LOCAL_NVIDIA_EXPORTS) $(NVIDIA_GETEXPORTS)
-	@mkdir -p $(dir $@)
-	@echo "Generating linker script $@"
-	$(hide) python $(NVIDIA_GETEXPORTS) -script none none none $(filter %.export,$^) > $@ 
-$(linked_module): $(intermediates)/$(LOCAL_MODULE).script
-
 # rule for building the apicheck executable
+ifneq ($(LOCAL_NVIDIA_EXPORTS),)
 ifeq ($(NVIDIA_APICHECK),1)
 NVIDIA_CHECK_MODULE := $(LOCAL_MODULE)
 NVIDIA_CHECK_MODULE_LINK := $(LOCAL_BUILT_MODULE)

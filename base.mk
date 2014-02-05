@@ -69,6 +69,7 @@ endif
 ifneq ($(findstring $(LOCAL_MODULE_CLASS),EXECUTABLES STATIC_LIBRARIES SHARED_LIBRARIES),)
 
 intermediates := $(local-intermediates-dir)
+generated_sources_dir := $(local-generated-sources-dir)
 
 # shader rules
 
