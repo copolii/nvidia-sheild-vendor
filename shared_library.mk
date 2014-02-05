@@ -36,24 +36,36 @@ include $(BUILD_SHARED_LIBRARY)
 # rule for building the apicheck executable
 ifneq ($(LOCAL_NVIDIA_EXPORTS),)
 ifeq ($(NVIDIA_APICHECK),1)
-NVIDIA_CHECK_MODULE := $(LOCAL_MODULE)
+
 NVIDIA_CHECK_MODULE_LINK := $(LOCAL_BUILT_MODULE)
-include $(CLEAR_VARS)
-LOCAL_MODULE := $(NVIDIA_CHECK_MODULE)_apicheck
-LOCAL_MODULE_CLASS := EXECUTABLES
-intermediates := $(local-intermediates-dir)
-LOCAL_MODULE_PATH := $(intermediates)/CHECK
-LOCAL_MODULE_TAGS := optional
-LOCAL_GENERATED_SOURCES += $(intermediates)/check.c
-LOCAL_LDFLAGS += -l$(patsubst lib%,%,$(NVIDIA_CHECK_MODULE))
-include $(BUILD_EXECUTABLE)
-$(linked_module): $(NVIDIA_CHECK_MODULE_LINK)
-$(intermediates)/check.c: $(LOCAL_NVIDIA_EXPORTS) $(NVIDIA_GETEXPORTS)
-	@mkdir -p $(dir $@)
-	@echo "Generating apicheck source $@"
-	$(hide) python $(NVIDIA_GETEXPORTS) -apicheck none none none $(filter %.export,$^) > $@ 
+
+LOCAL_2ND_ARCH_VAR_PREFIX :=
+include $(BUILD_SYSTEM)/module_arch_supported.mk
+my_module_primary_arch_supported := $(my_module_arch_supported)
+
+# Do both checks before including apicheck.mk, since it will clear all of the
+# inputs to module_arch_supported.mk
+ifdef TARGET_2ND_ARCH
+LOCAL_2ND_ARCH_VAR_PREFIX := $(TARGET_2ND_ARCH_VAR_PREFIX)
+include $(BUILD_SYSTEM)/module_arch_supported.mk
+
+ifeq ($(my_module_arch_supported),true)
+include $(NVIDIA_BUILD_ROOT)/apicheck.mk
+endif
+endif
+
+LOCAL_2ND_ARCH_VAR_PREFIX :=
+ifeq ($(my_module_primary_arch_supported),true)
+include $(NVIDIA_BUILD_ROOT)/apicheck.mk
+endif
+
 # restore some of the variables for potential further use in caller
-LOCAL_MODULE := $(NVIDIA_CHECK_MODULE)
 LOCAL_BUILT_MODULE := $(NVIDIA_CHECK_MODULE_LINK)
+
+# Clear used variables
+NVIDIA_CHECK_MODULE_LINK :=
+my_module_arch_supported :=
+my_module_primary_arch_supported :=
+
 endif
 endif
