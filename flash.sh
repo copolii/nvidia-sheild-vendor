@@ -92,7 +92,8 @@ _args=$@
 
 # Fetch target board name.  Internal builds (*_int) share a board
 # with the external builds.
-product=$(echo ${PRODUCT_OUT%/} | sed -e 's#.*\/\(.*\)#\1#' -e 's#_int$##')
+# *_64 are the same board with a 64-bit userspace. They should flash the same.
+product=$(echo ${PRODUCT_OUT%/} | sed -e 's#.*\/\(.*\)#\1#' -e 's#_int$##' -e 's#_64$##')
 
 ##################################
 # tnspec
