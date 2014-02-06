@@ -90,10 +90,10 @@ _args=$@
 # If BOARD is set, use it as predefined board name
 [[ -n $BOARD ]] && board="$BOARD"
 
-# Fetch target board name.  Internal builds (*_int) share a board
-# with the external builds.
+# Fetch target board name. Internal builds (*_int) and generic builds (*_gen)
+# share a board with the external builds.
 # *_64 are the same board with a 64-bit userspace. They should flash the same.
-product=$(echo ${PRODUCT_OUT%/} | sed -e 's#.*\/\(.*\)#\1#' -e 's#_int$##' -e 's#_64$##')
+product=$(echo ${PRODUCT_OUT%/} | sed -e 's#.*\/\(.*\)#\1#' -e 's#_\(int\|gen\|64\)$##')
 
 ##################################
 # tnspec
