@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright (c) 2013 NVIDIA Corporation.  All Rights Reserved.
+# Copyright (c) 2013-2014 NVIDIA Corporation.  All Rights Reserved.
 #
 # NVIDIA Corporation and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
@@ -109,6 +109,8 @@ def getBuildFingerprint(logger, sObj, pObj):
             device = sObj.getProperty('ro.product.device')
         trio = brand+'/'+product+'/'+device
         buildFingerprint['ro.build.fingerprint'] = trio+regObj.group(4)
+    else:
+        buildFingerprint['ro.build.fingerprint'] = oldVal
 
     return buildFingerprint
 
@@ -117,14 +119,16 @@ def getBuildDesc(logger, sObj, pObj):
     Generate build description based on data in sku manifest
     """
     buildDesc = {}
-    regExp = r'(?P<product>.+?)(-.+)'
+    regExp = r'(?P<product>.+?)(?P<variant>-.+?)(\s.+)'
     oldVal = pObj.get('ro.build.description')
     regObj = re.compile(regExp).match(oldVal)
     if oldVal and regObj:
         product = regObj.group('product')
         if sObj.getProperty('ro.product.name'):
             product = sObj.getProperty('ro.product.name')
-        buildDesc['ro.build.description'] = product+regObj.group(2)
+        buildDesc['ro.build.description'] = product+regObj.group(2)+regObj.group(3)
+    else:
+        buildDesc['ro.build.description'] = oldVal
 
     return buildDesc
 
@@ -133,14 +137,16 @@ def getBuildDisp(logger, sObj, pObj):
     Generate build display based on data in sku manifest
     """
     buildDisp = {}
-    regExp = r'(?P<product>.+?)(-.+)'
+    regExp = r'(?P<product>.+?)(?P<variant>-.+?)(\s.+)'
     oldVal = pObj.get('ro.build.display.id')
     regObj = re.compile(regExp).match(oldVal)
     if oldVal and regObj:
         product = regObj.group('product')
         if sObj.getProperty('ro.product.name'):
             product = sObj.getProperty('ro.product.name')
-        buildDisp['ro.build.display.id'] = product+regObj.group(2)
+        buildDisp['ro.build.display.id'] = product+regObj.group(2)+regObj.group(3)
+    else:
+        buildDisp['ro.build.display.id'] = oldVal
 
     return buildDisp
 
