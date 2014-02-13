@@ -150,7 +150,7 @@ ardbeg() {
 
     if [[ -z $board ]] && _shell_is_interactive; then
         # Prompt user for target board info
-        _choose "which board to flash?" "$tn_boards shield_ers laguna" board shield_ers
+        _choose "which board to flash?" "tn8 $tn_boards shield_ers laguna" board shield_ers
     else
         board=${board-shield_ers}
     fi
