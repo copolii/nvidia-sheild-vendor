@@ -324,8 +324,8 @@ _set_cmdline() {
             echo "INFO: nvgetdtb couldn't retrieve the dtbfile for $product product"
             _dtbfile=$(grep dtb ${PRODUCT_OUT}/$cfgfile | cut -d "=" -f 2)
             echo "INFO: Using the default product dtb file $_dtbfile"
-            dtbfile=$_dtbfile
         fi
+        dtbfile=$_dtbfile
     else
         # Default used in automated sanity testing is "unknown"
         dtbfile=${dtbfile-"unknown"}
