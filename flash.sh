@@ -214,7 +214,7 @@ loki() {
     [[ -n $BOARD_IS_LOKI_NFF_B00_2GB ]] && board=loki_nff_b00_2gb
     if [[ -z $board ]] && _shell_is_interactive; then
         # Prompt user for target board info
-        _choose "Which board to flash?" "e2548_a02 loki_nff_b00 loki_nff_b00_2gb thor_195 loki_ffd_prem loki_ffd_prem_a01 loki_ffd_prem_a03 loki_ffd_base loki_ffd_base_a1 loki_ffd_base_a3 foster_pro foster_pro_a1" board loki_nff_b00
+        _choose "Which board to flash?" "e2548_a02 loki_nff_b00 loki_nff_b00_2gb thor_195 loki_ffd_prem loki_ffd_prem_a01 loki_ffd_prem_a03 loki_ffd_base loki_ffd_base_a1 loki_ffd_base_a3 foster_pro foster_pro_a01" board loki_nff_b00
     else
         board=${board-loki_nff_b00}
     fi
@@ -237,7 +237,7 @@ loki() {
         odmdata=0x29c000
     elif [[ $board == foster_pro_a01 ]]; then
         nct="--nct NCT_foster_a1.txt"
-        l_dtbfile=tegra124-foster.dtb
+        dtbfile=tegra124-foster.dtb
         bctfile=bct_loki_ffd_sku0.cfg
         odmdata=0x29c000
     elif [[ $board == loki_ffd_prem ]]; then
