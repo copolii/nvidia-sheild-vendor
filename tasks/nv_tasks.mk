@@ -26,11 +26,26 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
 
 #
 # Override properties in build.prop
+#
 # *** Use of TARGET_DEVICE here is intentional ***
-ifeq ($(TARGET_DEVICE),ardbeg)
-ifneq ($(filter  wx_na_wf wx_na_mo wx_na_do wx_un_mo wx_un_do wx_zh_mo wx_diag, $(TARGET_PRODUCT)),)
+ifneq ($(filter ardbeg loki, $(TARGET_DEVICE)),)
 # *** Use of TARGET_DEVICE here is intentional ***
 ifneq ($(wildcard vendor/nvidia/$(TARGET_DEVICE)/skus/sku-properties.xml),)
+# List of TARGET_PRODUCTs for which we will make changes in build.prop
+_skus := \
+	wx_na_wf \
+	wx_na_mo \
+	wx_na_do \
+	wx_un_mo \
+	wx_un_do \
+	wx_zh_mo \
+	wx_diag \
+	loki_b \
+	loki_p \
+	loki_p_lte \
+	foster \
+	thor_195
+ifneq ($(filter $(_skus), $(TARGET_PRODUCT)),)
 # SKU manifest containing properties and values to changes
 # *** Use of TARGET_DEVICE here is intentional ***
 NV_SKU_MANIFEST := vendor/nvidia/$(TARGET_DEVICE)/skus/sku-properties.xml
@@ -45,17 +60,20 @@ update-build-properties: $(INSTALLED_BUILD_PROP_TARGET) \
 			 $(NV_SKU_MANIFEST)
 	@echo $@ - Changing properties for $(TARGET_PRODUCT)
 	$(hide) $(filter %.py,$^) \
-		-s $(NV_TN_SKU) \
+		-s $(TARGET_PRODUCT) \
 		-m $(NV_SKU_MANIFEST) \
 		-b $(filter %.prop,$^)
 endif
+# Clear local variable
+_skus :=
 endif
 endif
 
 # Override factory bundle target so that we can copy an APK inside it
 # PRODUCT_FACTORY_BUNDLE_MODULES could not be used for target binaries
 # Also PRODUCT_COPY_FILES could not be used for prebuilt apk
-ifeq ($(REFERENCE_DEVICE),ardbeg)
+# *** Use of TARGET_DEVICE here is intentional ***
+ifeq ($(TARGET_DEVICE),ardbeg)
 ifneq ($(wildcard vendor/nvidia/tegra/apps/mfgtest),)
 # Let the defaualt target depend on factory_bundle target
 droidcore: factory_bundle
