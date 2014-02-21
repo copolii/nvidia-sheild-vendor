@@ -115,13 +115,6 @@ define newline
 
 endef
 
-$(info ==============Kernel DTS/DTB================)
-$(info KERNEL_DT_NAME_DTB = $(KERNEL_DT_NAME_DTB))
-$(info KERNEL_DTS_PATH = $(subst $(space),$(newline),$(KERNEL_DTS_PATH)))
-$(info BUILT_KERNEL_DTB = $(subst $(space),$(newline),$(BUILT_KERNEL_DTB)))
-$(info INSTALLED_DTB_TARGET = $(subst $(space),$(newline),$(INSTALLED_DTB_TARGET)))
-$(info ============================================)
-
 KERNEL_EXTRA_ARGS=
 OS=$(shell uname)
 ifeq ($(OS),Darwin)
@@ -216,6 +209,12 @@ endif
 
 # TODO: figure out a way of not forcing kernel & module builds.
 $(TARGET_BUILT_KERNEL_DTB): $(dotconfig) $(BUILT_KERNEL_TARGET) FORCE
+	$(info ==============Kernel DTS/DTB================)
+	$(info KERNEL_DT_NAME_DTB = $(KERNEL_DT_NAME_DTB))
+	$(info KERNEL_DTS_PATH = $(notdir $(KERNEL_DTS_PATH)))
+	$(info BUILT_KERNEL_DTB = $(notdir $(BUILT_KERNEL_DTB)))
+	$(info INSTALLED_DTB_TARGET = $(notdir $(INSTALLED_DTB_TARGET)))
+	$(info ============================================)
 	@echo "Device tree build" $(KERNEL_DT_NAME_DTB)
 	+$(hide) $(kernel-make) $(KERNEL_DT_NAME_DTB)
 
