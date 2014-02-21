@@ -205,7 +205,4 @@ nvidia-tests-automation: nvidia-tests
 NVIDIA_TARGET_NAME :=
 
 # For GCC version > 4.6, we should add "-mno-unaligned-access" compiling flag for Nvidia modules
-# (except for host modules, because GCC does not support this compiling flag for x86)
-ifneq ($(LOCAL_IS_HOST_MODULE),true)
 LOCAL_CFLAGS_arm += -mno-unaligned-access
-endif
