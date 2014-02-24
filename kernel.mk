@@ -209,6 +209,10 @@ ifeq ($(HEADSET_AMP_TPA6130A2),true)
 	@echo "Enable TPA6130A2"
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable SND_SOC_TI_TPA6130A2
 endif
+ifeq ($(SET_DCP_CURRENT_LIMIT_2A),true)
+	@echo "Set DCP current 2A"
+	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TEGRA_SET_DCP_CURRENT_LIMIT_2A
+endif
 
 # TODO: figure out a way of not forcing kernel & module builds.
 $(BUILT_KERNEL_TARGET): $(dotconfig) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
