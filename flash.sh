@@ -227,9 +227,11 @@ loki() {
     if [[ $board == e2548_a02 ]]; then
         nct="--nct NCT_loki.txt"
         bctfile=bct.cfg
+        dtbfile=tegra124-loki-e2548-a00.dtb
     elif [[ $board == loki_nff_b00 ]]; then
         nct="--nct NCT_loki_b00.txt"
         bctfile=bct_loki_b00.cfg
+        dtbfile=tegra124-loki-e2548-a00.dtb
     elif [[ $board == foster_pro ]]; then
         nct="--nct NCT_foster.txt"
         dtbfile=tegra124-foster.dtb
@@ -243,27 +245,35 @@ loki() {
     elif [[ $board == loki_ffd_prem ]]; then
         nct="--nct NCT_loki_ffd_sku0.txt"
         bctfile=bct_loki_ffd_sku0.cfg
+        dtbfile=tegra124-loki-e2530-a01.dtb
     elif [[ $board == loki_ffd_prem_a01 ]]; then
         nct="--nct NCT_loki_ffd_sku0_a1.txt"
         bctfile=bct_loki_ffd_sku0.cfg
+        dtbfile=tegra124-loki-e2530-a01.dtb
     elif [[ $board == loki_ffd_prem_a03 ]]; then
         nct="--nct NCT_loki_ffd_sku0_a3.txt"
         bctfile=bct_loki_ffd_sku0.cfg
+        dtbfile=tegra124-loki-e2530-a03.dtb
     elif [[ $board == loki_ffd_base ]]; then
         nct="--nct NCT_loki_ffd_sku100.txt"
         bctfile=bct_loki_ffd_sku100.cfg
+        dtbfile=tegra124-loki-e2530-a01.dtb
     elif [[ $board == loki_ffd_base_a1 ]]; then
         nct="--nct NCT_loki_ffd_sku100_a1.txt"
         bctfile=bct_loki_ffd_sku100.cfg
+        dtbfile=tegra124-loki-e2530-a01.dtb
    elif [[ $board == loki_ffd_base_a3 ]]; then
         nct="--nct NCT_loki_ffd_sku100_a3.txt"
         bctfile=bct_loki_ffd_sku100.cfg
+        dtbfile=tegra124-loki-e2530-a03.dtb
     elif [[ $board == loki_nff_b00_2gb ]]; then
         nct="--nct NCT_loki_b00_sku100.txt"
         bctfile=bct_loki_b00_sku100.cfg
+        dtbfile=tegra124-loki-e2548-a00.dtb
     elif [[ $board == thor_195 ]]; then
         nct="--nct NCT_thor1_95.txt"
         bctfile=bct_thor1_95.cfg
+        dtbfile=tegra124-loki-thor195-e2549-a00.dtb
     fi
 }
 
