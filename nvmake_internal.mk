@@ -19,6 +19,15 @@ endif
 NVIDIA_NVMAKE_MODULE := \
     $(NVIDIA_NVMAKE_TOP)/$(LOCAL_NVIDIA_NVMAKE_BUILD_DIR)/_out/Android_$(NVIDIA_NVMAKE_TARGET_ARCH)$(NVIDIA_NVMAKE_TARGET_ABI)_$(NVIDIA_NVMAKE_BUILD_TYPE)/$(NVIDIA_NVMAKE_MODULE_PRIVATE_PATH)/$(NVIDIA_NVMAKE_MODULE_NAME)$(LOCAL_MODULE_SUFFIX)
 
+
+# Android builds set NV_INTERNAL_PROFILE in internal builds, and nothing
+# on external builds. Convert this to nvmake convention.
+ifeq ($(NV_INTERNAL_PROFILE),1)
+NVIDIA_NVMAKE_PROFILE :
+else
+NVIDIA_NVMAKE_PROFILE := NV_EXTERNAL_PROFILE=1
+endif
+
 #
 # Bring module from the nvmake build output, and apply the usual
 # processing for shared library or executable.
@@ -47,6 +56,7 @@ $(NVIDIA_NVMAKE_MODULE) $(my_register_name)_nvmakeclean: NVIDIA_NVMAKE_COMMON_BU
     NV_TARGET_OS=Android \
     NV_TARGET_ARCH=$(NVIDIA_NVMAKE_TARGET_ARCH) \
     NV_BUILD_TYPE=$(NVIDIA_NVMAKE_BUILD_TYPE) \
+    $(NVIDIA_NVMAKE_PROFILE) \
     NV_COVERAGE_ENABLED=$(NVIDIA_COVERAGE_ENABLED) \
     TARGET_TOOLS_PREFIX=$(abspath $($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_TOOLS_PREFIX)) \
     TARGET_C_INCLUDES="$(foreach inc,external/stlport/stlport $($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_C_INCLUDES) bionic system/core/libsync/include,$(abspath $(inc)))" \
@@ -94,3 +104,4 @@ NVIDIA_NVMAKE_MODULE :=
 NVIDIA_NVMAKE_TARGET_ABI :=
 NVIDIA_NVMAKE_TARGET_ARCH :=
 NVIDIA_NVMAKE_ADDITIONAL_DEPENDENCIES :=
+NVIDIA_NVMAKE_PROFILE :=
