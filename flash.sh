@@ -12,14 +12,16 @@
 #  NVGETDTB_BINARY  - path to nvgetdtb executable
 #
 # Usage:
-#  flash.sh [-n] [-o <odmdata>] [-s <skuid> [forcebypass]] -- [optional args]
+#  flash.sh [-n] [-o <odmdata>] [-s <skuid> [forcebypass]] [-m <modem>]-- [optional args]
 #
 # -n
 #   skips using sudo on cmdline
-# -o <odbdata>
+# -o <odmdata>
 #   specify ODM data to use
 # -s <sku> [forcebypass]
 #   specify SKU to use, with optional forcebypass flag to nvflash
+# -m <modem>
+#   specify modem to use ([-o <odmdata>] overrides this option)
 #
 # optional arguments after '--' are added as-is to nvflash cmdline before
 #  '--go' argument, which must be last.
@@ -66,9 +68,11 @@ case $OSTYPE in
 esac
 
 # Optional arguments
-while getopts "no:s:" OPTION
+while getopts "no:s:m:" OPTION
 do
     case $OPTION in
+    m) _modem=${OPTARG};
+        ;;
     n) _nosudo=1;
         ;;
     o) _odmdata=${OPTARG};
@@ -317,8 +321,28 @@ _choose() {
     _in_array "$selected" "${choices[@]}"
 }
 
+# Update odmdata regarding required modem:
+# select through bits [7:3] of odmdata
+# e.g max value is 0x1F
+_mdm_odm() {
+    if [[ $_modem ]]; then
+        if [[ $_modem -lt 0x1F ]]; then
+            # 1st: disable modem
+            disable_mdm=$(( ~(0x1F << 3) ))
+            odmdata=$(( $odmdata & $disable_mdm ))
+            # 2nd: select required modem
+            odmdata=`printf "0x%x" $(( $odmdata | $(( $_modem << 3 )) ))`
+        else
+            echo "Warning: Unknown modem reference [${_modem}]. Unchanged odmdata."
+        fi
+    fi
+}
+
 # Set all needed parameters
 _set_cmdline() {
+    # Set modem in odmdata if required
+    _mdm_odm
+
     # Set ODM data, BCT and CFG files (with fallback defaults)
     odmdata=${_odmdata-${odmdata-"0x98000"}}
     bctfile=${bctfile-"bct.cfg"}
