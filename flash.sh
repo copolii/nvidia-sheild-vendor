@@ -138,7 +138,6 @@ tnspec_platforms()
         board=${board-auto}
     fi
 
-    _su rm $nctbin 2> $TNSPEC_OUTPUT >&2
     # Auto mode
     if [ $board == "auto" ]; then
         specid=$(tnspec_auto $nctbin)
@@ -173,6 +172,13 @@ tnspec_platforms()
     fi
 
     if  [ $board != "auto" ]; then
+
+        if ! _in_array $board $boards; then
+            pr_err "HW Spec ID '$board' is not supported. Choose one from the list." "TNSPEC: "
+            tnspec spec list -v -g hw
+            exit 1
+        fi
+
         specid=$(tnspec_manual $nctbin)
 
         if [ -z $specid ]; then
@@ -203,6 +209,8 @@ tnspec_platforms()
     fi
 
     # set bctfile and cfgfile based on target board
+    # 'unset' forces to use default values.
+
     if _in_array $specid $sw_specs; then
         cfgfile=$(tnspec spec get $specid.cfg -g sw)
         [[ ${#cfgfile} == 0 ]] && unset cfgfile
@@ -210,6 +218,10 @@ tnspec_platforms()
         [[ ${#bctfile} == 0 ]] && unset bctfile
         dtbfile=$(tnspec spec get $specid.dtb -g sw)
         [[ ${#dtbfile} == 0 ]] && unset dtbfile
+        preboot=$(tnspec spec get $specid.preboot -g sw)
+        [[ ${#preboot} == 0 ]] && unset preboot
+        bootpack=$(tnspec spec get $specid.bootpack -g sw)
+        [[ ${#bootpack} == 0 ]] && unset bootpack
         sku=$(tnspec spec get $specid.sku -g sw)
         [[ ${#sku} > 0 ]] && skuid=$sku
         odm=$(tnspec spec get $specid.odm -g sw)
@@ -222,55 +234,16 @@ tnspec_platforms()
 ###############################################################################
 # Setup functions per target board
 t132() {
-    odmdata=0x98000
-    bctfile=bct_pm374_792.cfg
-    preboot="--preboot mts_preboot_si"
-    bootpack="--bootpack mts_si"
-
-    if [[ -z $board ]] && _shell_is_interactive; then
-        # prompt user for target board info
-        _choose "which board to flash?" "norrin norrin_prod laguna t132loki_ffd_c00_base t132loki_ffd_c00_prem bowmore_ers" board norrin
-    else
-        board=${board-norrin}
+    if [[ -z $board ]] && ! _shell_is_interactive; then
+        board=norrin
     fi
 
-    # set bctfile and cfgfile based on target board
-    if [[ $board == norrin ]]; then
-        cfgfile=norrin_flash.cfg
-        dtbfile=tegra132-norrin.dtb
-    elif [[ $board == norrin_prod ]]; then
-        cfgfile=norrin_prod_flash.cfg
-        dtbfile=tegra132-norrin.dtb
-	preboot="--preboot mts_preboot_prod"
-	bootpack="--bootpack mts_prod"
-    elif [[ $board == laguna ]]; then
-        bctfile=bct_pm359_102.cfg
-        cfgfile=laguna_flash.cfg
-        dtbfile=tegra132-laguna.dtb
-    elif [[ $board == t132loki_ffd_c00_base ]]; then
-        nct="--nct NCT_t132loki_ffd_sku100_c0.txt"
-        bctfile=bct_t132loki_ffd_sku100.cfg
-        cfgfile=loki_flash.cfg
-        dtbfile=tegra132-loki-p2530-c00.dtb
-        odmdata=0x69c0000
-    elif [[ $board == t132loki_ffd_c00_prem ]]; then
-        nct="--nct NCT_t132loki_ffd_sku0_c0.txt"
-        bctfile=bct_t132loki_ffd_sku0.cfg
-        cfgfile=loki_flash.cfg
-        dtbfile=tegra132-loki-p2530-c00.dtb
-        odmdata=0x69c0000
-    elif [[ $board == bowmore_ers ]]; then
-        bctfile=bct_e1971_924.cfg
-        cfgfile=bowmore_flash.cfg
-        dtbfile=tegra132-bowmore-ers.dtb
-   fi
+    tnspec_platforms "Loki/TegraNote/T132"
 }
 
 ardbeg() {
-    odmdata=0x98000
-
     # 'shield_ers' seems to be assumed in automation testing.
-    # if $board is empty and shell is not interactive, set 'shield_erc' to $board
+    # if $board is empty and shell is not interactive, set 'shield_ers' to $board
     if [ -z $board ] && ! _shell_is_interactive; then
        board=shield_ers
     fi
@@ -589,7 +562,6 @@ _os_path()
 _download_NCT() {
     local x
 
-    local output=$PRODUCT_OUT/.nvflash_ouput
     local partinfo=$PRODUCT_OUT/.nvflash_partinfo
     local nctbin=$1
 
@@ -608,7 +580,7 @@ _download_NCT() {
     x=$(grep NCT $partinfo)
     _su rm $partinfo
 
-    if [ -z $x ]; then
+    if [ -z "$x" ]; then
        pr_err "No NCT partition found" "TNSPEC: " >&2
        return 1
     fi
@@ -661,12 +633,14 @@ _set_cmdline() {
 
     # Set NCT option, defaults to empty
     nct=${nct-""}
-    preboot=${preboot-""}
-    bootpack=${bootpack-""}
 
-    # Set SKU ID, default to empty
+    # Set SKU ID, MTS settings. default to empty
     skuid=${_skuid-${skuid-""}}
     [[ -n $skuid ]] && skuid="-s $skuid"
+    preboot=${preboot-""}
+    [[ -n $preboot ]] && preboot="--preboot $preboot"
+    bootpack=${bootpack-""}
+    [[ -n $bootpack ]] && bootpack="--bootpack $bootpack"
 
     # Update DTB filename if not previously set. Note that nvgetdtb is never executed
     # in mobile sanity testing (Bug 1439258)
