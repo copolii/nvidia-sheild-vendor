@@ -233,7 +233,6 @@ t132() {
 
 ardbeg() {
     odmdata=0x98000
-    skuid=auto
 
     # 'shield_ers' seems to be assumed in automation testing.
     # if $board is empty and shell is not interactive, set 'shield_erc' to $board
