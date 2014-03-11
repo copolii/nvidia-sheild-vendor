@@ -201,7 +201,7 @@ t132() {
 
     if [[ -z $board ]] && _shell_is_interactive; then
         # prompt user for target board info
-        _choose "which board to flash?" "norrin norrin_prod laguna loki_ffd_c00_prem bowmore_ers" board norrin
+        _choose "which board to flash?" "norrin norrin_prod laguna t132loki_ffd_c00_base t132loki_ffd_c00_prem bowmore_ers" board norrin
     else
         board=${board-norrin}
     fi
@@ -219,8 +219,15 @@ t132() {
         bctfile=bct_pm359_102.cfg
         cfgfile=laguna_flash.cfg
         dtbfile=tegra132-laguna.dtb
-    elif [[ $board == loki_ffd_c00_prem ]]; then
-        bctfile=bct_loki_ffd_skuc0.cfg
+    elif [[ $board == t132loki_ffd_c00_base ]]; then
+        nct="--nct NCT_t132loki_ffd_sku100_c0.txt"
+        bctfile=bct_t132loki_ffd_sku100.cfg
+        cfgfile=loki_flash.cfg
+        dtbfile=tegra132-loki-p2530-c00.dtb
+        odmdata=0x69c0000
+    elif [[ $board == t132loki_ffd_c00_prem ]]; then
+        nct="--nct NCT_t132loki_ffd_sku0_c0.txt"
+        bctfile=bct_t132loki_ffd_sku0.cfg
         cfgfile=loki_flash.cfg
         dtbfile=tegra132-loki-p2530-c00.dtb
         odmdata=0x69c0000
