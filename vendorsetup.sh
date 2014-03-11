@@ -449,7 +449,6 @@ function _flash()
     if [[ "$1" == "bsp" ]]; then
         T="\$(pwd)"
         local FLASH_SH="$T/$PRODUCT_OUT/flash.sh \$@"
-        local USE_BSP="_bsp"
         shift
     else
         T=$(gettop)
@@ -478,12 +477,38 @@ function _nvflash_sh()
 {
     T=$(gettop)
     local PRODUCT_OUT=$(get_build_var PRODUCT_OUT)
+    local HOST_OUT=$(get_build_var HOST_OUT)
+
     cp -u $T/vendor/nvidia/build/flash.sh $PRODUCT_OUT
 
     # WAR - tnspec.py can be missing in some packages.
     cp -u $T/vendor/nvidia/tegra/core/tools/tnspec/tnspec.py $PRODUCT_OUT
 
-    echo "#!/bin/bash"
+    # Unified flashing command
+    local cmd='#!/bin/bash
+
+# enable globbing in case it has already been turned off
+set +f
+
+pkg_filter=android_*_os_image-*.tgz
+pkg=$(echo $pkg_filter)
+pkg_dir="_${pkg/%.tgz}"
+host_bin="$HOST_OUT/bin"
+
+if [[ "$pkg" != "$pkg_filter" && -f $pkg && ! -d "$pkg_dir" ]]; then
+    echo "Extracting $pkg...."
+    mkdir $pkg_dir
+    (cd $pkg_dir && tar xfz ../$pkg)
+    find $pkg_dir -maxdepth 2 -type f -exec cp -u {} out/target/product/ardbeg \;
+
+    # copy host bins
+    find $pkg_dir -path \*$host_bin\* -type f -exec cp -u {} $host_bin \;
+fi
+'
+    cmd=${cmd//\$PRODUCT_OUT/$PRODUCT_OUT}
+    cmd=${cmd//\$HOST_OUT/$HOST_OUT}
+
+    echo "$cmd"
     echo "($(_flash bsp))"
 }
 
