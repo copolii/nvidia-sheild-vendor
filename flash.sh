@@ -49,6 +49,18 @@ case $OSTYPE in
     cygwin)
         NVFLASH_BINARY="nvflash.exe"
         NVGETDTB_BINARY="nvgetdtb.exe"
+
+        which $NVFLASH_BINARY 2> /dev/null >&2
+        if [ $? != 0 ]; then
+            echo "Error: make sure $NVFLASH_BINARY in \$PATH."
+            exit 1
+        fi
+
+        which $NVGETDTB_BINARY 2> /dev/null >&2
+        if [ $? != 0 ]; then
+            echo "Error: make sure $NVGETDTB_BINARY in \$PATH."
+            exit 1
+        fi
         _nosudo=1
         ;;
     linux*)
@@ -110,6 +122,9 @@ tnspec_platforms()
     local specid=''
     local nctbin=$PRODUCT_OUT/.nvflash_nctbin
 
+    # Debug
+    TNSPEC_OUTPUT=${TNSPEC_OUTPUT:-/dev/null}
+
     # Tegranote boards are handled by an external tnspec.py utility
     local boards=$(tnspec spec list -g hw)
     if [[ -z $board ]] && _shell_is_interactive; then
@@ -123,12 +138,19 @@ tnspec_platforms()
         board=${board-auto}
     fi
 
-    _su rm $nctbin > /dev/null 2>&1
+    _su rm $nctbin 2> $TNSPEC_OUTPUT >&2
     # Auto mode
     if [ $board == "auto" ]; then
         specid=$(tnspec_auto $nctbin)
-
+        TNSPEC_UPDATE_NCT_ONLY=${TNSPEC_UPDATE_NCT_ONLY:-"no"}
         if [ -z $specid ]; then
+            # if TNSPEC_UPDATE_NCT_ONLY="yes", reset the device and exit.
+            if [[ "$TNSPEC_UPDATE_NCT_ONLY" == "yes" ]]; then
+                pr_err "NCT update failed. Quitting..." "TNSPEC: " >&2
+                recovery="--force_reset reset 100" _nvflash 2> $TNSPEC_OUTPUT >&2
+                exit 1
+            fi
+
             pr_err "Couldn't find SW Spec ID. Try choosing from the HW list." "TNSPEC: ">&2
             if _shell_is_interactive; then
                 _choose ">> " "$boards" board '' simple
@@ -136,14 +158,18 @@ tnspec_platforms()
                 pr_warn "Try setting 'BOARD' env variable directly." "TNSPEC: ">&2
                 exit 1
             fi
+        else
+            # if TNSPEC_UPDATE_NCT_ONLY="yes", reset the device and exit.
+            if [[ "$TNSPEC_UPDATE_NCT_ONLY" == "yes" ]]; then
+                recovery="--force_reset reset 100" _nvflash 2> $TNSPEC_OUTPUT >&2
+                exit 0
+            fi
+            # WAR: setting 'nct' shouldn't be needed if NCT's board id is understood by
+            #      Tboot and BL natively.
+            tnspec nct dump nct -n $nctbin > ${nctbin}.txt
+            nct="--nct \"$(_os_path ${nctbin}.txt)\""
+            _su rm $nctbin
         fi
-
-        # WAR: setting 'nct' shouldn't be needed if NCT's board id is understood by
-        #      Tboot and BL natively.
-        tnspec nct dump nct -n $nctbin > ${nctbin}.txt
-        nct="--nct \"$(_os_path ${nctbin}.txt)\""
-
-        _su rm $nctbin
     fi
 
     if  [ $board != "auto" ]; then
@@ -189,6 +215,8 @@ tnspec_platforms()
         odm=$(tnspec spec get $specid.odm -g sw)
         [[ ${#odm} > 0 ]] && odmdata=$odm
     fi
+    pr_ok "Flashing..." "TNSPEC: "
+    echo ""
 }
 
 ###############################################################################
@@ -393,21 +421,23 @@ _mdm_odm() {
 tnspec_auto() {
     local nctbin=$1
     pr_warn "Detecting board type...." "TNSPEC: " >&2
+    pr_info "- if this takes more than 10 seconds, put the device into recovery mode" "TNSPEC: " >&2
+    pr_info "  and choose from the HW list instead of \"auto\"." "TNSPEC: " >&2
     # Check if NCT partition exists first
-    _download_NCT $nctbin > /dev/null
+    _download_NCT $nctbin 2> $TNSPEC_OUTPUT >&2
     if [ $? == 0 ]; then
         # Dump NCT partion
         pr_info "NCT Found. Checking SPEC..."  "TNSPEC: ">&2
 
         local hwid=$(tnspec nct dump spec -n $nctbin | _tnspec spec get id -g hw)
-        if [ -z $hwid ]; then
+        if [ -z "$hwid" ]; then
             pr_err "NCT's spec partition or 'id' is missing in NCT." "TNSPEC: " >&2
             pr_warn "Dumping NCT..." "TNSPEC: " >&2
             tnspec nct dump -n $nctbin >&2
             return 1
         fi
         pr_info "SPEC found. Retrieving SW specid.." "TNSPEC: " >&2
-        if [ ! -z $hwid ]; then
+        if [ ! -z "$hwid" ]; then
             local config=$(tnspec nct dump spec -n $nctbin | _tnspec spec get config -g hw)
             config=${config:-default}
             local spec_id=$hwid.$config
@@ -417,7 +447,12 @@ tnspec_auto() {
 
             # Update NCT from SW specs. (SW shouldn't touch HW spec)
             tnspec nct update $spec_id -o ${nctbin}_update -n $nctbin -g sw
-            _su diff -b ${nctbin}_update $nctbin > /dev/null
+            if [ $? != 0 ]; then
+                pr_err "tnspec tool had an error." "TNSPEC: " >&2
+                return 1
+            fi
+
+            _su diff -b ${nctbin}_update $nctbin 2> $TNSPEC_OUTPUT >&2
             if [ $? != 0 ]; then
                 pr_warn "NCT needs to be updated. Differences are:" "TNSPEC: " >&2
                 tnspec nct dump -n $nctbin > ${nctbin}_diff_old
@@ -430,7 +465,7 @@ tnspec_auto() {
 
                 pr_info "Updating NCT" "TNSPEC: " >&2
 
-                _nvflash --download NCT $(_os_path $nctbin) > /dev/null
+                _nvflash --download NCT $(_os_path ${nctbin}_update ) 2> $TNSPEC_OUTPUT >&2
                 pr_ok "Done updating NCT" "TNSPEC: ">&2
             else
                 pr_warn "Nothing to update for NCT. Printing NCT." "TNSPEC: ">&2
@@ -457,8 +492,7 @@ tnspec_manual() {
     config=${config:-default}
     local spec_id=$hwid.$config
 
-
-    _su rm $nctbin > /dev/null 2>&1
+    _su rm $nctbin 2> $TNSPEC_OUTPUT >&2
     tnspec nct new $board -o $nctbin
 
     echo $spec_id
@@ -507,10 +541,11 @@ _nvflash() {
     else
         flash_cmd="sudo $NVFLASH_BINARY"
     fi
-    # recovery should be changed to force_recovery
-    # e.g.
-    # $flash_cmd --wait $@ --bl bootloader.bin --reset recovery 200
-    $flash_cmd --wait  $@ --bl $(_os_path $PRODUCT_OUT/bootloader.bin) --force_reset recovery 500
+
+    recovery=${recovery:---force_reset recovery 300}
+    # always wait for the device to be in recovery mode
+    echo "$flash_cmd --wait  $@ --bl $(_os_path $PRODUCT_OUT/bootloader.bin) $recovery" 2> $TNSPEC_OUTPUT >&2
+    $flash_cmd --wait  $@ --bl $(_os_path $PRODUCT_OUT/bootloader.bin) $recovery
 }
 # su
 _su() {
@@ -559,13 +594,13 @@ _download_NCT() {
     local nctbin=$1
 
     # generated directly by nvflash
-    _su rm $partinfo $nctbin > /dev/null 2>&1
+    _su rm $partinfo $nctbin 2> $TNSPEC_OUTPUT >&2
 
     # download partition table
-    _nvflash --getpartitiontable $(_os_path $partinfo) > /dev/null
+    _nvflash --getpartitiontable $(_os_path $partinfo) 2> $TNSPEC_OUTPUT >&2
 
     if [ $? != 0 ]; then
-        pr_err "Failed to download partition table" >&2
+        pr_err "Failed to download partition table" "TNSPEC: " >&2
         return 1
     fi
     # cid for future use
@@ -574,17 +609,16 @@ _download_NCT() {
     _su rm $partinfo
 
     if [ -z $x ]; then
-       pr_err "No NCT partition found" >&2
+       pr_err "No NCT partition found" "TNSPEC: " >&2
        return 1
     fi
 
-    _nvflash --read NCT $(_os_path $nctbin) > /dev/null
+    _nvflash --read NCT $(_os_path $nctbin) 2> $TNSPEC_OUTPUT >&2
     if [ $? != 0 ];then
-        pr_err "Failed to download NCT" >&2
+        pr_err "Failed to download NCT" "TNSPEC: " >&2
         return 1
     fi
     # do not delete $nctbin
-
     return 0
 }
 
@@ -593,10 +627,10 @@ _tnspec() {
     local tnspec_bin=$PRODUCT_OUT/tnspec.py
     # return nothing if tnspec tool or spec file is missing
     if [ ! -x $tnspec_bin ]; then
-        pr_err "Error: tnspec.py doesn't exist or is not executable." >&2
+        pr_err "Error: tnspec.py doesn't exist or is not executable." "TNSPEC: " >&2
         return
     fi
-    $tnspec_bin $*
+    $tnspec_bin $@
 }
 
 # tnspec wrapper
@@ -606,13 +640,13 @@ tnspec() {
 
     if [ ! -f $tnspec_spec ]; then
         if [ ! -f $tnspec_spec_public ]; then
-            pr_err "Error: tnspec.json doesn't exist." >&2
+            pr_err "Error: tnspec.json doesn't exist." "TNSPEC: " >&2
             return
         fi
         tnspec_spec=$tnspec_spec_public
     fi
 
-    _tnspec $* -s $tnspec_spec
+    _tnspec $@ -s $tnspec_spec
 }
 
 # Set all needed parameters
