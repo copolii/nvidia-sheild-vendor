@@ -16,8 +16,11 @@ NVIDIA_NVMAKE_TARGET_ABI :=
 NVIDIA_NVMAKE_TARGET_ARCH := AArch64
 endif
 
+NVIDIA_NVMAKE_OUTPUT := \
+    $(NVIDIA_NVMAKE_TOP)/$(LOCAL_NVIDIA_NVMAKE_BUILD_DIR)/_out/Android_$(NVIDIA_NVMAKE_TARGET_ARCH)$(NVIDIA_NVMAKE_TARGET_ABI)_$(NVIDIA_NVMAKE_BUILD_TYPE)
+
 NVIDIA_NVMAKE_MODULE := \
-    $(NVIDIA_NVMAKE_TOP)/$(LOCAL_NVIDIA_NVMAKE_BUILD_DIR)/_out/Android_$(NVIDIA_NVMAKE_TARGET_ARCH)$(NVIDIA_NVMAKE_TARGET_ABI)_$(NVIDIA_NVMAKE_BUILD_TYPE)/$(NVIDIA_NVMAKE_MODULE_PRIVATE_PATH)/$(NVIDIA_NVMAKE_MODULE_NAME)$(LOCAL_MODULE_SUFFIX)
+    $(NVIDIA_NVMAKE_OUTPUT)/$(NVIDIA_NVMAKE_MODULE_PRIVATE_PATH)/$(NVIDIA_NVMAKE_MODULE_NAME)$(LOCAL_MODULE_SUFFIX)
 
 
 # Android builds set NV_INTERNAL_PROFILE in internal builds, and nothing
@@ -35,9 +38,15 @@ endif
 
 include $(BUILD_SYSTEM)/dynamic_binary.mk
 
-$(linked_module): $(NVIDIA_NVMAKE_MODULE) | $(ACP)
-	@echo "Copy from nvmake output: $(PRIVATE_MODULE) ($@)"
-	$(copy-file-to-target)
+my_target_crtbegin_so_o := $($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_CRTBEGIN_SO_O)
+my_target_crtend_so_o := $($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_CRTEND_SO_O)
+
+$(linked_module): PRIVATE_TARGET_GLOBAL_LD_DIRS := $($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_GLOBAL_LD_DIRS)
+$(linked_module): PRIVATE_TARGET_GLOBAL_LDFLAGS := $($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_GLOBAL_LDFLAGS)
+$(linked_module): PRIVATE_TARGET_LIBGCC := $($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_LIBGCC)
+$(linked_module): PRIVATE_TARGET_CRTBEGIN_SO_O := $(my_target_crtbegin_so_o)
+$(linked_module): PRIVATE_TARGET_CRTEND_SO_O := $(my_target_crtend_so_o)
+$(linked_module): NVIDIA_NVMAKE_MODULE := $(NVIDIA_NVMAKE_MODULE)
 
 #
 # Call into the nvmake build system to build the module
@@ -45,7 +54,15 @@ $(linked_module): $(NVIDIA_NVMAKE_MODULE) | $(ACP)
 # Add NVUB_SUPPORTS_TXXX=1 to temporarily enable a chip
 #
 
-$(NVIDIA_NVMAKE_MODULE) $(my_register_name)_nvmakeclean: NVIDIA_NVMAKE_COMMON_BUILD_PARAMS := \
+# We'll be limiting this to libcuda once module deliveries happen
+#ifeq ($(LOCAL_MODULE),libcuda)
+# HACK until the cuda build system uses ANDROID_DSO_LDFLAGS
+LOCAL_NVIDIA_NVMAKE_ARGS += \
+    TARGET_OUT_INTERMEDIATE_LIBRARIES=$(abspath $($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_OUT_INTERMEDIATE_LIBRARIES)) \
+    TARGET_LIBGCC=$($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_LIBGCC)
+#endif
+
+$(linked_module): NVIDIA_NVMAKE_COMMON_BUILD_PARAMS := \
     TEGRA_TOP=$(TEGRA_TOP) \
     ANDROID_BUILD_TOP=$(ANDROID_BUILD_TOP) \
     OUT=$(OUT) \
@@ -60,21 +77,45 @@ $(NVIDIA_NVMAKE_MODULE) $(my_register_name)_nvmakeclean: NVIDIA_NVMAKE_COMMON_BU
     NV_COVERAGE_ENABLED=$(NVIDIA_COVERAGE_ENABLED) \
     TARGET_TOOLS_PREFIX=$(abspath $($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_TOOLS_PREFIX)) \
     TARGET_C_INCLUDES="$(foreach inc,external/stlport/stlport $($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_C_INCLUDES) bionic,$(abspath $(inc)))" \
-    TARGET_OUT_INTERMEDIATE_LIBRARIES=$(abspath $($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_OUT_INTERMEDIATE_LIBRARIES)) \
-    TARGET_LIBGCC=$($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_LIBGCC) \
     TARGET_GLOBAL_CFLAGS="$($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_GLOBAL_CFLAGS)" \
-    TARGET_GLOBAL_LDFLAGS="$($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_GLOBAL_LDFLAGS)" \
     $(NVUB_SUPPORTS_FLAG_LIST) \
     $(NVIDIA_NVMAKE_VERBOSE) \
     $(LOCAL_NVIDIA_NVMAKE_ARGS)
 
+# The Aarch64 uses ld instead of gold as a linker. ld doesn't support gc-sections
+ifeq ($($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_ARCH),arm)
+$(linked_module): PRIVATE_EXTRA_LDFLAGS := -Wl,--gc-sections
+else
+$(linked_module): PRIVATE_EXTRA_LDFLAGS :=
+endif
+
+$(linked_module): NVIDIA_NVMAKE_BUILD_PARAMS = \
+    $(NVIDIA_NVMAKE_COMMON_BUILD_PARAMS) \
+    ANDROID_IMPORT_INCLUDES="$(subst -I ,-I$(abspath $(TOP))/,\
+          $(shell cat $(PRIVATE_IMPORT_INCLUDES)))" \
+    ANDROID_DSO_LDFLAGS=" \
+          -nostdlib \
+	  $(PRIVATE_EXTRA_LDFLAGS) \
+	  -Wl,-shared,-Bsymbolic \
+	  $(patsubst -L%,-L$(abspath $(TOP))/%,$(PRIVATE_TARGET_GLOBAL_LD_DIRS)) \
+          $(abspath $(PRIVATE_TARGET_CRTBEGIN_SO_O)) \
+	  -Wl,--whole-archive \
+	  $(call normalize-abspath-libraries,$(PRIVATE_ALL_WHOLE_STATIC_LIBRARIES)) \
+	  -Wl,--no-whole-archive \
+          $(call normalize-abspath-libraries,$(PRIVATE_ALL_STATIC_LIBRARIES)) \
+	  $(call normalize-abspath-libraries,$(PRIVATE_ALL_SHARED_LIBRARIES)) \
+	  $(PRIVATE_TARGET_GLOBAL_LDFLAGS) \
+	  $(PRIVATE_LDFLAGS) \
+	  $(abspath $(PRIVATE_TARGET_LIBGCC)) \
+	  $(abspath $(PRIVATE_TARGET_CRTEND_SO_O))"
+
 ifeq ($(NV_USE_UNIX_BUILD),1)
-  $(NVIDIA_NVMAKE_MODULE) $(my_register_name)_nvmakeclean: NVIDIA_NVMAKE_COMMAND := \
+  $(linked_module): NVIDIA_NVMAKE_COMMAND := \
     $(NVIDIA_NVMAKE_UNIX_BUILD_COMMAND) \
     --newdir $(NVIDIA_NVMAKE_TOP)/$(LOCAL_NVIDIA_NVMAKE_BUILD_DIR) \
     nvmake
 else
-  $(NVIDIA_NVMAKE_MODULE) $(my_register_name)_nvmakeclean: NVIDIA_NVMAKE_COMMAND := \
+  $(linked_module): NVIDIA_NVMAKE_COMMAND := \
     $(MAKE) \
     MAKE=$(shell which $(MAKE)) \
     LD_LIBRARY_PATH=$(NVIDIA_NVMAKE_LIBRARY_PATH) \
@@ -84,22 +125,22 @@ else
 endif
 
 # This target needs to be forced, nvmake will do its own dependency checking
-$(NVIDIA_NVMAKE_MODULE): $(intermediates)/import_includes $(NVIDIA_NVMAKE_ADDITIONAL_DEPENDENCIES) FORCE
+$(linked_module): $(intermediates)/import_includes $(NVIDIA_NVMAKE_ADDITIONAL_DEPENDENCIES) $(my_target_crtbegin_so_o) $(my_target_crtend_so_o) FORCE | $(ACP)
 	@echo "Build with nvmake: $(PRIVATE_MODULE) ($@)"
-	+$(hide) $(NVIDIA_NVMAKE_COMMAND) $(NVIDIA_NVMAKE_COMMON_BUILD_PARAMS) ANDROID_IMPORT_INCLUDES="$(subst -I ,-I$(abspath $(TOP))/,$(shell cat $(PRIVATE_IMPORT_INCLUDES)))" MAKEFLAGS="$(MAKEFLAGS)"
-
-$(my_register_name)_nvmakeclean:
-	@echo "Clean nvmake build files: $(PRIVATE_MODULE)"
-	+$(hide) $(NVIDIA_NVMAKE_COMMAND) $(NVIDIA_NVMAKE_COMMON_BUILD_PARAMS) MAKEFLAGS="$(MAKEFLAGS)" clobber
-
-.PHONY: $(my_register_name)_nvmakeclean
+	@echo "PRIVATE_TARGET_GLOBAL_LD_DIRS: ($(PRIVATE_TARGET_GLOBAL_LD_DIRS))"
+	+$(hide) $(NVIDIA_NVMAKE_COMMAND) $(NVIDIA_NVMAKE_BUILD_PARAMS) MAKEFLAGS="$(MAKEFLAGS)"
+	@mkdir -p $(dir $@)
+	$(hide) $(ACP) -fp $(NVIDIA_NVMAKE_MODULE) $@
 
 #
-# Make the module's clean target descend into nvmake.
+# Make the module's clean target clean the output directory
 #
 
-$(cleantarget):: $(my_register_name)_nvmakeclean
+$(cleantarget) : PRIVATE_NVMAKE_OUTPUT := $(NVIDIA_NVMAKE_OUTPUT)
+$(cleantarget)::
+	$(hide) rm -r $(PRIVATE_NVMAKE_OUTPUT)
 
+NVIDIA_NVMAKE_OUTPUT :=
 NVIDIA_NVMAKE_MODULE :=
 NVIDIA_NVMAKE_TARGET_ABI :=
 NVIDIA_NVMAKE_TARGET_ARCH :=

@@ -168,3 +168,7 @@ $$(GEN_SHADERSRC_$(1)): $(intermediates)/shaders/%.$(1)h : $(intermediates)/%.$(
 	$$(transform-shader-to-string)
 endef
 
+define normalize-abspath-libraries
+$(foreach a,$(filter %.a,$(1)),$(abspath $(a)))\
+$(call normalize-libraries,$(filter-out %.a,$(1)))
+endef

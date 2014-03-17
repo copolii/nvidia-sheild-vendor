@@ -61,6 +61,7 @@ ifeq ($(NVIDIA_NVMAKE_BUILD_TYPE),debug)
     ifneq ($(LOCAL_NVIDIA_NO_COVERAGE),true)
       ifeq ($(LOCAL_NVIDIA_NULL_COVERAGE),true)
         LOCAL_SHARED_LIBRARIES += libgcov_null
+        LOCAL_LDFLAGS += -Wl,--exclude-libs=libgcov_null
       endif
     endif
   endif
