@@ -499,7 +499,7 @@ if [[ "$pkg" != "$pkg_filter" && -f $pkg && ! -d "$pkg_dir" ]]; then
     echo "Extracting $pkg...."
     mkdir $pkg_dir
     (cd $pkg_dir && tar xfz ../$pkg)
-    find $pkg_dir -maxdepth 2 -type f -exec cp -u {} out/target/product/ardbeg \;
+    find $pkg_dir -maxdepth 2 -type f -exec cp -u {} $PRODUCT_OUT \;
 
     # copy host bins
     find $pkg_dir -path \*$host_bin\* -type f -exec cp -u {} $host_bin \;
