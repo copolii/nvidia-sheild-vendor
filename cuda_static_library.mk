@@ -28,8 +28,8 @@ TMP_GPP := $(TOP)/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.6
 _local_cuda_cflags :=
 _local_cuda_cflags += -target-cpu-arch=ARM
 _local_cuda_cflags += -m32
-_local_cuda_cflags += -arch=compute_30
-_local_cuda_cflags += -code=sm_30
+_local_cuda_cflags += -arch=compute_32
+_local_cuda_cflags += -code=sm_32
 _local_cuda_cflags += --use_fast_math
 _local_cuda_cflags += -O3
 _local_cuda_cflags += -Xptxas '-dlcm=ca'
