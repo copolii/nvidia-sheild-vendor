@@ -6,9 +6,9 @@
 
 dev: droidcore target-files-package
 ifneq ($(NO_ROOT_DEVICE),)
-	device/nvidia/common/generate_nvtest_ramdisk.sh $(TARGET_DEVICE) $(TARGET_BUILD_TYPE)
-	device/nvidia/common/generate_full_filesystem.sh
-	device/nvidia/common/generate_asim_bootimg.sh
+	device/nvidia/common/generate_nvtest_ramdisk.sh $(TARGET_DEVICE)
+	device/nvidia/common/generate_full_filesystem.sh $(TARGET_DEVICE)
+	device/nvidia/common/generate_asim_bootimg.sh $(TARGET_DEVICE)
   ifneq ("$(BOOT_WRAPPER_RAMDISK)","")
 	$(BOOT_WRAPPER_RAMDISK)
   endif
@@ -84,7 +84,7 @@ endif
 QT_RAMDISK	:= $(CURDIR)/$(PRODUCT_OUT)/qt_ramdisk.img
 
 $(QT_RAMDISK): device/nvidia/common/generate_qt_ramdisk.sh
-	$< $(TARGET_PRODUCT) $(TARGET_BUILD_TYPE)
+	$< $(TARGET_DEVICE)
 
 qt-image: $(INSTALLED_BOOTIMAGE_TARGET) $(QT_RAMDISK)
 	$(BOOT_WRAPPER_RAMDISK) QT_BUILD=1
