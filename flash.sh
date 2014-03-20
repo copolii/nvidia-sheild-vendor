@@ -58,8 +58,7 @@ case $OSTYPE in
 
         which $NVGETDTB_BINARY 2> /dev/null >&2
         if [ $? != 0 ]; then
-            echo "Error: make sure $NVGETDTB_BINARY in \$PATH."
-            exit 1
+            echo "Info: $NVGETDTB_BINARY is not found in \$PATH."
         fi
         _nosudo=1
         ;;
