@@ -5,7 +5,7 @@
 .PHONY: dev nv-blob sim-image list-non-nv-modules qt-image
 
 dev: droidcore target-files-package
-ifneq ($(NO_ROOT_DEVICE),)
+ifeq ($(BOARD_SUPPORT_SIMULATION),true)
 	device/nvidia/common/generate_nvtest_ramdisk.sh $(TARGET_DEVICE)
 	device/nvidia/common/generate_full_filesystem.sh $(TARGET_DEVICE)
 	device/nvidia/common/generate_asim_bootimg.sh $(TARGET_DEVICE)
