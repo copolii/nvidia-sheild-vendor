@@ -251,85 +251,13 @@ ardbeg() {
 }
 
 loki() {
-    odmdata=0x69c000
-    skuid=0x7
-
-    # Set internal board identifier
-    [[ -n $BOARD_IS_E2548 ]] && board=e2548_a02
-    [[ -n $BOARD_IS_THOR_195 ]] && board=thor_195
-    [[ -n $BOARD_IS_FOSTER_PRO ]] && board=foster_pro
-    [[ -n $BOARD_IS_FOSTER_PRO_A01 ]] && board=foster_pro_a01
-    [[ -n $BOARD_IS_LOKI_NFF_B00 ]] && board=loki_nff_b00
-    [[ -n $BOARD_IS_LOKI_FFD_PREM ]] && board=loki_ffd_prem
-    [[ -n $BOARD_IS_LOKI_FFD_PREM_A01 ]] && board=loki_ffd_prem_a01
-    [[ -n $BOARD_IS_LOKI_FFD_PREM_A03 ]] && board=loki_ffd_prem_a03
-    [[ -n $BOARD_IS_LOKI_FFD_BASE ]] && board=loki_ffd_base
-    [[ -n $BOARD_IS_LOKI_FFD_BASE_A01 ]] && board=loki_ffd_base_a01
-    [[ -n $BOARD_IS_LOKI_FFD_BASE_A03 ]] && board=loki_ffd_base_a03
-    [[ -n $BOARD_IS_LOKI_NFF_B00_2GB ]] && board=loki_nff_b00_2gb
-    if [[ -z $board ]] && _shell_is_interactive; then
-        # Prompt user for target board info
-        _choose "Which board to flash?" "e2548_a02 loki_nff_b00 loki_nff_b00_2gb thor_195 loki_ffd_prem loki_ffd_prem_a01 loki_ffd_prem_a03 loki_ffd_base loki_ffd_base_a1 loki_ffd_base_a3 foster_pro foster_pro_a01" board loki_nff_b00
-    else
-        board=${board-loki_nff_b00}
+    # 'loki_nff_b00' seems to be assumed in automation testing.
+    # if $board is empty and shell is not interactive, set 'loki_nff_b00' to $board
+    if [ -z $board ] && ! _shell_is_interactive; then
+       board=loki_nff_b00
     fi
 
-    # Set bctfile and cfgfile based on target board.
-    # TEMP: always flash NCT for the boards until
-    # final flashing procedure is fully implemented
-    cfgfile=flash.cfg
-    dtbfile=tegra124-loki.dtb
-    if [[ $board == e2548_a02 ]]; then
-        nct="--nct NCT_loki.txt"
-        bctfile=bct.cfg
-        dtbfile=tegra124-loki-e2548-a00.dtb
-    elif [[ $board == loki_nff_b00 ]]; then
-        nct="--nct NCT_loki_b00.txt"
-        bctfile=bct_loki_b00.cfg
-        dtbfile=tegra124-loki-e2548-a00.dtb
-    elif [[ $board == foster_pro ]]; then
-        nct="--nct NCT_foster.txt"
-        dtbfile=tegra124-foster.dtb
-        bctfile=bct_loki_ffd_sku0.cfg
-        odmdata=0x29c000
-    elif [[ $board == foster_pro_a01 ]]; then
-        nct="--nct NCT_foster_a1.txt"
-        dtbfile=tegra124-foster.dtb
-        bctfile=bct_loki_ffd_sku0.cfg
-        odmdata=0x29c000
-    elif [[ $board == loki_ffd_prem ]]; then
-        nct="--nct NCT_loki_ffd_sku0.txt"
-        bctfile=bct_loki_ffd_sku0.cfg
-        dtbfile=tegra124-loki-e2530-a01.dtb
-    elif [[ $board == loki_ffd_prem_a01 ]]; then
-        nct="--nct NCT_loki_ffd_sku0_a1.txt"
-        bctfile=bct_loki_ffd_sku0.cfg
-        dtbfile=tegra124-loki-e2530-a01.dtb
-    elif [[ $board == loki_ffd_prem_a03 ]]; then
-        nct="--nct NCT_loki_ffd_sku0_a3.txt"
-        bctfile=bct_loki_ffd_sku0.cfg
-        dtbfile=tegra124-loki-e2530-a03.dtb
-    elif [[ $board == loki_ffd_base ]]; then
-        nct="--nct NCT_loki_ffd_sku100.txt"
-        bctfile=bct_loki_ffd_sku100.cfg
-        dtbfile=tegra124-loki-e2530-a01.dtb
-    elif [[ $board == loki_ffd_base_a1 ]]; then
-        nct="--nct NCT_loki_ffd_sku100_a1.txt"
-        bctfile=bct_loki_ffd_sku100.cfg
-        dtbfile=tegra124-loki-e2530-a01.dtb
-   elif [[ $board == loki_ffd_base_a3 ]]; then
-        nct="--nct NCT_loki_ffd_sku100_a3.txt"
-        bctfile=bct_loki_ffd_sku100.cfg
-        dtbfile=tegra124-loki-e2530-a03.dtb
-    elif [[ $board == loki_nff_b00_2gb ]]; then
-        nct="--nct NCT_loki_b00_sku100.txt"
-        bctfile=bct_loki_b00_sku100.cfg
-        dtbfile=tegra124-loki-e2548-a00.dtb
-    elif [[ $board == thor_195 ]]; then
-        nct="--nct NCT_thor1_95.txt"
-        bctfile=bct_thor1_95.cfg
-        dtbfile=tegra124-loki-thor195-e2549-a00.dtb
-    fi
+    tnspec_platforms "Loki/T124"
 }
 
 ###################
