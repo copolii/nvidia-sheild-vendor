@@ -276,6 +276,7 @@ function builddtb()
     local TARGET_KERNEL_DT_NAME=$(get_build_var TARGET_KERNEL_DT_NAME)
     local KERNEL_DT_NAME=${TARGET_KERNEL_DT_NAME%%-*}
     local SRC=${KERNEL_PATH:-"$T/kernel"}
+    local PRODUCT_NAME=$1
 
     if [ ! -d "$SRC" ] ; then
         echo "$SRC not found."
@@ -284,12 +285,15 @@ function builddtb()
 
     for _DTS_PATH in $SRC/arch/$(_karch)/boot/dts/$KERNEL_DT_NAME-*.dts
     do
-        _DTS_NAME=${_DTS_PATH##*/}
-        _DTB_NAME=${_DTS_NAME/.dts/.dtb}
-        echo $_DTB_NAME
-        ksetup $_DTB_NAME
-        cp $OUT/obj/KERNEL/arch/$(_karch)/boot/dts/$_DTB_NAME $OUT
-        echo "$OUT/$_DTB_NAME created successfully."
+        if [[ $_DTS_PATH == *$PRODUCT_NAME* ]]
+        then
+            _DTS_NAME=${_DTS_PATH##*/}
+            _DTB_NAME=${_DTS_NAME/.dts/.dtb}
+            echo $_DTB_NAME
+            ksetup $_DTB_NAME
+            cp $OUT/obj/KERNEL/arch/$(_karch)/boot/dts/$_DTB_NAME $OUT
+            echo "$OUT/$_DTB_NAME created successfully."
+        fi
     done
 }
 
