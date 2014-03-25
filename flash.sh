@@ -515,9 +515,12 @@ _nvflash() {
         flash_cmd="sudo $NVFLASH_BINARY"
     fi
 
-    recovery=${recovery:---force_reset recovery 300}
+    recovery=${recovery:---force_reset recovery 100}
     # always wait for the device to be in recovery mode
     echo "$flash_cmd --wait  $@ --bl $(_os_path $PRODUCT_OUT/bootloader.bin) $recovery" 2> $TNSPEC_OUTPUT >&2
+
+    # some devices need a settling delay
+    sleep 1
     $flash_cmd --wait  $@ --bl $(_os_path $PRODUCT_OUT/bootloader.bin) $recovery
 }
 # su
