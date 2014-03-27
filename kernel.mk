@@ -213,6 +213,12 @@ ifneq ($(TARGET_PRODUCT),flaxen)
 	@echo "Enable Tegratab Audio EDP"
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable AUDIO_EDP
 endif
+
+ifeq ($(TARGET_PRODUCT),flaxen)
+	@echo "Enable fairfax tskin"
+	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable FAIRFAX_CAMERA
+endif
+
 ifeq ($(SET_DCP_CURRENT_LIMIT_2A),true)
 	@echo "Set DCP current 2A"
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TEGRA_SET_DCP_CURRENT_LIMIT_2A
