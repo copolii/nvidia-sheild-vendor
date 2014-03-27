@@ -209,6 +209,12 @@ ifeq ($(HEADSET_AMP_TPA6130A2),true)
 	@echo "Enable TPA6130A2"
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable SND_SOC_TI_TPA6130A2
 endif
+
+ifeq ($(TARGET_PRODUCT),flaxen)
+	@echo "Enable fairfax tskin"
+	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable FAIRFAX_TSKIN
+endif
+
 ifneq ($(TARGET_PRODUCT),flaxen)
 	@echo "Enable Tegratab Audio EDP"
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable AUDIO_EDP
