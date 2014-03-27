@@ -306,10 +306,12 @@ _choose() {
 _mdm_odm() {
     if [[ $_modem ]]; then
         if [[ $_modem -lt 0x1F ]]; then
-            # 1st: disable modem
+            # 1st get a default odmdata if not yet set
+            odmdata=${_odmdata-${odmdata-"0x98000"}}
+            # 2nd: disable modem
             disable_mdm=$(( ~(0x1F << 3) ))
             odmdata=$(( $odmdata & $disable_mdm ))
-            # 2nd: select required modem
+            # 3rd: select required modem
             odmdata=`printf "0x%x" $(( $odmdata | $(( $_modem << 3 )) ))`
         else
             echo "Warning: Unknown modem reference [${_modem}]. Unchanged odmdata."
