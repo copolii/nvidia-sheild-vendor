@@ -120,10 +120,8 @@ ifneq ($(LOCAL_MODULE),)
 NVIDIA_TARGET_NAME := $(LOCAL_MODULE)
 else ifneq ($(LOCAL_PACKAGE_NAME),)
 NVIDIA_TARGET_NAME := $(LOCAL_PACKAGE_NAME)
-else ifneq ($(LOCAL_PREBUILT_EXECUTABLES),)
-NVIDIA_TARGET_NAME := $(LOCAL_PREBUILT_EXECUTABLES)
 else
-$(error $(LOCAL_PATH): One of LOCAL_MODULE, LOCAL_PACKAGE_NAME or LOCAL_PREBUILT_EXECUTABLES must be defined in the Android makefile!)
+$(error $(LOCAL_PATH): LOCAL_MODULE or LOCAL_PACKAGE_NAME must be defined in the Android makefile!)
 endif
 
 # Add to nvidia module list
