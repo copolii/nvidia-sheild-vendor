@@ -117,19 +117,41 @@ endif
 # NVIDIA build targets
 
 ifneq ($(LOCAL_MODULE),)
-NVIDIA_TARGET_NAME := $(LOCAL_MODULE)
+NVIDIA_TARGETS := $(LOCAL_MODULE)
+
+# See if we need to add the secondary module name to the list
+ifneq ($(LOCAL_MODULE_CLASS),EXECUTABLES)
+  ifneq ($(TARGET_2ND_ARCH),)
+    ifneq ($(LOCAL_NO_2ND_ARCH_MODULE_SUFFIX),true)
+      # Reset, since we may only use the secondary version
+      NVIDIA_TARGETS :=
+      include $(BUILD_SYSTEM)/module_arch_supported.mk
+      ifeq ($(my_module_arch_supported),true)
+        NVIDIA_TARGETS += $(LOCAL_MODULE)
+      endif
+      LOCAL_2ND_ARCH_VAR_PREFIX := $(TARGET_2ND_ARCH_VAR_PREFIX)
+      include $(BUILD_SYSTEM)/module_arch_supported.mk
+      LOCAL_2ND_ARCH_VAR_PREFIX :=
+      ifeq ($(my_module_arch_supported),true)
+        NVIDIA_TARGETS += $(LOCAL_MODULE)$(TARGET_2ND_ARCH_MODULE_SUFFIX)
+      endif
+      my_module_arch_supported :=
+    endif
+  endif
+endif
+
 else ifneq ($(LOCAL_PACKAGE_NAME),)
-NVIDIA_TARGET_NAME := $(LOCAL_PACKAGE_NAME)
+NVIDIA_TARGETS := $(LOCAL_PACKAGE_NAME)
 else
 $(error $(LOCAL_PATH): LOCAL_MODULE or LOCAL_PACKAGE_NAME must be defined in the Android makefile!)
 endif
 
 # Add to nvidia module list
-ALL_NVIDIA_MODULES += $(NVIDIA_TARGET_NAME)
+ALL_NVIDIA_MODULES += $(NVIDIA_TARGETS)
 
 # Add dependency to Android.mk
 ifeq ($(filter $(LOCAL_PATH)/%,$(NVIDIA_MAKEFILE)),)
-$(warning $(NVIDIA_MAKEFILE) not under $(LOCAL_PATH) for module $(NVIDIA_TARGET_NAME))
+$(warning $(NVIDIA_MAKEFILE) not under $(LOCAL_PATH) for module $(NVIDIA_TARGETS))
 else
 LOCAL_ADDITIONAL_DEPENDENCIES += $(NVIDIA_MAKEFILE)
 endif
@@ -157,13 +179,13 @@ endif
 endif
 
 # Add to nvidia goals
-nvidia-clean: clean-$(NVIDIA_TARGET_NAME)
+nvidia-clean: $(foreach target,$(NVIDIA_TARGETS),clean-$(target))
 
 ifneq ($(findstring nvidia_tests,$(LOCAL_MODULE_TAGS)),)
-nvidia-tests: $(NVIDIA_TARGET_NAME)
+nvidia-tests: $(NVIDIA_TARGETS)
 ifneq ($(filter nvidia-tests,$(MAKECMDGOALS)),)
 # If we're explicitly building nvidia-tests, install the tests.
-ALL_NVIDIA_TESTS += $(NVIDIA_TARGET_NAME)
+ALL_NVIDIA_TESTS += $(NVIDIA_TARGETS)
 ifeq ($(LOCAL_MODULE_CLASS),JAVA_LIBRARIES)
 # We want Nvidia java test libraries to be installed into same
 # location as normal java libraries. Android build system would in
@@ -176,7 +198,7 @@ endif
 
 ifneq ($(filter nvidia-tests-automation,$(MAKECMDGOALS)),)
 # If we're explicitly building nvidia-tests-automation, redirect the tests.
-ALL_NVIDIA_TESTS += $(NVIDIA_TARGET_NAME)
+ALL_NVIDIA_TESTS += $(NVIDIA_TARGETS)
 ifeq ($(LOCAL_MODULE_CLASS),EXECUTABLES)
 LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/bin
 else ifeq ($(LOCAL_MODULE_CLASS),SHARED_LIBRARIES)
@@ -196,12 +218,12 @@ endif # ifneq ($(filter nvidia-tests-automation,$(MAKECMDGOALS)),)
 
 LOCAL_MODULE_TAGS := $(filter-out nvidia_tests,$(LOCAL_MODULE_TAGS)) tests
 else # not nvidia-test component
-nvidia-modules: $(NVIDIA_TARGET_NAME)
+nvidia-modules: $(NVIDIA_TARGETS)
 endif # ifneq ($(findstring nvidia_tests,$(LOCAL_MODULE_TAGS)),)
 
 nvidia-tests-automation: nvidia-tests
 
-NVIDIA_TARGET_NAME :=
+NVIDIA_TARGETS :=
 
 # For GCC version > 4.6, we should add "-mno-unaligned-access" compiling flag for Nvidia modules
 LOCAL_CFLAGS_arm += -mno-unaligned-access
