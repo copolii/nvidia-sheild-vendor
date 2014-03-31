@@ -53,11 +53,7 @@ else ifeq ($(TARGET_TEGRA_VERSION),t114)
 else ifeq ($(TARGET_TEGRA_VERSION),t148)
     TARGET_KERNEL_CONFIG ?= tegra14_android_defconfig
 else ifeq ($(TARGET_TEGRA_VERSION),t124)
-    ifneq ($(NV_GENERIC_SOC),1)
-        TARGET_KERNEL_CONFIG ?= tegra12_android_defconfig
-    else
-        TARGET_KERNEL_CONFIG ?= tegra12_gpuonly_android_defconfig
-    endif
+    TARGET_KERNEL_CONFIG ?= tegra12_android_defconfig
 else ifeq ($(TARGET_TEGRA_VERSION),t132)
     TARGET_KERNEL_CONFIG ?= tegra13_android_defconfig
 endif
@@ -187,6 +183,11 @@ endif
 ifeq ($(NV_MOBILE_DGPU),1)
 	@echo "dGPU enabled kernel"
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TASK_SIZE_3G_LESS_24M
+endif
+ifeq ($(NV_GENERIC_SOC),1)
+	@echo "Generic SoC kernel"
+	$(hide) $(KERNEL_PATH)/scripts/config --file $@ \
+		--disable TEGRA_NVMAP
 endif
 
 
