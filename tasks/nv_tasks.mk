@@ -43,7 +43,8 @@ _skus := \
 	loki_p_lte \
 	foster \
 	thor_195 \
-	lokidiag
+	lokidiag \
+        fosterdiag
 ifneq ($(filter $(_skus), $(TARGET_PRODUCT)),)
 # SKU manifest containing properties and values to changes
 # *** Use of TARGET_DEVICE here is intentional ***
