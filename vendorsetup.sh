@@ -635,3 +635,8 @@ if uname -m|grep '64$' > /dev/null; then
         export ANDROID_BUILD_SHELL=$_nvm_wrap
     fi
 fi
+
+# Temporary HACK to remove pieces of the PDK
+if [ -n "$PDK_FUSION_PLATFORM_ZIP" ]; then
+    zip -q -d $PDK_FUSION_PLATFORM_ZIP "system/vendor/*" >/dev/null 2>/dev/null || true
+fi
