@@ -199,6 +199,11 @@ ifeq ($(NVIDIA_KERNEL_COVERAGE_ENABLED),1)
 		--disable GCOV_PROFILE_ALL
 endif
 
+ifeq ($(TARGET_PRODUCT), flaxen)
+	@echo "Enable Fairfax HDMI TDMS parameters"
+	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable FAIRFAX_HDMI_PARAM
+endif
+
 ifeq ($(APPEND_DTB_TO_KERNEL),true)
 	@echo "Enable configs to handle DTB appended kernel image (zImage)"
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ \
