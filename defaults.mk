@@ -1,4 +1,4 @@
-# Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
 #
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
@@ -182,6 +182,8 @@ LOCAL_NVIDIA_LINK_SCRIPT :=
 LOCAL_NVIDIA_OBJCOPY_FLAGS :=
 LOCAL_NVIDIA_OVERRIDE_HOST_DEBUG_FLAGS :=
 LOCAL_NVIDIA_RAW_EXECUTABLE_LDFLAGS :=
+LOCAL_NVIDIA_TMAKE_PART_ARTIFACT :=
+LOCAL_NVIDIA_TMAKE_PART_NAME :=
 LOCAL_NVIDIA_USE_PUBLIC_KEY_HEADER :=
 
 # FIXME: GTV's toolchain generates a lot of warnings for now

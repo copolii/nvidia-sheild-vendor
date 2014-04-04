@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
 #
 # Global build system definitions go here
 #
@@ -71,6 +71,10 @@ NVIDIA_PREBUILT_NOTICE     := $(NVIDIA_BUILD_ROOT)/nv_prebuilt_notice_files.mk
 NVIDIA_HOST_PREBUILT       := $(NVIDIA_BUILD_ROOT)/host_prebuilt.mk
 NVIDIA_WARNINGS            := $(NVIDIA_BUILD_ROOT)/warnings.mk
 NVIDIA_GENERATED_HEADER    := $(NVIDIA_BUILD_ROOT)/generated_headers.mk
+NVIDIA_TMAKE_PART                   := $(NVIDIA_BUILD_ROOT)/tmake_part.mk
+NVIDIA_TMAKE_PART_GENERATED_HEADER  := $(NVIDIA_BUILD_ROOT)/tmake_part_generated_header.mk
+NVIDIA_TMAKE_PART_HOST_EXECUTABLE   := $(NVIDIA_BUILD_ROOT)/tmake_part_host_executable.mk
+NVIDIA_TMAKE_PART_STATIC_EXECUTABLE := $(NVIDIA_BUILD_ROOT)/tmake_part_static_executable.mk
 NVIDIA_UBM_DEFAULTS        := $(NVIDIA_BUILD_ROOT)/ubm_defaults.mk
 NVIDIA_UBM_ENABLE          := $(NVIDIA_BUILD_ROOT)/ubm_enable.mk
 
