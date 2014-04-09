@@ -101,12 +101,16 @@ macallan() {
 tegratab() {
     [[ -n $BOARD_IS_E1569 ]] && board=e1569
     if [[ -z $board ]] && _shell_is_interactive; then
-        _choose "Which tegratab board revision to flash?" "p1640 e1569" board p1640
+        _choose "Which tegratab board revision to flash?" "p1640 e1569 p1988" board p1640
     else
         board=${board-p1640}
     fi
     if [[ $board == e1569 ]]; then
         bctfile=flash_tegratab_e1569.bct
+    elif [[ $board == p1988 ]]; then
+        battery="yes"
+        odmoption="--odm limitedpowermode"
+        bctfile=flash_tegratab_p1988.bct
     elif [[ $board == p1640 ]]; then
         if [[ -z $secureboot ]] && _shell_is_interactive; then
             _choose "Your board is PVT or secure boot is enabled?" "yes no" secureboot yes
