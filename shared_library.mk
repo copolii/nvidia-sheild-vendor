@@ -39,6 +39,13 @@ ifeq ($(NVIDIA_APICHECK),1)
 
 NVIDIA_CHECK_MODULE_LINK := $(LOCAL_BUILT_MODULE)
 
+include $(BUILD_SYSTEM)/multilib.mk
+
+ifndef my_module_multilib
+# libraries default to building for both architectures
+my_module_multilib := both
+endif
+
 LOCAL_2ND_ARCH_VAR_PREFIX :=
 include $(BUILD_SYSTEM)/module_arch_supported.mk
 my_module_primary_arch_supported := $(my_module_arch_supported)

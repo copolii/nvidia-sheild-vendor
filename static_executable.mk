@@ -12,7 +12,15 @@ LOCAL_MODULE_SUFFIX := .bin
 LOCAL_SYSTEM_SHARED_LIBRARIES :=
 LOCAL_NO_2ND_ARCH_MODULE_SUFFIX := true
 
+include $(BUILD_SYSTEM)/multilib.mk
+
+ifndef my_module_multilib
+# default to building for the primary architecture
+my_module_multilib := first
+endif
+
 # Check the primary arch
+LOCAL_2ND_ARCH_VAR_PREFIX :=
 include $(BUILD_SYSTEM)/module_arch_supported.mk
 
 # Otherwise check the secondary arch

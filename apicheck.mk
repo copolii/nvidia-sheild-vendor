@@ -20,9 +20,9 @@ LOCAL_MODULE_CLASS := EXECUTABLES
 LOCAL_MODULE_PATH := $(call local-intermediates-dir,,$(NVIDIA_2ND_ARCH_VAR_PREFIX))/CHECK
 
 ifneq ($(NVIDIA_2ND_ARCH_VAR_PREFIX),)
-LOCAL_32_BIT_ONLY := true
+LOCAL_MULTILIB := 32
 else
-LOCAL_NO_2ND_ARCH := true
+LOCAL_MULTILIB := first
 endif
 
 GEN := $(local-generated-sources-dir)/check.c

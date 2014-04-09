@@ -51,7 +51,7 @@ ifeq ($(LOCAL_ARM_MODE),thumb)
   LOCAL_CFLAGS += -D__thumb
 endif
 
-LOCAL_32_BIT_ONLY := true
+LOCAL_MULTILIB := 32
 
 include $(NVIDIA_BASE)
 include $(BUILD_STATIC_LIBRARY)

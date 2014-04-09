@@ -125,6 +125,7 @@ ifneq ($(LOCAL_MODULE_CLASS),EXECUTABLES)
     ifneq ($(LOCAL_NO_2ND_ARCH_MODULE_SUFFIX),true)
       # Reset, since we may only use the secondary version
       NVIDIA_TARGETS :=
+      include $(BUILD_SYSTEM)/multilib.mk
       include $(BUILD_SYSTEM)/module_arch_supported.mk
       ifeq ($(my_module_arch_supported),true)
         NVIDIA_TARGETS += $(LOCAL_MODULE)

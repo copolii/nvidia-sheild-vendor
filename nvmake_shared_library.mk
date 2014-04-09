@@ -15,6 +15,13 @@ endif
 
 include $(NVIDIA_NVMAKE_BASE)
 
+include $(BUILD_SYSTEM)/multilib.mk
+
+ifndef my_module_multilib
+# libraries default to building for both architectures
+my_module_multlib := both
+endif
+
 LOCAL_2ND_ARCH_VAR_PREFIX :=
 include $(BUILD_SYSTEM)/module_arch_supported.mk
 
@@ -44,5 +51,7 @@ endif
 LOCAL_2ND_ARCH_VAR_PREFIX :=
 
 endif # TARGET_2ND_ARCH
+
+my_module_arch_supported :=
 
 include $(NVIDIA_NVMAKE_CLEAR)
