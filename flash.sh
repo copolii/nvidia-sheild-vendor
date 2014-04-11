@@ -3,16 +3,16 @@
 # Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
 #
 # NVFlash wrapper script for flashing Android from either build environment
-# or from a BuildBrain output.tgz package. This script is not intended to be
-# called directly, but from vendorsetup.sh 'flash' function or BuildBrain
+# or from a BuildBrain output.tgz package. This script is usually
+# called indirectly via vendorsetup.sh 'flash' function or BuildBrain
 # package flashing script, which set required environment variables:
 #
-#  PRODUCT_OUT      - target build output files
-#  NVFLASH_BINARY   - path to nvflash executable
-#  NVGETDTB_BINARY  - path to nvgetdtb executable
+#  PRODUCT_OUT      - target build output files (default: current directory)
+#  NVFLASH_BINARY   - path to nvflash executable (default: ./nvflash)
+#  NVGETDTB_BINARY  - path to nvgetdtb executable (optional)
 #
 # Usage:
-#  flash.sh [-n] [-o <odmdata>] [-s <skuid> [forcebypass]] [-m <modem>]-- [optional args]
+#  flash.sh [-n] [-o <odmdata>] [-s <skuid> [forcebypass]] [-d] [-f] [-m <modem>]-- [optional args]
 #
 # -n
 #   skips using sudo on cmdline
@@ -22,6 +22,10 @@
 #   specify SKU to use, with optional forcebypass flag to nvflash
 # -m <modem>
 #   specify modem to use ([-o <odmdata>] overrides this option)
+# -f
+#   for fused devices. uses blob.bin and bootloader_signed.bin when specified.
+# -d
+#   dry-run. exits after printing out the final flash command
 #
 # optional arguments after '--' are added as-is to nvflash cmdline before
 #  '--go' argument, which must be last.
@@ -33,88 +37,11 @@
 # 2. Shell environment variables (BOARD, for predefining target board)
 # 3. If shell is interactive, prompt for input from user
 # 4. If shell is non-interactive, use default values
-
-######################################################
-# Shell is non-interactive in mobile sanity testing! #
-######################################################
-
-# Mandatory arguments, passed from calling scripts.
-if [[ ! -d ${PRODUCT_OUT} ]]; then
-    echo "error: \${PRODUCT_OUT} not set or not a directory"
-    exit 1
-fi
-
-# Detect OS, then set/verify nvflash binary accordingly.
-case $OSTYPE in
-    cygwin)
-        NVFLASH_BINARY="nvflash.exe"
-        NVGETDTB_BINARY="nvgetdtb.exe"
-
-        which $NVFLASH_BINARY 2> /dev/null >&2
-        if [ $? != 0 ]; then
-            echo "Error: make sure $NVFLASH_BINARY in \$PATH."
-            exit 1
-        fi
-
-        which $NVGETDTB_BINARY 2> /dev/null >&2
-        if [ $? != 0 ]; then
-            echo "Info: $NVGETDTB_BINARY is not found in \$PATH."
-        fi
-        _nosudo=1
-        ;;
-    linux*)
-        if [[ ! -x ${NVFLASH_BINARY} ]]; then
-            echo "error: \${NVFLASH_BINARY} not set or not an executable file"
-            exit 1
-        fi
-        if [[ ! -x ${NVGETDTB_BINARY} ]]; then
-            echo "error: \${NVGETDTB_BINARY} not set or not an executable file"
-            exit 1
-        fi
-        ;;
-    *)
-        echo "error: unsupported OS type $OSTYPE detected"
-        exit 1
-        ;;
-esac
-
-# Optional arguments
-while getopts "no:s:m:" OPTION
-do
-    case $OPTION in
-    m) _modem=${OPTARG};
-        ;;
-    n) _nosudo=1;
-        ;;
-    o) _odmdata=${OPTARG};
-        ;;
-    s) _skuid=${OPTARG};
-        if [ "$3" == "forcebypass" ]; then
-            _skuid="$_skuid $3"
-            shift
-        fi
-        ;;
-    esac
-done
-
-# Optional command-line arguments, added to nvflash cmdline as-is:
-# flash -b my_flash.bct -- <args to nvflash>
-shift $(($OPTIND - 1))
-_args=$@
-
-# If BOARD is set, use it as predefined board name
-[[ -n $BOARD ]] && board="$BOARD"
-
-# Fetch target board name. Internal builds (*_int) and generic builds (*_gen)
-# share a board with the external builds.
-# *_64 are the same board with a 64-bit userspace. They should flash the same.
-product=$(echo ${PRODUCT_OUT%/} | sed -e 's#.*\/\(.*\)#\1#' -e 's#_\(int\|gen\|64\)$##')
+#    - Shell is non-interactive in mobile sanity testing!
 
 ###############################################################################
 # TNSPEC Platform Handler
-# Used by ardbeg, ...
 ###############################################################################
-
 tnspec_platforms()
 {
     local product=$1
@@ -230,95 +157,6 @@ tnspec_platforms()
     echo ""
 }
 
-###############################################################################
-# Setup functions per target board
-t132() {
-    if [[ -z $board ]] && ! _shell_is_interactive; then
-        board=norrin
-    fi
-
-    tnspec_platforms "Loki/TegraNote/T132"
-}
-
-ardbeg() {
-    # 'shield_ers' seems to be assumed in automation testing.
-    # if $board is empty and shell is not interactive, set 'shield_ers' to $board
-    if [ -z $board ] && ! _shell_is_interactive; then
-       board=shield_ers
-    fi
-
-    tnspec_platforms "TegraNote/Ardbeg"
-}
-
-loki() {
-    # 'loki_nff_b00' seems to be assumed in automation testing.
-    # if $board is empty and shell is not interactive, set 'loki_nff_b00' to $board
-    if [ -z $board ] && ! _shell_is_interactive; then
-       board=loki_nff_b00
-    fi
-
-    tnspec_platforms "Loki/T124"
-}
-
-###################
-# Utility functions
-
-# Test if we have a connected output terminal
-_shell_is_interactive() { tty -s ; return $? ; }
-
-# Test if string ($1) is found in array ($2)
-_in_array() {
-    local hay needle=$1 ; shift
-    for hay; do [[ $hay == $needle ]] && return 0 ; done
-    return 1
-}
-
-# Display prompt and loop until valid input is given
-_choose() {
-    _shell_is_interactive || { "error: _choose needs an interactive shell" ; exit 2 ; }
-    local query="$1"                   # $1: Prompt text
-    local -a choices=($2)              # $2: Valid input values
-    local input=$(eval "echo \${$3}")  # $3: Variable name to store result in
-    local default=$4                   # $4: Default choice
-    local quiet=${5-''}                # $5: Hide choices from prompt
-    local selected=''
-    while [[ -z $selected ]] ; do
-        if [[ -n $quiet ]]; then
-            read -e -p "$query" -i "$default" input
-        else
-            read -e -p "$query [${choices[*]}] " -i "$default" input
-        fi
-        if ! _in_array "$input" "${choices[@]}"; then
-            echo "error: $input is not a valid choice. Valid choices are:"
-            printf ' %s\n' ${choices[@]}
-        else
-            selected=$input
-        fi
-    done
-    eval "$3=$selected"
-    # If predefined input is invalid, return error
-    _in_array "$selected" "${choices[@]}"
-}
-
-# Update odmdata regarding required modem:
-# select through bits [7:3] of odmdata
-# e.g max value is 0x1F
-_mdm_odm() {
-    if [[ $_modem ]]; then
-        if [[ $_modem -lt 0x1F ]]; then
-            # 1st get a default odmdata if not yet set
-            odmdata=${_odmdata-${odmdata-"0x98000"}}
-            # 2nd: disable modem
-            disable_mdm=$(( ~(0x1F << 3) ))
-            odmdata=$(( $odmdata & $disable_mdm ))
-            # 3rd: select required modem
-            odmdata=`printf "0x%x" $(( $odmdata | $(( $_modem << 3 )) ))`
-        else
-            echo "Warning: Unknown modem reference [${_modem}]. Unchanged odmdata."
-        fi
-    fi
-}
-
 # Automatically detect HW type and generate NCT if necessary
 tnspec_auto() {
     local nctbin=$1
@@ -400,96 +238,6 @@ tnspec_manual() {
     echo $spec_id
 }
 
-# Pretty prints ($2 - optional header)
-pr_info() {
-    if  _shell_is_interactive; then
-        echo -e "\033[95m$2\033[0m$1"
-    else
-        echo $2$1
-    fi
-}
-pr_ok() {
-    if _shell_is_interactive; then
-        echo -e "\033[95m$2\033[0m\033[92m$1\033[0m"
-    else
-        echo $2$1
-    fi
-}
-pr_ok_bl() {
-    if  _shell_is_interactive; then
-        echo -e "\033[95m$2\033[0m\033[94m$1\033[0m"
-    else
-        echo $2$1
-    fi
-}
-pr_warn() {
-    if  _shell_is_interactive; then
-        echo -e "\033[95m$2\033[0m\033[93m$1\033[0m"
-    else
-        echo $2$1
-    fi
-}
-pr_err() {
-    if _shell_is_interactive; then
-        echo -e "\033[95m$2\033[0m\033[91m$1\033[0m"
-    else
-        echo $2$1
-    fi
-}
-# sudo nvflash
-_nvflash() {
-    if [[ -n $_nosudo ]]; then
-        flash_cmd="$NVFLASH_BINARY"
-    else
-        flash_cmd="sudo $NVFLASH_BINARY"
-    fi
-
-    recovery=${recovery:---force_reset recovery 100}
-    # always wait for the device to be in recovery mode
-    echo "$flash_cmd --wait  $@ --bl $(_os_path $PRODUCT_OUT/bootloader.bin) $recovery" 2> $TNSPEC_OUTPUT >&2
-
-    # some devices need a settling delay
-    sleep 1
-    $flash_cmd --wait  $@ --bl $(_os_path $PRODUCT_OUT/bootloader.bin) $recovery
-}
-# su
-_su() {
-    if [[ -n $_nosudo ]]; then
-        $@
-    else
-        sudo $@
-    fi
-}
-
-# get CID
-_get_cid()
-{
-    local cid_output=$PRODUCT_OUT/.nvflash_cid
-    local cid=''
-    _nvflash > $cid_output
-    if [ $? != 0 ]; then
-        cat $cid_output
-        pr_err "nvflash failed." >&2
-        return 1
-    fi
-    cid=$(cat $cid_output | grep "BR_CID:" | cut -f 2 -d ' ')
-    if [ -z $cid ]; then
-        cid=$(cat $cid_output | grep "uid from" | cut -f 6 -d ' ')
-    fi
-    rm $cid_output
-    echo $cid
-}
-
-# convert unix path to windows path
-_os_path()
-{
-    if [ $OSTYPE == cygwin ]; then
-        echo $(cygpath -w $1)
-    else
-        echo $1
-    fi
-}
-
 # download NCT
 _download_NCT() {
     local x
@@ -553,6 +301,195 @@ tnspec() {
     _tnspec $@ -s $tnspec_spec
 }
 
+###############################################################################
+# Setup functions per target board
+###############################################################################
+tnspec_generic() {
+    family=$(cat $PRODUCT_OUT/tnspec.json | _tnspec spec get family -g sw)
+    tnspec_platforms $family
+}
+
+t132() {
+    if [[ -z $board ]] && ! _shell_is_interactive; then
+        board=norrin
+    fi
+
+    tnspec_platforms "Loki/TegraNote/T132"
+}
+
+ardbeg() {
+    # 'shield_ers' seems to be assumed in automation testing.
+    # if $board is empty and shell is not interactive, set 'shield_ers' to $board
+    if [ -z $board ] && ! _shell_is_interactive; then
+       board=shield_ers
+    fi
+
+    tnspec_platforms "TegraNote/Ardbeg"
+}
+
+loki() {
+    # 'loki_nff_b00' seems to be assumed in automation testing.
+    # if $board is empty and shell is not interactive, set 'loki_nff_b00' to $board
+    if [ -z $board ] && ! _shell_is_interactive; then
+       board=loki_nff_b00
+    fi
+
+    tnspec_platforms "Loki/T124"
+}
+
+###############################################################################
+# Utility functions
+###############################################################################
+
+# Test if we have a connected output terminal
+_shell_is_interactive() { tty -s ; return $? ; }
+
+# Test if string ($1) is found in array ($2)
+_in_array() {
+    local hay needle=$1 ; shift
+    for hay; do [[ $hay == $needle ]] && return 0 ; done
+    return 1
+}
+
+# Display prompt and loop until valid input is given
+_choose() {
+    _shell_is_interactive || { "error: _choose needs an interactive shell" ; exit 2 ; }
+    local query="$1"                   # $1: Prompt text
+    local -a choices=($2)              # $2: Valid input values
+    local input=$(eval "echo \${$3}")  # $3: Variable name to store result in
+    local default=$4                   # $4: Default choice
+    local quiet=${5-''}                # $5: Hide choices from prompt
+    local selected=''
+    while [[ -z $selected ]] ; do
+        if [[ -n $quiet ]]; then
+            read -e -p "$query" -i "$default" input
+        else
+            read -e -p "$query [${choices[*]}] " -i "$default" input
+        fi
+        if ! _in_array "$input" "${choices[@]}"; then
+            pr_err "$input is not a valid choice. Valid choices are:" "_choose: "
+            printf ' %s\n' ${choices[@]}
+        else
+            selected=$input
+        fi
+    done
+    eval "$3=$selected"
+    # If predefined input is invalid, return error
+    _in_array "$selected" "${choices[@]}"
+}
+
+# Update odmdata regarding required modem:
+# select through bits [7:3] of odmdata
+# e.g max value is 0x1F
+_mdm_odm() {
+    if [[ $_modem ]]; then
+        if [[ $_modem -lt 0x1F ]]; then
+            # 1st get a default odmdata if not yet set
+            odmdata=${_odmdata-${odmdata-"0x98000"}}
+            # 2nd: disable modem
+            disable_mdm=$(( ~(0x1F << 3) ))
+            odmdata=$(( $odmdata & $disable_mdm ))
+            # 3rd: select required modem
+            odmdata=`printf "0x%x" $(( $odmdata | $(( $_modem << 3 )) ))`
+        else
+            pr_warn "Unknown modem reference [${_modem}]. Unchanged odmdata." "_mdm_odm: "
+        fi
+    fi
+}
+
+# Pretty prints ($2 - optional header)
+pr_info() {
+    if  _shell_is_interactive; then
+        echo -e "\033[95m$2\033[0m$1"
+    else
+        echo $2$1
+    fi
+}
+pr_ok() {
+    if _shell_is_interactive; then
+        echo -e "\033[95m$2\033[0m\033[92m$1\033[0m"
+    else
+        echo $2$1
+    fi
+}
+pr_ok_bl() {
+    if  _shell_is_interactive; then
+        echo -e "\033[95m$2\033[0m\033[94m$1\033[0m"
+    else
+        echo $2$1
+    fi
+}
+pr_warn() {
+    if  _shell_is_interactive; then
+        echo -e "\033[95m$2\033[0m\033[93m$1\033[0m"
+    else
+        echo $2$1
+    fi
+}
+pr_err() {
+    if _shell_is_interactive; then
+        echo -e "\033[95m$2\033[0m\033[91m$1\033[0m"
+    else
+        echo $2$1
+    fi
+}
+
+# sudo nvflash
+_nvflash() {
+    if [[ -n $_nosudo ]]; then
+        flash_cmd="$NVFLASH_BINARY"
+    else
+        flash_cmd="sudo $NVFLASH_BINARY"
+    fi
+
+    recovery=${recovery:---force_reset recovery 100}
+    # always wait for the device to be in recovery mode
+    echo "$flash_cmd --wait  $blob $@ --bl $(_os_path $PRODUCT_OUT/$blbin) $recovery" 2> $TNSPEC_OUTPUT >&2
+
+    # some devices need a settling delay
+    sleep 1
+    $flash_cmd --wait  $blob $@ --bl $(_os_path $PRODUCT_OUT/$blbin) $recovery
+}
+
+# su
+_su() {
+    if [[ -n $_nosudo ]]; then
+        $@
+    else
+        sudo $@
+    fi
+}
+
+# get CID
+_get_cid()
+{
+    local cid_output=$PRODUCT_OUT/.nvflash_cid
+    local cid=''
+    _nvflash > $cid_output
+    if [ $? != 0 ]; then
+        cat $cid_output
+        pr_err "nvflash failed." >&2
+        return 1
+    fi
+    cid=$(cat $cid_output | grep "BR_CID:" | cut -f 2 -d ' ')
+    if [ -z $cid ]; then
+        cid=$(cat $cid_output | grep "uid from" | cut -f 6 -d ' ')
+    fi
+    rm $cid_output
+    echo $cid
+}
+
+# convert unix path to windows path
+_os_path()
+{
+    if [ $OSTYPE == cygwin ]; then
+        echo $(cygpath -w $1)
+    else
+        echo $1
+    fi
+}
+
+
 # Set all needed parameters
 _set_cmdline() {
     # Set modem in odmdata if required
@@ -562,6 +499,9 @@ _set_cmdline() {
     odmdata=${_odmdata-${odmdata-"0x98000"}}
     bctfile=${bctfile-"bct.cfg"}
     cfgfile=${cfgfile-"flash.cfg"}
+
+    # if flashing fused devices, lock bootloader. (bit 13)
+    [[ -n $_fused ]] && odmdata=$(printf "0x%x" $(( $odmdata | (( 1 << 13 )) )) )
 
     # Set NCT option, defaults to empty
     nct=${nct-""}
@@ -579,11 +519,11 @@ _set_cmdline() {
     if [[ -z $dtbfile ]] && _shell_is_interactive; then
         local _dtbfile=$(sudo $NVGETDTB_BINARY)
         if [ $? -eq 0 ]; then
-            echo "INFO: nvgetdtb: Using $dtbfile for $product product"
+            pr_info "Using $dtbfile for $product product" "nvgetdtb: "
         else
-            echo "INFO: nvgetdtb couldn't retrieve the dtbfile for $product product"
+            pr_info "nvgetdtb couldn't retrieve the dtbfile for $product product" "nvgetdtb: "
             _dtbfile=$(grep dtb ${PRODUCT_OUT}/$cfgfile | cut -d "=" -f 2)
-            echo "INFO: Using the default product dtb file $_dtbfile"
+            pr_info "Using the default product dtb file $_dtbfile" "nvgetdtb: "
         fi
         dtbfile=$_dtbfile
     else
@@ -593,13 +533,14 @@ _set_cmdline() {
 
     # Parse nvflash commandline
     cmdline=(
+        $blob
         --bct $bctfile
         --setbct
         --odmdata $odmdata
         --configfile $cfgfile
         --dtbfile $dtbfile
         --create
-        --bl bootloader.bin
+        --bl $blbin
         --wait
         $skuid
         $nct
@@ -609,8 +550,97 @@ _set_cmdline() {
     )
 }
 
-###########
+###############################################################################
 # Main code
+###############################################################################
+
+if [[ -z $PRODUCT_OUT ]]; then
+    PRODUCT_OUT=.
+    product=tnspec_generic
+else
+    # Fetch target board name. Internal builds (*_int) and generic builds (*_gen)
+    # share a board with the external builds.
+    # *_64 are the same board with a 64-bit userspace. They should flash the same.
+    product=$(echo ${PRODUCT_OUT%/} | sed -e 's#.*\/\(.*\)#\1#' -e 's#_\(int\|gen\|64\)$##')
+fi
+
+if [[ ! -d ${PRODUCT_OUT} ]]; then
+    pr_err "\"${PRODUCT_OUT}\" is not a directory" "flash.sh: "
+    exit 1
+fi
+
+# Detect OS, then set/verify nvflash binary accordingly.
+case $OSTYPE in
+    cygwin)
+        NVFLASH_BINARY="nvflash.exe"
+        NVGETDTB_BINARY="nvgetdtb.exe"
+
+        which $NVFLASH_BINARY 2> /dev/null >&2
+        if [ $? != 0 ]; then
+            pr_err "Error: make sure $NVFLASH_BINARY in \$PATH." "flash.sh"
+            exit 1
+        fi
+
+        which $NVGETDTB_BINARY 2> /dev/null >&2
+        if [ $? != 0 ]; then
+            pr_info "$NVGETDTB_BINARY is not found in \$PATH." "flash.sh"
+        fi
+        _nosudo=1
+        ;;
+    linux*)
+        NVFLASH_BINARY=${NVFLASH_BINARY:-./nvflash}
+        if [[ ! -x ${NVFLASH_BINARY} ]]; then
+            pr_err "${NVFLASH_BINARY} is not an executable file" "flash.sh: "
+            exit 1
+        fi
+        if [[ -n ${NVGETDTB_BINARY} && ! -x ${NVGETDTB_BINARY} ]]; then
+            pr_err "${NVGETDTB_BINARY} is not an executable file" "flash.sh: "
+            exit 1
+        fi
+        ;;
+    *)
+        pr_err "unsupported OS type $OSTYPE detected" "flash.sh: "
+        exit 1
+        ;;
+esac
+
+# default variables
+blbin="bootloader.bin"
+
+# Optional arguments
+while getopts "no:s:m:fd" OPTION
+do
+    case $OPTION in
+    d)  _dryrun=1;
+        ;;
+    f)  _fused=1;
+        pr_err "[Flashing FUSED devices]" "fused: "
+        pr_warn "  Using '--blob blob.bin' and 'bootloader_signed.bin'" "fused: "
+        blob="--blob blob.bin"
+        blbin="bootloader_signed.bin"
+        ;;
+    m) _modem=${OPTARG};
+        ;;
+    n) _nosudo=1;
+        ;;
+    o) _odmdata=${OPTARG};
+        ;;
+    s) _skuid=${OPTARG};
+        if [ "$3" == "forcebypass" ]; then
+            _skuid="$_skuid $3"
+            shift
+        fi
+        ;;
+    esac
+done
+
+# Optional command-line arguments, added to nvflash cmdline as-is:
+# flash -b my_flash.bct -- <args to nvflash>
+shift $(($OPTIND - 1))
+_args=$@
+
+# If BOARD is set, use it as predefined board name
+[[ -n $BOARD ]] && board="$BOARD"
 
 # Run product function to set needed parameters
 eval $product
@@ -630,8 +660,11 @@ if [[ $_args ]]; then
     cmdline=(${cmdline[@]} ${_args[@]} --go)
 fi
 
-echo "INFO: PRODUCT_OUT = $PRODUCT_OUT"
-echo "INFO: CMDLINE = ${cmdline[@]}"
+pr_info "PRODUCT_OUT = $PRODUCT_OUT" "flash.sh: "
+pr_info "CMDLINE = ${cmdline[*]}" "flash.sh: "
+
+# exit if dryrun is set
+[[ -n $_dryrun ]] && exit 0
 
 # Execute command
 (cd $PRODUCT_OUT && eval ${cmdline[@]})
