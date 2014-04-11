@@ -19,6 +19,10 @@ endif
 
 NVIDIA_BUILD_ROOT          := vendor/nvidia/build
 
+# Bug 1498457: TARGET_OUT_HEADERS dependencies
+$(TARGET_OUT_HEADERS):
+	$(hide) mkdir -p $@
+
 #Bug 1266062: Temporary switch to use new ODM repo sync location path
 #This needs to be removed later
 ifndef NV_BUILD_WAR_1266062
