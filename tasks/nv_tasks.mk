@@ -34,11 +34,9 @@ ifneq ($(wildcard vendor/nvidia/$(TARGET_DEVICE)/skus/sku-properties.xml),)
 # List of TARGET_PRODUCTs for which we will make changes in build.prop
 _skus := \
 	wx_na_wf \
-	wx_na_mo \
 	wx_na_do \
 	wx_un_mo \
 	wx_un_do \
-	wx_zh_mo \
 	wx_diag \
 	loki_b \
 	loki_p \
