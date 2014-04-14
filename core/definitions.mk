@@ -82,6 +82,7 @@ NVIDIA_AR20SHADERLAYOUT    := $(HOST_OUT_EXECUTABLES)/ar20shaderlayout
 
 NVIDIA_GETEXPORTS          := $(NVIDIA_BUILD_ROOT)/getexports.py
 NVIDIA_HEXIFY              := $(NVIDIA_BUILD_ROOT)/hexify.py
+NVIDIA_TNTEST              := $(TEGRA_TOP)/core/tools/tntest/tntest.sh
 
 # global vars
 ALL_NVIDIA_MODULES :=
@@ -168,3 +169,18 @@ $$(GEN_SHADERSRC_$(1)): $(intermediates)/shaders/%.$(1)h : $(intermediates)/%.$(
 	$$(transform-shader-to-string)
 endef
 
+# Tntest validation tool
+
+# Usage:
+# Include the following line after including control makefiles such as
+# NVIDIA_PREBUILT, NVIDIA_STATIC_LIBRARY, NVIDIA_SHARED_LIBRARY, ...
+#
+# $(eval $(call tntest,$(LOCAL_PATH)/testsuite,"Test Name"))
+#
+define tntest
+$$(LOCAL_BUILT_MODULE): $$(LOCAL_MODULE)-tntest
+
+$$(LOCAL_MODULE)-tntest:
+	@echo $$(LOCAL_BUILT_MODULE)
+	TNTEST_SUITE=$(1) TNTEST_TITLE=$(2) $(NVIDIA_TNTEST)
+endef
