@@ -29,6 +29,13 @@ ifndef NV_BUILD_WAR_1266062
 NV_BUILD_WAR_1266062 := 1
 endif
 
+#Bug 1408881: Choose which location to build camera sanity test
+#This needs to be removed later
+ifndef NV_BUILD_WAR_1408881
+NV_BUILD_WAR_1408881 := 1
+endif
+
+
 # Bug 1251947: Choose which location to build NVogtest
 # This needs to be removed later
 ifndef NV_BUILD_WAR_1251947
