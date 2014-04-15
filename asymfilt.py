@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright (c) 2011 NVIDIA Corporation.  All Rights Reserved.
+# Copyright (c) 2011-2014 NVIDIA Corporation.  All Rights Reserved.
 #
 # NVIDIA Corporation and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
@@ -134,9 +134,9 @@ def main():
     rexp_tomb_start = re.compile('pid.*tid.*')
     # code around lr:
     rexp_tomb_end   = re.compile('code around lr:')
-    #           #01  pc 0014a784  /system/lib/libwebcore.so
-    # GROUPS:   -- 1 --><- 2 -->  <---------- 3 ---------->
-    rexp_tomb = re.compile('(\s+ #\d+ \s* \w\w )([\w]+)\s+(/.*)$')
+    #           #01  pc 0014a784  /system/lib/libwebcore.so (__libc_init+50)
+    # GROUPS:   -- 1 --><- 2 -->  <---------- 3 ----------> <------ 4 ----->
+    rexp_tomb = re.compile('(\s+ #\d+ \s* \w\w )([\w]+)\s+(/[^ ]*)(?: \(.+\))?$')
 
     # Android callstack mode
     rexp_android = re.compile('([^#]*#\d+ \s* \w\w )([\w]+)\s+(/.*)$')
