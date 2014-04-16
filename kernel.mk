@@ -244,9 +244,11 @@ endif
 # image - no blessing takes place.
 kmodules: kmodules-build_only FORCE | $(NV_KERNEL_MODULES_TARGET_DIR) $(NV_COMPAT_KERNEL_MODULES_TARGET_DIR)
 	@echo "Kernel modules install"
-	for f in `find $(NV_KERNEL_INTERMEDIATES_DIR) -name "*.ko"` ; do cp -v "$$f" $(NV_KERNEL_MODULES_TARGET_DIR) ; done
 ifneq ( , $(findstring $(BOARD_WLAN_DEVICE), wl12xx_mac80211 wl18xx_mac80211))
+	for f in `find $(NV_KERNEL_INTERMEDIATES_DIR) -name "*.ko" ! -name mac80211.ko ! -name cfg80211.ko` ; do cp -v "$$f" $(NV_KERNEL_MODULES_TARGET_DIR) ; done
 	for f in `find $(NV_COMPAT_KERNEL_DIR) -name "*.ko"` ; do cp -v "$$f" $(NV_COMPAT_KERNEL_MODULES_TARGET_DIR) ; done
+else
+	for f in `find $(NV_KERNEL_INTERMEDIATES_DIR) -name "*.ko"` ; do cp -v "$$f" $(NV_KERNEL_MODULES_TARGET_DIR) ; done
 endif
 
 # At this stage, BUILT_SYSTEMIMAGE in $TOP/build/core/Makefile has not
