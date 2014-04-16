@@ -607,6 +607,8 @@ esac
 # default variables
 blbin="bootloader.bin"
 
+# convert args into an array
+args_a=( "$@" )
 # Optional arguments
 while getopts "no:s:m:fd" OPTION
 do
@@ -626,8 +628,9 @@ do
     o) _odmdata=${OPTARG};
         ;;
     s) _skuid=${OPTARG};
-        if [ "$3" == "forcebypass" ]; then
-            _skuid="$_skuid $3"
+        _peek=${args_a[(( OPTIND - 1 ))]}
+        if [ "$_peek" == "forcebypass" ]; then
+            _skuid="$_skuid $_peek"
             shift
         fi
         ;;
