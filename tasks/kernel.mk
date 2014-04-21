@@ -159,12 +159,6 @@ endif
 $(dotconfig): $(KERNEL_DEFCONFIG_PATH) | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel config " $(TARGET_KERNEL_CONFIG)
 	+$(hide) $(kernel-make) $(TARGET_KERNEL_CONFIG)
-ifneq ($(filter tf y,$(SECURE_OS_BUILD)),)
-	@echo "TF SecureOS enabled kernel"
-	$(hide) $(KERNEL_PATH)/scripts/config --file $@ \
-	--enable TRUSTED_FOUNDATIONS \
-	--enable TEGRA_USE_SECURE_KERNEL
-endif
 ifeq ($(SECURE_OS_BUILD),tlk)
 	@echo "TLK SecureOS enabled kernel"
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ \

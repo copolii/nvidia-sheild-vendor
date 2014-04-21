@@ -94,10 +94,7 @@ function ksetup()
     echo "make -C $SRC $KARCH $CROSS O=$KOUT $1"
     (cd $T && mkdir -p $KOUT ; make -C $SRC $KARCH $CROSS O=$KOUT $1)
 
-    if [ "$SECURE_OS_BUILD" == "y" ] || [ "$SECURE_OS_BUILD" == "tf" ]; then
-        $SRC/scripts/config --file $KOUT/.config --enable TRUSTED_FOUNDATIONS \
-             --enable TEGRA_USE_SECURE_KERNEL
-    elif [ "$SECURE_OS_BUILD" == "tlk" ]; then
+    if [ "$SECURE_OS_BUILD" == "tlk" ]; then
         $SRC/scripts/config --file $KOUT/.config --enable TRUSTED_LITTLE_KERNEL \
              --enable OTE_ENABLE_LOGGER --enable TEGRA_USE_SECURE_KERNEL
     fi
@@ -180,11 +177,9 @@ function ksavedefconfig()
     # make a backup of the current configuration
     cp $KOUT/.config $KOUT/.config.backup
 
-    # CONFIG_TRUSTED_FOUNDATIONS and CONFIG_TRUSTED_LITTLE_KERNEL
-    # is turned on in kernel.mk or ksetup rather than defconfig
-    # don't store coverage setup to defconfig
+    # CONFIG_TRUSTED_LITTLE_KERNEL is turned on in kernel.mk or
+    # ksetup rather than defconfig don't store coverage setup to defconfig
     $SRC/scripts/config --file $KOUT/.config \
-        --disable TRUSTED_FOUNDATIONS \
         --disable TRUSTED_LITTLE_KERNEL \
         --disable TEGRA_USE_SECURE_KERNEL \
         --disable GCOV_KERNEL \
