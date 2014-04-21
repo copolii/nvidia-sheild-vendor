@@ -2,16 +2,15 @@
 # Nvidia specific targets
 #
 
-.PHONY: dev nv-blob sim-image list-non-nv-modules qt-image
+.PHONY: dev nv-blob sim-image list-non-nv-modules
 
 dev: droidcore target-files-package
 ifeq ($(BOARD_SUPPORT_SIMULATION),true)
 	device/nvidia/common/generate_nvtest_ramdisk.sh $(TARGET_DEVICE)
 	device/nvidia/common/generate_full_filesystem.sh $(TARGET_DEVICE)
 	device/nvidia/common/generate_asim_bootimg.sh $(TARGET_DEVICE)
-  ifneq ("$(BOOT_WRAPPER_RAMDISK)","")
-	$(BOOT_WRAPPER_RAMDISK)
-  endif
+	device/nvidia/common/generate_qt_ramdisk.sh $(TARGET_DEVICE)
+	$(BOOT_WRAPPER_CMD)
 endif
 
 #
@@ -71,23 +70,13 @@ nv-blob: \
 #
 sim-image: nvidia-tests
 	device/nvidia/common/copy_simtools.sh
-	device/nvidia/common/generate_full_filesystem.sh
+	device/nvidia/common/generate_full_filesystem.sh $(TARGET_DEVICE)
 	@echo "Generating sdmmc image w/ full filesystem ..."
 	device/nvidia/common/sdmmc_util.sh \
 	    -s 2048 -z \
 	    -o $(PRODUCT_OUT)/sdmmc_full_fs.img \
 	    -c device/nvidia/common/sdmmc_full_fs.cfg
-ifneq ("$(BOOT_WRAPPER_RAMDISK)","")
-	$(BOOT_WRAPPER_RAMDISK)
-endif
-
-QT_RAMDISK	:= $(CURDIR)/$(PRODUCT_OUT)/qt_ramdisk.img
-
-$(QT_RAMDISK): device/nvidia/common/generate_qt_ramdisk.sh
-	$< $(TARGET_DEVICE)
-
-qt-image: $(INSTALLED_BOOTIMAGE_TARGET) $(QT_RAMDISK)
-	$(BOOT_WRAPPER_RAMDISK) QT_BUILD=1
+	$(BOOT_WRAPPER_CMD)
 
 # This macro lists all modules filtering those which
 # 1. Are in a path which contains 'nvidia'

@@ -190,18 +190,14 @@ endif
 ifeq ($(TARGET_ARCH_KERNEL),arm64)
     BOOT_WRAPPER_DIR := $(TEGRA_TOP)/core-private/system/boot-wrapper-aarch64
     BOOT_WRAPPER_CMD := $(MAKE) -C $(BOOT_WRAPPER_DIR) FDT_SRC=$(KERNEL_DTS_PATH);
-    BOOT_WRAPPER_CMD += $(MAKE) -C $(BOOT_WRAPPER_DIR) FDT_SRC=$(KERNEL_DTS_PATH) EMMC_BOOT=1
-    BOOT_WRAPPER_RAMDISK := $(MAKE) -C $(BOOT_WRAPPER_DIR) FDT_SRC=$(KERNEL_DTS_PATH) RAMDISK_BOOT=1
 else
     BOOT_WRAPPER_CMD :=
-    BOOT_WRAPPER_RAMDISK :=
 endif
 
 # core-private isn't present in cust builds, so we can't use files from there.
 # Turn off the boot wrapper stuff for cust builds.
 ifneq ($(wildcard vendor/nvidia/tegra/core-private),vendor/nvidia/tegra/core-private)
     BOOT_WRAPPER_CMD :=
-    BOOT_WRAPPER_RAMDISK :=
 endif
 
 # TODO: figure out a way of not forcing kernel & module builds.
@@ -218,7 +214,6 @@ $(TARGET_BUILT_KERNEL_DTB): $(dotconfig) $(BUILT_KERNEL_TARGET) FORCE
 $(BUILT_KERNEL_TARGET): $(dotconfig) $(TARGET_BUILT_KERNEL_DTB) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel build"
 	+$(hide) $(kernel-make) zImage
-	+$(hide) $(BOOT_WRAPPER_CMD)
 
 kmodules-build_only: $(BUILT_KERNEL_TARGET) FORCE | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel modules build"
