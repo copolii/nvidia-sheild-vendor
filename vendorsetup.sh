@@ -445,6 +445,9 @@ function _flash()
         T="\$(pwd)"
         local FLASH_SH="$T/$PRODUCT_OUT/flash.sh \$@"
         shift
+    elif [[ "$1" == "vcm" ]]; then
+	T=$(gettop)
+	local FLASH_SH="$T/$PRODUCT_OUT/bootburn.sh -a -r ram0 -Z lzf -e"
     else
         T=$(gettop)
         local FLASH_SH=$T/vendor/nvidia/build/flash.sh
@@ -454,6 +457,7 @@ function _flash()
         NVFLASH_BINARY=$T/$HOST_OUT/bin/nvflash
         NVGETDTB_BINARY=$T/$HOST_OUT/bin/nvgetdtb
         PRODUCT_OUT=$T/$PRODUCT_OUT
+        HOST_OUT=$T/$HOST_OUT
         $FLASH_SH
         $@
     )
@@ -504,7 +508,11 @@ fi
     cmd=${cmd//\$HOST_OUT/$HOST_OUT}
 
     echo "$cmd"
-    echo "($(_flash bsp))"
+    if [[ "$1" == "vcm" ]]; then
+        echo "\$PRODUCT_OUT/bootburn.sh -a -r ram0 -Z lzf -e"
+    else
+        echo "($(_flash bsp))"
+    fi
 }
 
 function adbserver()
