@@ -581,6 +581,12 @@ function tnspec()
     _tnspec $* -s $(_tnspec_which)
 }
 
+function tntest()
+{
+    T=$(gettop)
+    $T/vendor/nvidia/tegra/core/tools/tntest/tntest.sh $@
+}
+
 # Remove TEGRA_ROOT, no longer required and should never be used.
 
 if [ -n "$TEGRA_ROOT" ]; then

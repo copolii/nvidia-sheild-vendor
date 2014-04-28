@@ -84,6 +84,10 @@ NVIDIA_GETEXPORTS          := $(NVIDIA_BUILD_ROOT)/getexports.py
 NVIDIA_HEXIFY              := $(NVIDIA_BUILD_ROOT)/hexify.py
 NVIDIA_TNTEST              := $(TEGRA_TOP)/core/tools/tntest/tntest.sh
 
+# test suites
+
+NVIDIA_TNTEST_TESTSUITES   := $(TEGRA_TOP)/tests
+
 # global vars
 ALL_NVIDIA_MODULES :=
 ALL_NVIDIA_TESTS :=
@@ -169,18 +173,52 @@ $$(GEN_SHADERSRC_$(1)): $(intermediates)/shaders/%.$(1)h : $(intermediates)/%.$(
 	$$(transform-shader-to-string)
 endef
 
-# Tntest validation tool
-
+###############################################################################
+# Tntest - build-time test runner
+#
 # Usage:
-# Include the following line after including control makefiles such as
-# NVIDIA_PREBUILT, NVIDIA_STATIC_LIBRARY, NVIDIA_SHARED_LIBRARY, ...
+# Include the following line to run test cases for the target module.
 #
-# $(eval $(call tntest,$(LOCAL_PATH)/testsuite,"Test Name"))
+# $(eval $(call tntest,$(TARGET_MODULE),$(TESTSUITE),"Test Name"))
 #
+# $(1) - TARGET_MODULE (Required)
+#  Target module to test. Test cases are executed before the target module is
+#  built.
+#  e.g.
+#   - $(LOCAL_BUILT_MODULE)
+#   - file names added to PRODUCT_COPY_FILES
+#
+# $(2) - TESTSUITE
+#  Test Suite location where test cases (prefixed with "test") are located.
+#  Default is "testsuite"
+#
+# $(3) - Test Name
+#
+# $(4) - Ignore test failure (Optional)
+#  Set 1 if it's desired to continue build after test failure.
+#
+# $(5) - Verbose (Optional)
+#  "fail" - prints intermediate steps for failed tests.
+#  "all"  - prints intermediate steps for all tests.
+#
+# $(TNTEST_ARGS) - Test Suite Arguments
+#  These are passed to test scripts as-is.
+#
+###############################################################################
 define tntest
-$$(LOCAL_BUILT_MODULE): $$(LOCAL_MODULE)-tntest
+TNTEST_TARGET := $(1)-tntest-$(shell date +%s%N)
+$(1): $$(TNTEST_TARGET)
+$$(TNTEST_TARGET):
+	$(hide) [ -x $(NVIDIA_TNTEST) ] && \
+		TNTEST_SUITE=$(2) TNTEST_TITLE=$(3) TNTEST_IGNORE=$(4) \
+		TNTEST_VERBOSE=$(5) $(NVIDIA_TNTEST) $(TNTEST_ARGS) || \
+		echo "TNTEST for \"$(3)\" skipped."
+endef
 
-$$(LOCAL_MODULE)-tntest:
-	@echo $$(LOCAL_BUILT_MODULE)
-	TNTEST_SUITE=$(1) TNTEST_TITLE=$(2) $(NVIDIA_TNTEST)
+# tntest wrapper with default values
+# $(1) - TARGET
+# $(2) - TESTSUITE - under $(TEGRA_TOP)/tests
+# $(3) - Test Name
+define nv-tntest
+$(eval $(call tntest,$(1),$(NVIDIA_TNTEST_TESTSUITES)/$(2),$(3),,fail))
 endef
