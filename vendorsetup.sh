@@ -257,12 +257,12 @@ function krebuild()
 
     echo "$OUT/boot.img created successfully."
 
-    if [[ $KARCH =~ "arm64" ]]; then
+    if [[ $KARCH =~ "arm64" && -f ${OUT}/full_filesystem.img ]]; then
         local bwdir=$TEGRA_TOP/core-private/system/boot-wrapper-aarch64
         local TARGET_KERNEL_DT_NAME=$(get_build_var TARGET_KERNEL_DT_NAME)
 	local KERNEL_DT_PATH=$SRC/arch/arm64/boot/dts/${TARGET_KERNEL_DT_NAME}.dts
-        sh -c "make -C $bwdir FDT_SRC=${KERNEL_DT_PATH} && make -C $bwdir FDT_SRC=${KERNEL_DT_PATH} EMMC_BOOT=1" &>/dev/null
-        echo "$OUT/linux-system.axf created successfully."
+        make -C $bwdir FDT_SRC=${KERNEL_DT_PATH}
+        echo "pre-silicon packages created successfully."
     fi
 }
 
