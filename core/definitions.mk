@@ -82,6 +82,7 @@ NVIDIA_TMAKE_PART                   := $(NVIDIA_BUILD_ROOT)/tmake_part.mk
 NVIDIA_TMAKE_PART_GENERATED_HEADER  := $(NVIDIA_BUILD_ROOT)/tmake_part_generated_header.mk
 NVIDIA_TMAKE_PART_HOST_EXECUTABLE   := $(NVIDIA_BUILD_ROOT)/tmake_part_host_executable.mk
 NVIDIA_TMAKE_PART_STATIC_EXECUTABLE := $(NVIDIA_BUILD_ROOT)/tmake_part_static_executable.mk
+NVIDIA_TMAKE_STATIC_LIBRARY         := $(NVIDIA_BUILD_ROOT)/tmake_static_library.mk
 NVIDIA_UBM_DEFAULTS        := $(NVIDIA_BUILD_ROOT)/ubm_defaults.mk
 NVIDIA_UBM_ENABLE          := $(NVIDIA_BUILD_ROOT)/ubm_enable.mk
 

@@ -81,7 +81,7 @@ _tmake_intermediates := $(OUT_DIR)/tmake/part/$(LOCAL_NVIDIA_TMAKE_PART_NAME)
 #
 # Umbrella specific configuration
 #
-ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),bootloader)
+ifneq ($(filter bootloader static.bootloader,$(LOCAL_NVIDIA_TMAKE_PART_NAME)),)
 # bootloader is OS, security & board specific
 _tmake_config_extra  := \
 		NV_BUILD_CONFIGURATION_IS_SECURE_OS=$(_tmake_config_secureos) \
@@ -98,8 +98,8 @@ _tmake_config_extra  := \
 # Android does not support building secure & non-secure in same work tree
 _tmake_intermediates := $(_tmake_intermediates)_$(_tmake_config_device)_$(TARGET_BUILD_TYPE)
 
-else ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),nvflash)
-# nvflash is a host tool, agnostic to target configuration
+else ifneq ($(filter nvflash static.host,$(LOCAL_NVIDIA_TMAKE_PART_NAME)),)
+# host tool code is agnostic to target configuration
 _tmake_config_extra  :=
 # NOTE: build type for host bits is also controlled by TARGET_BUILD_TYPE
 _tmake_intermediates := $(_tmake_intermediates)_$(HOST_BUILD_TYPE)_$(TARGET_BUILD_TYPE)
