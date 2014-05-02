@@ -104,9 +104,16 @@ _tmake_config_extra  :=
 # NOTE: build type for host bits is also controlled by TARGET_BUILD_TYPE
 _tmake_intermediates := $(_tmake_intermediates)_$(HOST_BUILD_TYPE)_$(TARGET_BUILD_TYPE)
 
+else ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),nvgetdtb)
 #
-# @TODO: support for nvgetdtb
+# @TODO: merge with nvflash once nvgetdtb is board agnostic
 #
+# nvtboot board specific (= board determines chip family)
+_tmake_config_extra  := \
+		NV_TARGET_BOARD=$(_tmake_config_device)
+# NOTE: build type for host bits is also controlled by TARGET_BUILD_TYPE
+_tmake_intermediates := $(_tmake_intermediates)_$(HOST_BUILD_TYPE)_$(TARGET_BUILD_TYPE)
+
 else
   $(error $(LOCAL_PATH): tmake part umbrella "$(LOCAL_NVIDIA_TMAKE_PART_NAME)" is not supported)
 endif
