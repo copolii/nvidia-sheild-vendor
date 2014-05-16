@@ -144,7 +144,7 @@ $(_tmake_part_stamp): PRIVATE_TMAKE_CONFIG_DEBUG   := $(_tmake_config_debug)
 $(_tmake_part_stamp): PRIVATE_TMAKE_CONFIG_EXTRA   := $(_tmake_config_extra)
 $(_tmake_part_stamp): PRIVATE_TMAKE_CONFIG_VERBOSE := $(_tmake_config_verbose)
 $(_tmake_part_stamp): PRIVATE_TMAKE_INTERMEDIATES  := $(if $(filter-out /%,$(_tmake_intermediates)),$(ANDROID_BUILD_TOP)/)$(_tmake_intermediates)
-$(_tmake_part_stamp): PRIVATE_TMAKE_PART_NAME      := $(LOCAL_TMAKE_PART_NAME)
+$(_tmake_part_stamp): PRIVATE_TMAKE_PART_NAME      := $(LOCAL_NVIDIA_TMAKE_PART_NAME)
 $(_tmake_part_stamp): PRIVATE_TMAKE_PART_UMBRELLA  := $(_tmake_part_umbrella)
 
 $(_tmake_intermediates):
