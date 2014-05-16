@@ -229,6 +229,12 @@ ifeq ($(TARGET_PRODUCT),flaxen)
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable FAIRFAX_CAMERA
 endif
 
+# TCP MSS is a common issue for VPN connection
+	@echo "Enable TCP MSS"
+	$(hide) $(KERNEL_PATH)/scripts/config --file $@ \
+		--enable CONFIG_NETFILTER_XT_TARGET_TCPMSS \
+		--enable CONFIG_NETFILTER_XT_MATCH_TCPMSS
+
 ifeq ($(SET_DCP_CURRENT_LIMIT_2A),true)
 	@echo "Set DCP current 2A"
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable TEGRA_SET_DCP_CURRENT_LIMIT_2A
