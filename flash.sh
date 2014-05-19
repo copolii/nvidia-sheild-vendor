@@ -152,6 +152,7 @@ tnspec_platforms()
         [[ ${#sku} > 0 ]] && skuid=$sku
         odm=$(tnspec spec get $specid.odm -g sw)
         [[ ${#odm} > 0 ]] && odmdata=$odm
+        automotive=$(tnspec spec get $specid.automotive -g sw)
     fi
     pr_ok "Flashing..." "TNSPEC: "
     echo ""
@@ -491,7 +492,7 @@ _os_path()
 
 
 # Set all needed parameters
-_set_cmdline() {
+_set_cmdline_default() {
     # Set modem in odmdata if required
     _mdm_odm
 
@@ -548,6 +549,61 @@ _set_cmdline() {
         $bootpack
         --go
     )
+
+    # If -n is set, don't use sudo when calling nvflash
+    if [[ -n $_nosudo ]]; then
+        cmdline=($NVFLASH_BINARY ${cmdline[@]})
+    else
+        cmdline=(sudo $NVFLASH_BINARY ${cmdline[@]})
+    fi
+
+    # Add optional command-line arguments
+    if [[ $_args ]]; then
+        # This assumes '--go' is last in cmdline
+        unset cmdline[${#cmdline[@]}-1]
+        cmdline=(${cmdline[@]} ${_args[@]} --go)
+    fi
+}
+
+# Set all needed parameters for Automotive boards.
+_set_cmdline_automotive() {
+    # Parse bootburn commandline
+    burnflash_cmd=
+    if [ -n "${skuid}" ]; then
+        burnflash_cmd="$burnflash_cmd -S ${skuid}"
+    fi
+
+    if [ -n "${dtbfile}" ]; then
+        burnflash_cmd="$burnflash_cmd -d ${dtbfile}"
+    fi
+
+    if [[ $_modem ]]; then
+        if [[ $_modem -lt 0x1F ]]; then
+            # Set odmdata in bootburn.sh
+            burnflash_cmd="$burnflash_cmd -m ${_modem}"
+        else
+            pr_warn "Unknown modem reference [${_modem}]. Unchanged odmdata." "_mdm_odm: "
+        fi
+    fi
+
+    cmdline=(
+        $PRODUCT_OUT/bootburn.sh
+        -a
+        -r ram0
+        -Z lzf
+        -e
+        $burnflash_cmd
+        ${_args[@]}
+    )
+}
+
+_set_cmdline() {
+    if [ -z $automotive ]; then
+        _set_cmdline_default
+    else
+        # For Automotive boards.
+        _set_cmdline_automotive
+    fi
 }
 
 ###############################################################################
@@ -648,20 +704,6 @@ _args=$@
 # Run product function to set needed parameters
 eval $product
 _set_cmdline
-
-# If -n is set, don't use sudo when calling nvflash
-if [[ -n $_nosudo ]]; then
-    cmdline=($NVFLASH_BINARY ${cmdline[@]})
-else
-    cmdline=(sudo $NVFLASH_BINARY ${cmdline[@]})
-fi
-
-# Add optional command-line arguments
-if [[ $_args ]]; then
-    # This assumes '--go' is last in cmdline
-    unset cmdline[${#cmdline[@]}-1]
-    cmdline=(${cmdline[@]} ${_args[@]} --go)
-fi
 
 pr_info "PRODUCT_OUT = $PRODUCT_OUT" "flash.sh: "
 pr_info "CMDLINE = ${cmdline[*]}" "flash.sh: "
