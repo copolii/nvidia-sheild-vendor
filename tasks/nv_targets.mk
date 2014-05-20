@@ -35,6 +35,8 @@ $(foreach f,$(1), $(eval \
  ifneq ($(filter %microboot.bin,$(f)),)
   _cmd += $(f) NVC 1
   _cmd += $(f) RMB 1
+ else ifneq ($(filter %nvtboot.bin,$(f)),)
+  _cmd += $(f) NVC 1
  else ifneq ($(filter %.dtb,$(f)),)
   _cmd += $(f) DTB 1
  else ifneq ($(filter %.bct,$(f)),)
@@ -51,6 +53,7 @@ _blob_deps := \
       $(PRODUCT_OUT)/microboot.bin \
       $(wildcard $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME)*.dtb) \
       $(PRODUCT_OUT)/flash.bct \
+      $(PRODUCT_OUT)/nvtboot.bin \
       $(PRODUCT_OUT)/xusb_sil_rel_fw
 
 # target to generate blob
