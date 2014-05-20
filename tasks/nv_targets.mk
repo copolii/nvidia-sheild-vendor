@@ -36,6 +36,8 @@ $(foreach f,$(1), $(eval \
  ifneq ($(filter %microboot.bin,$(f)),)
   _cmd += $(f) NVC 1
   _cmd += $(f) RMB 1
+ else ifneq ($(filter %nvtboot.bin,$(f)),)
+  _cmd += $(f) NVC 1
  else ifneq ($(filter %.dtb,$(f)),)
   _cmd += $(f) DTB 1
  else ifneq ($(filter %.bct,$(f)),)
