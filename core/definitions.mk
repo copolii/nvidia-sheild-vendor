@@ -234,13 +234,15 @@ endef
 #
 ###############################################################################
 define tntest
-TNTEST_TARGET := $(1)-tntest-$(shell date +%s%N)
-$(1): $$(TNTEST_TARGET)
-$$(TNTEST_TARGET):
-	$(hide) [ -x $(NVIDIA_TNTEST) ] && \
-		TNTEST_SUITE=$(2) TNTEST_TITLE=$(3) TNTEST_IGNORE=$(4) \
-		TNTEST_VERBOSE=$(5) $(NVIDIA_TNTEST) $(TNTEST_ARGS) || \
-		echo "TNTEST for \"$(3)\" skipped."
+$(1): $(1)-tntest
+$(1)-tntest::
+	$(hide) \
+		if [ -x $(NVIDIA_TNTEST) ]; then \
+			TNTEST_SUITE=$(2) TNTEST_TITLE=$(3) TNTEST_IGNORE=$(4) \
+			TNTEST_VERBOSE=$(5) $(NVIDIA_TNTEST) $(TNTEST_ARGS); \
+		else \
+			echo "TNTEST for \"$(3)\" skipped."; \
+		fi
 endef
 
 # tntest wrapper with default values
