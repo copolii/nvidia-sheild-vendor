@@ -41,6 +41,18 @@ $(foreach f,$(1), $(eval \
   _cmd += $(f) DTB 1
  else ifneq ($(filter %.bct,$(f)),)
   _cmd += $(f) BCT 1
+ else ifneq ($(filter %bootsplash.bmp,$(f)),)
+  _cmd += $(f) BMP 1
+ else ifneq ($(filter %nvidia.bmp,$(f)),)
+  _cmd += $(f) BMP 1
+ else ifneq ($(filter %charged.bmp,$(f)),)
+  _cmd += $(f) FBP 1
+ else ifneq ($(filter %charging.bmp,$(f)),)
+  _cmd += $(f) CHG 1
+ else ifneq ($(filter %fullycharged.bmp,$(f)),)
+  _cmd += $(f) FCG 1
+ else ifneq ($(filter %lowbat.bmp,$(f)),)
+  _cmd += $(f) LBP 1
  else ifneq ($(filter %xusb_sil_rel_fw,$(f)),)
   _cmd += $(f) DFI 1
  endif))\
@@ -52,6 +64,7 @@ endef
 _blob_deps := \
       $(PRODUCT_OUT)/microboot.bin \
       $(wildcard $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME)*.dtb) \
+      $(wildcard $(PRODUCT_OUT)/*.bmp) \
       $(PRODUCT_OUT)/flash.bct \
       $(PRODUCT_OUT)/nvtboot.bin \
       $(PRODUCT_OUT)/xusb_sil_rel_fw
