@@ -67,6 +67,7 @@ _blob_deps := \
       $(wildcard $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME)*.dtb) \
       $(wildcard $(PRODUCT_OUT)/*.bmp) \
       $(PRODUCT_OUT)/flash.bct \
+      $(PRODUCT_OUT)/nvtboot.bin \
       $(PRODUCT_OUT)/xusb_sil_rel_fw
 
 # target to generate blob
