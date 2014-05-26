@@ -48,6 +48,9 @@ LOCAL_MODULE_SUFFIX              := .a
 LOCAL_NVIDIA_TMAKE_PART_NAME     := static.$(LOCAL_NVIDIA_TMAKE_STATIC_TYPE)
 LOCAL_NVIDIA_TMAKE_PART_ARTIFACT := prebuilt_static_libraries/$(_tmake_static_subdir)/$(LOCAL_MODULE)$(LOCAL_MODULE_SUFFIX)
 
+# Rewrite local module name to mark it as tmake static library for release
+LOCAL_MODULE                     := $(strip $(LOCAL_MODULE))_tmake_$(LOCAL_NVIDIA_TMAKE_STATIC_TYPE)
+
 include $(NVIDIA_TMAKE_PART)
 
 
