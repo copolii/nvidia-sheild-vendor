@@ -54,6 +54,7 @@ _blob_deps := \
       $(PRODUCT_OUT)/microboot.bin \
       $(wildcard $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME)*.dtb) \
       $(PRODUCT_OUT)/flash.bct \
+      $(PRODUCT_OUT)/nvtboot.bin \
       $(PRODUCT_OUT)/xusb_sil_rel_fw
 
 # target to generate blob
