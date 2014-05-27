@@ -23,12 +23,6 @@ NVIDIA_BUILD_ROOT          := vendor/nvidia/build
 $(TARGET_OUT_HEADERS):
 	$(hide) mkdir -p $@
 
-#Bug 200005929: New T132 boot-flow
-#This needs to be removed later
-ifndef NV_BUILD_WAR_200005929
-NV_BUILD_WAR_200005929 := 1
-endif
-
 #Bug 1266062: Temporary switch to use new ODM repo sync location path
 #This needs to be removed later
 ifndef NV_BUILD_WAR_1266062
