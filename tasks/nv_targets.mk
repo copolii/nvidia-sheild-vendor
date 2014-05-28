@@ -77,6 +77,8 @@ $(foreach f,$(1), $(eval \
   _cmd += $(f) TOS 1
  else ifneq ($(filter %nvtbootwb0.bin,$(f)),)
   _cmd += $(f) WB0 1
+ else ifneq ($(filter %bootsplash_land.bmp,$(f)),)
+  _cmd += $(f) RP4 1
  endif))\
  $(_cmd)
  $(eval _cmd :=)
