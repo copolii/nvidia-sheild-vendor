@@ -60,10 +60,15 @@ _tmake_config_verbose  := 1
 else
 _tmake_config_verbose  := 0
 endif
-ifeq ($(TARGET_BUILD_TYPE),debug)
-_tmake_config_debug    := 1
+ifeq ($(HOST_BUILD_TYPE),debug)
+_tmake_host_debug      := 1
 else
-_tmake_config_debug    := 0
+_tmake_host_debug      := 0
+endif
+ifeq ($(TARGET_BUILD_TYPE),debug)
+_tmake_target_debug    := 1
+else
+_tmake_target_debug    := 0
 endif
 
 
@@ -89,6 +94,7 @@ _tmake_config_extra  := \
 		NV_TARGET_BOARD=$(_tmake_config_device)
 # Android does not support building secure & non-secure in same work tree
 _tmake_intermediates := $(_tmake_intermediates)_$(_tmake_config_device)_$(TARGET_BUILD_TYPE)
+_tmake_config_debug  := $(_tmake_target_debug)
 
 else ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),nvtboot)
 # nvtboot is security & board specific (= board determines chip family)
@@ -97,12 +103,14 @@ _tmake_config_extra  := \
 		NV_TARGET_BOARD=$(_tmake_config_device)
 # Android does not support building secure & non-secure in same work tree
 _tmake_intermediates := $(_tmake_intermediates)_$(_tmake_config_device)_$(TARGET_BUILD_TYPE)
+_tmake_config_debug  := $(_tmake_target_debug)
 
 else ifneq ($(filter nvflash static.host,$(LOCAL_NVIDIA_TMAKE_PART_NAME)),)
 # host tool code is agnostic to target configuration
 _tmake_config_extra  :=
-# NOTE: build type for host bits is also controlled by TARGET_BUILD_TYPE
+# NOTE: build type for target bits is also controlled by HOST_BUILD_TYPE
 _tmake_intermediates := $(_tmake_intermediates)_$(HOST_BUILD_TYPE)_$(TARGET_BUILD_TYPE)
+_tmake_config_debug  := $(_tmake_host_debug)
 
 else ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),nvgetdtb)
 #
@@ -111,8 +119,9 @@ else ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),nvgetdtb)
 # nvtboot board specific (= board determines chip family)
 _tmake_config_extra  := \
 		NV_TARGET_BOARD=$(_tmake_config_device)
-# NOTE: build type for host bits is also controlled by TARGET_BUILD_TYPE
+# NOTE: build type for target bits is also controlled by HOST_BUILD_TYPE
 _tmake_intermediates := $(_tmake_intermediates)_$(HOST_BUILD_TYPE)_$(TARGET_BUILD_TYPE)
+_tmake_config_debug  := $(_tmake_host_debug)
 
 else
   $(error $(LOCAL_PATH): tmake part umbrella "$(LOCAL_NVIDIA_TMAKE_PART_NAME)" is not supported)
@@ -183,9 +192,11 @@ _tmake_config_devices  :=
 _tmake_config_extra    :=
 _tmake_config_secureos :=
 _tmake_config_verbose  :=
+_tmake_host_debug      :=
 _tmake_intermediates   :=
 _tmake_part_stamp      :=
 _tmake_part_umbrella   :=
+_tmake_target_debug    :=
 
 
 # Local Variables:
