@@ -56,6 +56,8 @@ $(foreach f,$(1), $(eval \
   _cmd += $(f) LBP 1
  else ifneq ($(filter %xusb_sil_rel_fw,$(f)),)
   _cmd += $(f) DFI 1
+ else ifneq ($(filter %bootsplash_land.bmp,$(f)),)
+  _cmd += $(f) RP4 1
  endif))\
  $(_cmd)
  $(eval _cmd :=)
