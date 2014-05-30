@@ -163,6 +163,7 @@ $(_tmake_part_stamp): $(_tmake_part_umbrella) | $(_tmake_intermediates)
 	@echo Executing tmake "$(PRIVATE_TMAKE_PART_NAME)" part umbrella build
 	$(hide)rm -f $@
 	$(hide)$(MAKE) -C $(TEGRA_TOP) -f $(PRIVATE_TMAKE_PART_UMBRELLA) \
+		NV_ANDROID_TOP=$(ANDROID_BUILD_TOP) \
 		NV_BUILD_CONFIGURATION_IS_DEBUG=$(PRIVATE_TMAKE_CONFIG_DEBUG) \
 		NV_BUILD_CONFIGURATION_IS_VERBOSE=$(PRIVATE_TMAKE_CONFIG_VERBOSE) \
 		$(PRIVATE_TMAKE_CONFIG_EXTRA) \
