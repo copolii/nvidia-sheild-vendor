@@ -153,6 +153,8 @@ tnspec_platforms()
         odm=$(tnspec spec get $specid.odm -g sw)
         [[ ${#odm} > 0 ]] && odmdata=$odm
         automotive=$(tnspec spec get $specid.automotive -g sw)
+        _minbatt=$(tnspec spec get $specid.minbatt -g sw)
+        _nodisp=$(tnspec spec get $specid.no_disp -g sw)
     fi
     pr_ok "Flashing..." "TNSPEC: "
     echo ""
@@ -496,6 +498,18 @@ _set_cmdline_default() {
     # Set modem in odmdata if required
     _mdm_odm
 
+    # Minimum battery charge required.
+    if [[ -n $_minbatt ]]; then
+        pr_err "*** MINIMUM BATTERY CHARGE REQUIRED = $_minbatt% ***" "min_batt: "
+        minbatt="--min_batt $_minbatt"
+    fi
+
+    # Disable display if specified (to prevent flashing failure due to low battery)
+    if [[ "$_nodisp" == "true" ]]; then
+        nodisp="--odm limitedpowermode"
+        pr_warn "Display on target is disabled while flashing to save power." "no_disp: "
+    fi
+
     # Set ODM data, BCT and CFG files (with fallback defaults)
     odmdata=${_odmdata-${odmdata-"0x98000"}}
     bctfile=${bctfile-"bct.cfg"}
@@ -535,6 +549,7 @@ _set_cmdline_default() {
     # Parse nvflash commandline
     cmdline=(
         $blob
+        $minbatt
         --bct $bctfile
         --setbct
         --odmdata $odmdata
@@ -545,6 +560,7 @@ _set_cmdline_default() {
         --wait
         $skuid
         $nct
+        $nodisp
         $preboot
         $bootpack
         --go
