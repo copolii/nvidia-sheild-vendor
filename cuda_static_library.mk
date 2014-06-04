@@ -7,10 +7,7 @@ LOCAL_MODULE_CLASS            := STATIC_LIBRARIES
 LOCAL_MODULE_SUFFIX           := .a
 LOCAL_SYSTEM_SHARED_LIBRARIES :=
 LOCAL_UNINSTALLABLE_MODULE    := true
-
-ifeq ($(TARGET_IS_64_BIT),true)
-    LOCAL_2ND_ARCH_VAR_PREFIX := $(TARGET_2ND_ARCH_VAR_PREFIX)
-endif
+LOCAL_MULTILIB                := 32
 
 # CUDA tools.  HACK!  These paths all need adjusting when we
 # get the real CUDA toolkit in place.
@@ -54,6 +51,10 @@ LOCAL_CFLAGS := $(_local_cuda_cflags)
 NVCC_CC := $(TMP_GPP)/bin/arm-linux-androideabi-g++
 
 include $(NVIDIA_BASE)
+
+ifeq ($(TARGET_IS_64_BIT),true)
+    LOCAL_2ND_ARCH_VAR_PREFIX := $(TARGET_2ND_ARCH_VAR_PREFIX)
+endif
 
 # Clear out other LOCAL_CFLAGS as needed
 LOCAL_CFLAGS_arm :=
