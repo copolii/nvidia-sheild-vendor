@@ -58,9 +58,17 @@ else ifeq ($(TARGET_TEGRA_VERSION),t132)
     TARGET_KERNEL_CONFIG ?= tegra13_android_defconfig
 else ifeq ($(TARGET_TEGRA_VERSION),t210)
     TARGET_KERNEL_CONFIG ?= tegra21_android_defconfig
+else ifeq ($(TARGET_TEGRA_VERSION),t186)
+    TARGET_KERNEL_CONFIG ?= tegra18_android_defconfig
 endif
 
-ifeq ($(wildcard $(KERNEL_PATH)/arch/$(TARGET_ARCH_KERNEL)/configs/$(TARGET_KERNEL_CONFIG)),)
+ifeq ($(TARGET_TEGRA_VERSION),t186)
+    DEFCONFIG_PATH ?= $(CURDIR)/kernel-t186/arch/$(TARGET_ARCH_KERNEL)/configs
+else
+    DEFCONFIG_PATH ?= $(KERNEL_PATH)/arch/$(TARGET_ARCH_KERNEL)/configs
+endif
+
+ifeq ($(wildcard $(DEFCONFIG_PATH)/$(TARGET_KERNEL_CONFIG)),)
     $(error Could not find kernel defconfig for board)
 endif
 
@@ -85,7 +93,7 @@ ifeq ($(BOARD_WLAN_DEVICE),wl18xx_mac80211)
     NV_COMPAT_KERNEL_MODULES_TARGET_DIR := $(NV_KERNEL_MODULES_TARGET_DIR)/compat
 endif
 
-KERNEL_DEFCONFIG_PATH := $(KERNEL_PATH)/arch/$(TARGET_ARCH_KERNEL)/configs/$(TARGET_KERNEL_CONFIG)
+KERNEL_DEFCONFIG_PATH := $(DEFCONFIG_PATH)/$(TARGET_KERNEL_CONFIG)
 
 define dts-files-under
 $(patsubst ./%,%,$(shell find $(1) -name "$(2)-*.dts"))
@@ -160,7 +168,7 @@ endif
 
 $(dotconfig): $(KERNEL_DEFCONFIG_PATH) | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel config " $(TARGET_KERNEL_CONFIG)
-	+$(hide) $(kernel-make) $(TARGET_KERNEL_CONFIG)
+	+$(hide) $(kernel-make) DEFCONFIG_PATH=$(DEFCONFIG_PATH) $(TARGET_KERNEL_CONFIG)
 ifeq ($(SECURE_OS_BUILD),tlk)
 	@echo "TLK SecureOS enabled kernel"
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ \

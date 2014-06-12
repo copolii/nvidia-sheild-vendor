@@ -89,10 +89,16 @@ function ksetup()
     local CROSS=$(_ktoolchain)
     local KARCH="ARCH=$(_karch)"
     local SECURE_OS_BUILD=$(get_build_var SECURE_OS_BUILD)
+    local DEFCONFIG_PATH="DEFCONFIG_PATH=$SRC/arch/$(_karch)/configs"
+    local T186_DEFCONFIG_REGEX="^tegra18_[a-zA-Z0-9_]*defconfig$"
+
+    if [[ $1 =~ $T186_DEFCONFIG_REGEX ]]; then
+        DEFCONFIG_PATH="DEFCONFIG_PATH=$T/kernel-t186/arch/$(_karch)/configs"
+    fi
 
     echo "mkdir -p $KOUT"
-    echo "make -C $SRC $KARCH $CROSS O=$KOUT $1"
-    (cd $T && mkdir -p $KOUT ; make -C $SRC $KARCH $CROSS O=$KOUT $1)
+    echo "make -C $SRC $KARCH $CROSS O=$KOUT $DEFCONFIG_PATH $1"
+    (cd $T && mkdir -p $KOUT ; make -C $SRC $KARCH $CROSS O=$KOUT $DEFCONFIG_PATH $1)
 
     if [ "$SECURE_OS_BUILD" == "tlk" ]; then
         $SRC/scripts/config --file $KOUT/.config --enable TRUSTED_LITTLE_KERNEL \
@@ -173,6 +179,12 @@ function ksavedefconfig()
     local KOUT="$T/$INTERMEDIATES/KERNEL"
     local CROSS=$(_ktoolchain)
     local KARCH="ARCH=$(_karch)"
+    local DEFCONFIG_PATH="$SRC/arch/$(_karch)/configs"
+    local T186_DEFCONFIG_REGEX="^tegra18_[a-zA-Z0-9_]*defconfig$"
+
+    if [[ $1 =~ $T186_DEFCONFIG_REGEX ]]; then
+        DEFCONFIG_PATH="$T/kernel-t186/arch/$(_karch)/configs"
+    fi
 
     # make a backup of the current configuration
     cp $KOUT/.config $KOUT/.config.backup
@@ -188,7 +200,7 @@ function ksavedefconfig()
 
     echo "make -C $SRC $KARCH $CROSS O=$KOUT savedefconfig"
     (cd $T && make -C $SRC $KARCH $CROSS O=$KOUT savedefconfig &&
-        cp $KOUT/defconfig $SRC/arch/$(_karch)/configs/$1)
+        cp $KOUT/defconfig $DEFCONFIG_PATH/$1)
 
     # restore configuration from backup
     rm $KOUT/.config
