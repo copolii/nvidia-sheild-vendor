@@ -5,46 +5,65 @@
 # NVFlash wrapper script for flashing Android from either build environment
 # or from a BuildBrain output.tgz package. This script is usually
 # called indirectly via vendorsetup.sh 'flash' function or BuildBrain
-# package flashing script, which set required environment variables:
+# package flashing script.
 #
-#  PRODUCT_OUT      - target build output files (default: current directory)
-#  NVFLASH_BINARY   - path to nvflash executable (default: ./nvflash)
-#  NVGETDTB_BINARY  - path to nvgetdtb executable (optional)
-#
-# Usage:
-#  flash.sh [-n] [-o <odmdata>] [-s <skuid> [forcebypass]] [-d] [-f] [-m <modem>]-- [optional args]
-#
-# -n
-#   skips using sudo on cmdline
-# -o <odmdata>
-#   specify ODM data to use
-# -s <sku> [forcebypass]
-#   specify SKU to use, with optional forcebypass flag to nvflash
-# -m <modem>
-#   specify modem to use ([-o <odmdata>] overrides this option)
-# -f
-#   for fused devices. uses blob.bin and bootloader_signed.bin when specified.
-# -d
-#   dry-run. exits after printing out the final flash command
-#
-# optional arguments after '--' are added as-is to nvflash cmdline before
-#  '--go' argument, which must be last.
 
-# Option precedence is as follows:
-#
-# 1. Command-line options override all others.
-#  (assuming there are alternative configurations to choose from:)
-# 2. Shell environment variables (BOARD, for predefining target board)
-# 3. If shell is interactive, prompt for input from user
-# 4. If shell is non-interactive, use default values
-#    - Shell is non-interactive in mobile sanity testing!
+###############################################################################
+# Usage
+###############################################################################
+usage()
+{
+    _margin="    "
+    _cl="1;4;" \
+    pr_info   "Usage:"
+    pr_info   ""
+    pr_info   "flash.sh [-h] [-n] [-o <odmdata>] [-s <skuid> [forcebypass]]" "$_margin"
+    pr_info   "         [-d] [-f] [-m <modem>] [-- [optional args]]" "$_margin"
 
+    pr_info_b "-h" "$_margin"
+    pr_info   "  prints help " "$_margin"
+    pr_info_b "-n" "$_margin"
+    pr_info   "  skips using sudo on cmdline" "$_margin"
+    pr_info_b "-o" "$_margin"
+    pr_info   "  specify ODM data to use" "$_margin"
+    pr_info_b "-s" "$_margin"
+    pr_info   "  specify SKU to use, with optional forcebypass flag to nvflash" "$_margin"
+    pr_info_b "-m" "$_margin"
+    pr_info   "  specify modem to use ([-o <odmdata>] overrides this option)" "$_margin"
+    pr_info_b "-f" "$_margin"
+    pr_info   "  for fused devices. uses blob.bin and bootloader_signed.bin when specified." "$_margin"
+    pr_info_b "-d" "$_margin"
+    pr_info   "  dry-run. exits after printing out the final flash command" "$_margin"
+    pr_info   ""
+    pr_info__ "Note:" "$_margin"
+    pr_info   "  Optional arguments after '--' are added as-is to nvflash cmdline before" "$_margin"
+    pr_info   "  '--go' argument, which must be last." "$_margin"
+    pr_info   ""
+    pr_info   "  Option precedence is as follows:" "$_margin"
+    pr_info   ""
+    pr_info   "   1. Command-line options override all others." "$_margin"
+    pr_info   "      (assuming there are alternative configurations to choose from:)" "$_margin"
+    pr_info   "   2. Shell environment variables (BOARD, for predefining target board)" "$_margin"
+    pr_info   "   3. If shell is interactive, prompt for input from user" "$_margin"
+    pr_info   "   4. If shell is non-interactive, use default values" "$_margin"
+    pr_info   "    - Shell is non-interactive in mobile sanity testing!" "$_margin"
+    pr_info   ""
+    pr_info__ "Environment Vairables:" "$_margin"
+    pr_info   "PRODUCT_OUT      - target build output files (default: current directory)" "$_margin"
+    [[ -n "${PRODUCT_OUT}" ]] && \
+    pr_warn   "                   \"${PRODUCT_OUT}\" $_margin" || \
+    pr_err    "                   Currently Not Set!" "$_margin"
+    pr_info   "NVFLASH_BINARY   - path to nvflash executable (default: ./nvflash)" "$_margin"
+    [[ -n "${NVFLASH_BINARY}" ]] && \
+    pr_warn   "                   \"${NVFLASH_BINARY}\" $_margin" || \
+    pr_err    "                   Currently Not Set!" "$_margin"
+}
 ###############################################################################
 # TNSPEC Platform Handler
 ###############################################################################
 tnspec_platforms()
 {
-    local product=$1
+    local product="$1"
     local specid=''
     local nctbin=$PRODUCT_OUT/.nvflash_nctbin
 
@@ -52,12 +71,14 @@ tnspec_platforms()
     TNSPEC_OUTPUT=${TNSPEC_OUTPUT:-/dev/null}
 
     # Tegranote boards are handled by an external tnspec.py utility
-    local boards=$(tnspec spec list -g hw)
+    local boards=$(tnspec spec list all -g hw)
     if [[ -z $board ]] && _shell_is_interactive; then
-        pr_ok_bl "Supported HW List for $product" "TNSPEC: "
+        _cl="1;4;" pr_ok_bl "Supported HW List for $product" "TNSPEC: "
         pr_warn "Choose \"auto\" to automatically detect HW" "TNSPEC: "
         tnspec spec list -v -g hw
         # Prompt user for target board info
+        pr_info ""
+        pr_info_b "'help' - usage, 'list' - list frequently used, 'all' - list all supported"
         _choose ">> " "auto $boards" board auto simple
 
     else
@@ -101,7 +122,7 @@ tnspec_platforms()
 
         if ! _in_array $board $boards; then
             pr_err "HW Spec ID '$board' is not supported. Choose one from the list." "TNSPEC: "
-            tnspec spec list -v -g hw
+            tnspec spec list all -v -g hw
             exit 1
         fi
 
@@ -128,7 +149,7 @@ tnspec_platforms()
         _su rm $nctbin
     fi
 
-    sw_specs=$(tnspec spec list -g sw  | cut -f 1 -d ' ')
+    sw_specs=$(tnspec spec list all -g sw)
     if ! _in_array $specid $sw_specs; then
         pr_warn "$specid is not supported. Please file a bug." "TNSPEC: "
         exit 1
@@ -156,8 +177,8 @@ tnspec_platforms()
         _minbatt=$(tnspec spec get $specid.minbatt -g sw)
         _nodisp=$(tnspec spec get $specid.no_disp -g sw)
     fi
-    pr_ok "Flashing..." "TNSPEC: "
-    echo ""
+    pr_ok "OK!" "TNSPEC: "
+    pr_info ""
 }
 
 # Automatically detect HW type and generate NCT if necessary
@@ -308,8 +329,10 @@ tnspec() {
 # Setup functions per target board
 ###############################################################################
 tnspec_generic() {
-    family=$(cat $PRODUCT_OUT/tnspec.json | _tnspec spec get family -g sw)
-    tnspec_platforms $family
+    # This is currently broken.
+    # family=$(cat $PRODUCT_OUT/tnspec.json | _tnspec spec get family -g sw)
+    family="Flat Package"
+    tnspec_platforms "$family"
 }
 
 t132() {
@@ -354,6 +377,23 @@ _in_array() {
     return 1
 }
 
+_choose_hook() {
+    if [ "$1" == "help" ]; then
+        usage
+        _cl="1;4;" pr_ok "Available Commands:"
+        pr_info_b "'help', 'all', 'list'"
+    elif [ "$1" == "list" ]; then
+        tnspec spec list -v -g hw
+    elif [ "$1" == "all" ]; then
+        tnspec spec list all -v -g hw
+    elif [ "$1" == "" ]; then
+        pr_err "You need to enter something."
+    else
+        return 1
+    fi
+    return 0
+}
+
 # Display prompt and loop until valid input is given
 _choose() {
     _shell_is_interactive || { "error: _choose needs an interactive shell" ; exit 2 ; }
@@ -369,12 +409,16 @@ _choose() {
         else
             read -e -p "$query [${choices[*]}] " -i "$default" input
         fi
-        if ! _in_array "$input" "${choices[@]}"; then
-            pr_err "$input is not a valid choice. Valid choices are:" "_choose: "
-            printf ' %s\n' ${choices[@]}
-        else
-            selected=$input
-        fi
+        _choose_hook $input || {
+            if ! _in_array "$input" "${choices[@]}"; then
+                pr_err "'$input' is not a valid choice." "selection: "
+                pr_warn "Try 'all' for all supported options." "selection: "
+            else
+                selected=$input
+            fi
+        }
+        # override default to none
+        default=''
     done
     eval "$3=$selected"
     # If predefined input is invalid, return error
@@ -403,35 +447,41 @@ _mdm_odm() {
 # Pretty prints ($2 - optional header)
 pr_info() {
     if  _shell_is_interactive; then
-        echo -e "\033[95m$2\033[0m$1"
+        echo -e "\033[95m$2\033[0m\033[${_cl}37m$1\033[0m"
     else
         echo $2$1
     fi
 }
+pr_info_b() {
+    _cl="1;" pr_info "$1" "$2"
+}
+pr_info__() {
+    _cl="4;" pr_info "$1" "$2"
+}
 pr_ok() {
     if _shell_is_interactive; then
-        echo -e "\033[95m$2\033[0m\033[92m$1\033[0m"
+        echo -e "\033[95m$2\033[0m\033[${_cl}92m$1\033[0m"
     else
         echo $2$1
     fi
 }
 pr_ok_bl() {
     if  _shell_is_interactive; then
-        echo -e "\033[95m$2\033[0m\033[94m$1\033[0m"
+        echo -e "\033[95m$2\033[0m\033[${_cl}94m$1\033[0m"
     else
         echo $2$1
     fi
 }
 pr_warn() {
     if  _shell_is_interactive; then
-        echo -e "\033[95m$2\033[0m\033[93m$1\033[0m"
+        echo -e "\033[95m$2\033[0m\033[${_cl}93m$1\033[0m"
     else
         echo $2$1
     fi
 }
 pr_err() {
     if _shell_is_interactive; then
-        echo -e "\033[95m$2\033[0m\033[91m$1\033[0m"
+        echo -e "\033[95m$2\033[0m\033[${_cl}91m$1\033[0m"
     else
         echo $2$1
     fi
@@ -638,6 +688,7 @@ fi
 
 if [[ ! -d ${PRODUCT_OUT} ]]; then
     pr_err "\"${PRODUCT_OUT}\" is not a directory" "flash.sh: "
+    usage
     exit 1
 fi
 
@@ -649,13 +700,14 @@ case $OSTYPE in
 
         which $NVFLASH_BINARY 2> /dev/null >&2
         if [ $? != 0 ]; then
-            pr_err "Error: make sure $NVFLASH_BINARY in \$PATH." "flash.sh"
+            pr_err "Error: make sure $NVFLASH_BINARY in \$PATH." "flash.sh: "
+            usage
             exit 1
         fi
 
         which $NVGETDTB_BINARY 2> /dev/null >&2
         if [ $? != 0 ]; then
-            pr_info "$NVGETDTB_BINARY is not found in \$PATH." "flash.sh"
+            pr_info "$NVGETDTB_BINARY is not found in \$PATH." "flash.sh: "
         fi
         _nosudo=1
         ;;
@@ -663,6 +715,7 @@ case $OSTYPE in
         NVFLASH_BINARY=${NVFLASH_BINARY:-./nvflash}
         if [[ ! -x ${NVFLASH_BINARY} ]]; then
             pr_err "${NVFLASH_BINARY} is not an executable file" "flash.sh: "
+            usage
             exit 1
         fi
         if [[ -n ${NVGETDTB_BINARY} && ! -x ${NVGETDTB_BINARY} ]]; then
@@ -682,14 +735,16 @@ blbin="bootloader.bin"
 # convert args into an array
 args_a=( "$@" )
 # Optional arguments
-while getopts "no:s:m:fd" OPTION
+while getopts "no:s:m:fdh" OPTION
 do
     case $OPTION in
+    h)
+        usage
+        exit 0
+        ;;
     d)  _dryrun=1;
         ;;
     f)  _fused=1;
-        pr_err "[Flashing FUSED devices]" "fused: "
-        pr_warn "  Using '--blob blob.bin' and 'bootloader_signed.bin'" "fused: "
         blob="--blob blob.bin"
         blbin="bootloader_signed.bin"
         ;;
@@ -709,6 +764,11 @@ do
     esac
 done
 
+[[ -n $_fused ]] && {
+    pr_err "[Flashing FUSED devices]" "fused: "
+    pr_warn "  Using '--blob blob.bin' and 'bootloader_signed.bin'" "fused: "
+}
+
 # Optional command-line arguments, added to nvflash cmdline as-is:
 # flash -b my_flash.bct -- <args to nvflash>
 shift $(($OPTIND - 1))
@@ -721,12 +781,18 @@ _args=$@
 eval $product
 _set_cmdline
 
-pr_info "PRODUCT_OUT = $PRODUCT_OUT" "flash.sh: "
-pr_info "CMDLINE = ${cmdline[*]}" "flash.sh: "
+pr_info_b "====================================================================="
+pr_info__ "PRODUCT_OUT"
+echo "$PRODUCT_OUT"
+pr_info ""
+pr_info__ "NVFLASH COMMAND"
+echo "${cmdline[*]}"
+pr_info_b "====================================================================="
 
 # exit if dryrun is set
 [[ -n $_dryrun ]] && exit 0
 
+pr_ok "Flashing..." "nvflash: "
 # Execute command
 (cd $PRODUCT_OUT && eval ${cmdline[@]})
 exit $?
