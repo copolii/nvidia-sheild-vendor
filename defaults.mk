@@ -18,6 +18,7 @@ include $(CLEAR_VARS)
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/core/include
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/hwinc
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/hwinc/$(TARGET_TEGRA_FAMILY)
+LOCAL_C_INCLUDES += $(TEGRA_TOP)/hwinc-$(TARGET_TEGRA_FAMILY)
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/camera/core/include
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia/codecs/include
 LOCAL_C_INCLUDES += $(TEGRA_TOP)/multimedia/audio/include
