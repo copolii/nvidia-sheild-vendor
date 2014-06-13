@@ -57,6 +57,7 @@ usage()
     [[ -n "${NVFLASH_BINARY}" ]] && \
     pr_warn   "                   \"${NVFLASH_BINARY}\" $_margin" || \
     pr_err    "                   Currently Not Set!" "$_margin"
+    pr_info   ""
 }
 ###############################################################################
 # TNSPEC Platform Handler
@@ -66,6 +67,7 @@ tnspec_platforms()
     local product="$1"
     local specid=''
     local nctbin=$PRODUCT_OUT/.nvflash_nctbin
+    local tnlast=$PRODUCT_OUT/.tnspec_history
 
     # Debug
     TNSPEC_OUTPUT=${TNSPEC_OUTPUT:-/dev/null}
@@ -79,7 +81,10 @@ tnspec_platforms()
         # Prompt user for target board info
         pr_info ""
         pr_info_b "'help' - usage, 'list' - list frequently used, 'all' - list all supported"
-        _choose ">> " "auto $boards" board auto simple
+        [ -f $tnlast ] && board_default="$(cat $tnlast)"
+        board_default=${board_default:-auto}
+        _cl="1;" pr_ok "[Press Enter to choose \"$board_default\"]"
+        _choose "DEFAULT:\"$board_default\" >> " "auto $boards" board '' simple
 
     else
         board=${board-auto}
@@ -148,6 +153,9 @@ tnspec_platforms()
         # remove intermediate files created by nvflash
         _su rm $nctbin
     fi
+
+    # save $board
+    echo $board > $tnlast
 
     sw_specs=$(tnspec spec list all -g sw)
     if ! _in_array $specid $sw_specs; then
@@ -378,6 +386,7 @@ _in_array() {
 }
 
 _choose_hook() {
+    input_hooked=""
     if [ "$1" == "help" ]; then
         usage
         _cl="1;4;" pr_ok "Available Commands:"
@@ -387,7 +396,15 @@ _choose_hook() {
     elif [ "$1" == "all" ]; then
         tnspec spec list all -v -g hw
     elif [ "$1" == "" ]; then
-        pr_err "You need to enter something."
+        [[ -n $board_default ]] && {
+            pr_warn "Trying the default \"$board_default\"" "TNSPEC: "
+            input_hooked=$board_default
+            query_hooked=">> "
+
+            # board_default is used only once.
+            board_default=""
+            return 1
+        } || pr_err "You need to enter something." "selection: "
     else
         return 1
     fi
@@ -410,6 +427,9 @@ _choose() {
             read -e -p "$query [${choices[*]}] " -i "$default" input
         fi
         _choose_hook $input || {
+            input=${input_hooked:-$input}
+            query=${query_hooked:-$query}
+
             if ! _in_array "$input" "${choices[@]}"; then
                 pr_err "'$input' is not a valid choice." "selection: "
                 pr_warn "Try 'all' for all supported options." "selection: "
