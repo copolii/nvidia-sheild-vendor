@@ -187,7 +187,17 @@ LOCAL_PREBUILT_MODULE_FILE := $(_tmake_intermediates)/nvidia/$(LOCAL_NVIDIA_TMAK
 
 $(LOCAL_PREBUILT_MODULE_FILE): $(_tmake_part_stamp)
 
+ifneq ($(filter EXECUTABLES,$(LOCAL_MODULE_CLASS)),)
+# By using binary.mk we can use LOCAL_STATIC_LIBRARIES & friends
+include $(NVIDIA_BASE)
+include $(BUILD_SYSTEM)/binary.mk
+
+$(LOCAL_BUILT_MODULE): $(LOCAL_PREBUILT_MODULE_FILE) $(all_libraries) | $(ACP)
+	$(transform-prebuilt-to-target)
+
+else
 include $(NVIDIA_PREBUILT)
+endif
 
 
 ###############################################################################
