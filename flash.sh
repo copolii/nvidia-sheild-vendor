@@ -511,7 +511,7 @@ _set_cmdline_default() {
     fi
 
     # Set ODM data, BCT and CFG files (with fallback defaults)
-    odmdata=${_odmdata-${odmdata-"0x98000"}}
+    odmdata=${_odmdata-${odmdata-"0x9c000"}}
     bctfile=${bctfile-"bct.cfg"}
     cfgfile=${cfgfile-"flash.cfg"}
 
