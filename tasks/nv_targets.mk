@@ -53,6 +53,24 @@ $(foreach f,$(1), $(eval \
   _cmd += $(f) FCG 1
  else ifneq ($(filter %lowbat.bmp,$(f)),)
   _cmd += $(f) LBP 1
+ else ifneq ($(filter %mts_si,$(f)),)
+  _cmd += $(f) MBP 1
+  _cmd += $(f) RBP 1
+ else ifneq ($(filter %mts_prod,$(f)),)
+  _cmd += $(f) MBP 1
+  _cmd += $(f) RBP 1
+ else ifneq ($(filter %mts_slow_stable_prod,$(f)),)
+  _cmd += $(f) MBP 1
+  _cmd += $(f) RBP 1
+ else ifneq ($(filter %mts_preboot_si,$(f)),)
+  _cmd += $(f) MPB 1
+  _cmd += $(f) RPB 1
+ else ifneq ($(filter %mts_preboot_prod,$(f)),)
+  _cmd += $(f) MPB 1
+  _cmd += $(f) RPB 1
+ else ifneq ($(filter %mts_preboot_slow_stable_prod,$(f)),)
+  _cmd += $(f) MPB 1
+  _cmd += $(f) RPB 1
  else ifneq ($(filter %xusb_sil_rel_fw,$(f)),)
   _cmd += $(f) DFI 1
  endif))\
@@ -67,6 +85,7 @@ _blob_deps := \
       $(wildcard $(PRODUCT_OUT)/*.bmp) \
       $(PRODUCT_OUT)/flash.bct \
       $(PRODUCT_OUT)/nvtboot.bin \
+      $(wildcard $(PRODUCT_OUT)/mts_*) \
       $(PRODUCT_OUT)/xusb_sil_rel_fw
 
 # target to generate blob
