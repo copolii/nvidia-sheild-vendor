@@ -4,7 +4,9 @@ endif
 
 include $(NVIDIA_NVMAKE_CLEAR)
 include $(NVIDIA_BASE)
-# TODO Enable coverage build
+# Including coverage.mk for LDFLAGS. For GPU builds the CFLAGS are set in:
+# $(NV_GPUDRV_SOURCE)/drivers/common/build/gcc-x.x.x-android.nvmk
+include $(NVIDIA_COVERAGE)
 
 # Set to 1 to do nvmake builds in the unix-build chroot
 NV_USE_UNIX_BUILD ?= 0
@@ -55,14 +57,3 @@ endif
 # LOCAL_SHARED_LIBRARIES will enforce the install requirement, but
 # LOCAL_ADDITIONAL_DEPENDENCIES will enforce that they are built before nvmake runs
 LOCAL_SHARED_LIBRARIES += libc libdl libm libstdc++ libz
-# Ensure libgcov_null.so is built if needed.
-ifeq ($(NVIDIA_NVMAKE_BUILD_TYPE),debug)
-  ifneq ($(NVIDIA_COVERAGE_ENABLED),)
-    ifneq ($(LOCAL_NVIDIA_NO_COVERAGE),true)
-      ifeq ($(LOCAL_NVIDIA_NULL_COVERAGE),true)
-        LOCAL_SHARED_LIBRARIES += libgcov_null
-        LOCAL_LDFLAGS += -Wl,--exclude-libs=libgcov_null
-      endif
-    endif
-  endif
-endif
