@@ -118,6 +118,16 @@ _tmake_intermediates := $(_tmake_intermediates)_$(_tmake_config_device)_$(TARGET
 _tmake_config_debug  := $(_tmake_target_debug)
 _tmake_part_umbrella := bootloader/nvtboot/build/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
 
+else ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),warmboot)
+# warmboot is security specific
+_tmake_config_extra  := \
+		NV_BUILD_CONFIGURATION_IS_SECURE_OS=$(_tmake_config_secureos) \
+		NV_TARGET_BOARD=$(_tmake_config_device)
+# Android does not support building secure & non-secure in same work tree
+_tmake_intermediates := $(_tmake_intermediates)_$(_tmake_config_device)_$(TARGET_BUILD_TYPE)
+_tmake_config_debug  := $(_tmake_target_debug)
+_tmake_part_umbrella := warmboot/build/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
+
 else ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),nvflash)
 # host tool code is agnostic to target configuration
 _tmake_config_extra  :=
