@@ -97,6 +97,16 @@ _tmake_intermediates := $(_tmake_intermediates)_$(_tmake_config_device)_$(TARGET
 _tmake_config_debug  := $(_tmake_target_debug)
 _tmake_part_umbrella := $(TEGRA_TOP)/bootloader/nvbootloader/app/build/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
 
+else ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),cboot)
+# cboot is OS and board specific (= board determines chip family)
+_tmake_config_extra  := \
+		NV_BUILD_SYSTEM_TYPE=android \
+		NV_TARGET_BOARD=$(_tmake_config_device)
+# Android does not support building secure & non-secure in same work tree
+_tmake_intermediates := $(_tmake_intermediates)_$(_tmake_config_device)_$(TARGET_BUILD_TYPE)
+_tmake_config_debug  := $(_tmake_target_debug)
+_tmake_part_umbrella := $(TEGRA_TOP)/bootloader/cboot/build/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
+
 else ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),nvtboot)
 # nvtboot is security & board specific (= board determines chip family)
 _tmake_config_extra  := \
