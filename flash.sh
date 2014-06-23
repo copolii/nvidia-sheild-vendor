@@ -95,6 +95,14 @@ tnspec_platforms()
         specid=$(tnspec_auto $nctbin)
         TNSPEC_UPDATE_NCT_ONLY=${TNSPEC_UPDATE_NCT_ONLY:-"no"}
         if [ -z $specid ]; then
+                       pr_info   ""
+            _cl="1;4;" pr_err    "IF \"auto\" USED TO WORK, PLEASE MAKE SURE \"ramdump\" IS NOT SET TO 1."
+                       pr_info   ""
+            _cl="4;"   pr_info__ "How to check ramdump. (in recovery mode):"
+                       pr_info_b "$ $NVFLASH_BINARY --read NCT nct.bin --bl $(_os_path $PRODUCT_OUT/$blbin) --go"
+                       pr_info_b "$ $PRODUCT_OUT/tnspec.py nct dump -n nct.bin"
+                       pr_warn   "-- ramdump should be either 0 or 2, or not present."
+                       pr_info   ""
             # if TNSPEC_UPDATE_NCT_ONLY="yes", reset the device and exit.
             if [[ "$TNSPEC_UPDATE_NCT_ONLY" == "yes" ]]; then
                 pr_err "NCT update failed. Quitting..." "TNSPEC: " >&2
