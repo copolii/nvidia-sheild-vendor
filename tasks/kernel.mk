@@ -63,7 +63,7 @@ else ifeq ($(TARGET_TEGRA_VERSION),t186)
 endif
 
 ifeq ($(TARGET_TEGRA_VERSION),t186)
-    DEFCONFIG_PATH ?= $(CURDIR)/kernel-t186/arch/$(TARGET_ARCH_KERNEL)/configs
+    DEFCONFIG_PATH ?= $(CURDIR)/kernel-t18x/arch/$(TARGET_ARCH_KERNEL)/configs
 else
     DEFCONFIG_PATH ?= $(KERNEL_PATH)/arch/$(TARGET_ARCH_KERNEL)/configs
 endif

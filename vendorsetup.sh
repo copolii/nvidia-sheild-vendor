@@ -90,10 +90,10 @@ function ksetup()
     local KARCH="ARCH=$(_karch)"
     local SECURE_OS_BUILD=$(get_build_var SECURE_OS_BUILD)
     local DEFCONFIG_PATH="DEFCONFIG_PATH=$SRC/arch/$(_karch)/configs"
-    local T186_DEFCONFIG_REGEX="^tegra18_[a-zA-Z0-9_]*defconfig$"
+    local T18x_DEFCONFIG_REGEX="^tegra18_[a-zA-Z0-9_]*defconfig$"
 
-    if [[ $1 =~ $T186_DEFCONFIG_REGEX ]]; then
-        DEFCONFIG_PATH="DEFCONFIG_PATH=$T/kernel-t186/arch/$(_karch)/configs"
+    if [[ $1 =~ $T18x_DEFCONFIG_REGEX ]]; then
+        DEFCONFIG_PATH="DEFCONFIG_PATH=$T/kernel-t18x/arch/$(_karch)/configs"
     fi
 
     echo "mkdir -p $KOUT"
@@ -180,10 +180,10 @@ function ksavedefconfig()
     local CROSS=$(_ktoolchain)
     local KARCH="ARCH=$(_karch)"
     local DEFCONFIG_PATH="$SRC/arch/$(_karch)/configs"
-    local T186_DEFCONFIG_REGEX="^tegra18_[a-zA-Z0-9_]*defconfig$"
+    local T18x_DEFCONFIG_REGEX="^tegra18_[a-zA-Z0-9_]*defconfig$"
 
-    if [[ $1 =~ $T186_DEFCONFIG_REGEX ]]; then
-        DEFCONFIG_PATH="$T/kernel-t186/arch/$(_karch)/configs"
+    if [[ $1 =~ $T18x_DEFCONFIG_REGEX ]]; then
+        DEFCONFIG_PATH="$T/kernel-t18x/arch/$(_karch)/configs"
     fi
 
     # make a backup of the current configuration
