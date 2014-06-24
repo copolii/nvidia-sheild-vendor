@@ -53,7 +53,7 @@ function _ktoolchain()
 {
     local build_id=$(get_build_var BUILD_ID)
     if [[ "$(_karch)" == arm64 ]]; then
-         echo "CROSS_COMPILE=$T/prebuilts/gcc/$HOSTTYPE/aarch64/aarch64-linux-android-4.8/bin/aarch64-linux-android-"
+         echo "CROSS_COMPILE=${ARM_EABI_TOOLCHAIN}/../../../aarch64/aarch64-linux-android-4.8/bin/aarch64-linux-android-"
     else
          echo "CROSS_COMPILE=${ARM_EABI_TOOLCHAIN}/arm-eabi-"
     fi
