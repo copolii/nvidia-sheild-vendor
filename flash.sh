@@ -676,7 +676,7 @@ _set_cmdline_automotive() {
         $PRODUCT_OUT/bootburn.sh
         -a
         -r ram0
-        -Z lzf
+        -Z zlib
         -e
         $burnflash_cmd
         ${_args[@]}
