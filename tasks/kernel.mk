@@ -18,6 +18,8 @@ $(INSTALLED_KERNEL_TARGET):
 
 else ifneq ($(TARGET_NO_KERNEL),true)
 
+ifneq ($(NV_SKIP_KERNEL_BUILD),1)
+
 ifneq ($(TOP),.)
 $(error Kernel build assumes TOP == . i.e Android build has been started from TOP/Makefile )
 endif
@@ -342,6 +344,8 @@ kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) 
 endif
 else
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_KERNEL_TOOLCHAIN := $(ARM_EABI_TOOLCHAIN)/arm-eabi-
+endif
+
 endif
 
 endif
