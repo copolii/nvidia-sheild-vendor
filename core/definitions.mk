@@ -102,7 +102,7 @@ NVIDIA_AR20SHADERLAYOUT    := $(HOST_OUT_EXECUTABLES)/ar20shaderlayout
 # tools
 
 NVIDIA_GETEXPORTS          := $(NVIDIA_BUILD_ROOT)/getexports.py
-NVIDIA_HEXIFY              := $(NVIDIA_BUILD_ROOT)/hexify.py
+NVIDIA_HEXIFY              := $(TEGRA_TOP)/core/tools/scripts/build/hexify.py
 NVIDIA_TNTEST              := $(TEGRA_TOP)/core/tools/tntest/tntest.sh
 
 # test suites
