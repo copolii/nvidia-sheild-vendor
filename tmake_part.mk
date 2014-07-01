@@ -39,6 +39,7 @@ _tmake_config_devices := \
 	ardbeg=ardbeg \
 	loki=loki \
 	t132=t132ref \
+	t186=t186ref \
 	t210=t210ref
 _tmake_config_device  := $(word 2,$(subst =, ,$(filter $(REFERENCE_DEVICE)=%, $(_tmake_config_devices))))
 ifndef _tmake_config_device
