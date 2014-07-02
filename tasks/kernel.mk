@@ -152,7 +152,7 @@ endif
 define kernel-make
 $(KERNEL_EXTRA_ENV) $(MAKE) -C $(PRIVATE_SRC_PATH) \
     ARCH=$(TARGET_ARCH_KERNEL) \
-    CROSS_COMPILE=$(PRIVATE_KERNEL_TOOLCHAIN) \
+    CROSS_COMPILE=$(PRIVATE_KERNEL_TOOLCHAIN) KCFLAGS=$(PRIVATE_KERNEL_CFLAGS) \
     O=$(NV_KERNEL_INTERMEDIATES_DIR) $(KERNEL_EXTRA_ARGS) \
     $(if $(SHOW_COMMANDS),V=1)
 endef
@@ -161,7 +161,7 @@ ifneq ( , $(findstring $(BOARD_WLAN_DEVICE), wl12xx_mac80211 wl18xx_mac80211))
 define compat-kernel-make
 $(KERNEL_EXTRA_ENV) $(MAKE) -C $(NV_COMPAT_KERNEL_DIR) \
     ARCH=$(TARGET_ARCH_KERNEL) \
-    CROSS_COMPILE=$(PRIVATE_KERNEL_TOOLCHAIN) \
+    CROSS_COMPILE=$(PRIVATE_KERNEL_TOOLCHAIN) KCFLAGS=$(PRIVATE_KERNEL_CFLAGS) \
     KLIB=$(NV_KERNEL_INTERMEDIATES_DIR) \
     KLIB_BUILD=$(NV_KERNEL_INTERMEDIATES_DIR) \
     $(if $(SHOW_COMMANDS),V=1)
@@ -347,8 +347,9 @@ ifeq ($(TARGET_ARCH_KERNEL),arm64)
 ifeq ($(TARGET_ARCH),arm64)
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_KERNEL_TOOLCHAIN := $(CURDIR)/$(TARGET_TOOLS_PREFIX)
 else
-kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_KERNEL_TOOLCHAIN := $(ARM_EABI_TOOLCHAIN)/../../../aarch64/aarch64-linux-android-4.8/bin/aarch64-linux-android-
+kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_KERNEL_TOOLCHAIN := $(ARM_EABI_TOOLCHAIN)/../../../aarch64/aarch64-linux-android-4.9/bin/aarch64-linux-android-
 endif
+kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_KERNEL_CFLAGS := -mno-android
 else
 kernel kernel-% build_kernel_tests kmodules $(dotconfig) $(BUILT_KERNEL_TARGET) $(TARGET_BUILT_KERNEL_DTB): PRIVATE_KERNEL_TOOLCHAIN := $(ARM_EABI_TOOLCHAIN)/arm-eabi-
 endif

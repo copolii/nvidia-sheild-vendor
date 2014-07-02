@@ -98,7 +98,7 @@ endef
 define kernel-vcm-make
 $(KERNEL_EXTRA_ENV) $(MAKE) -C $(PRIVATE_SRC_PATH) \
     ARCH=$(TARGET_ARCH_KERNEL) \
-    CROSS_COMPILE=$(PRIVATE_KERNEL_TOOLCHAIN) \
+    CROSS_COMPILE=$(PRIVATE_KERNEL_TOOLCHAIN) KCFLAGS=$(PRIVATE_KERNEL_CFLAGS) \
     O=$(NV_KERNEL_VCM_INTERMEDIATES_DIR) $(KERNEL_EXTRA_ARGS) \
     $(if $(SHOW_COMMANDS),V=1)
 endef
@@ -173,5 +173,8 @@ dev: kernel-vcm
 	@echo "kernel-vcm"
 
 .PHONY: kernel-vcm kernel-vcm-%
-
+# Set private variables for all builds.
+ifeq ($(TARGET_ARCH_KERNEL),arm64)
+kernel-vcm-% kmodules-vcm-build_only $(vcm_dotconfig) $(TARGET_BUILT_KERNEL_VCM_DTB) $(BUILT_KERNEL_VCM_TARGET): PRIVATE_KERNEL_CFLAGS := -mno-android
+endif
 endif

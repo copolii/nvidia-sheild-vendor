@@ -53,7 +53,7 @@ function _ktoolchain()
 {
     local build_id=$(get_build_var BUILD_ID)
     if [[ "$(_karch)" == arm64 ]]; then
-         echo "CROSS_COMPILE=${ARM_EABI_TOOLCHAIN}/../../../aarch64/aarch64-linux-android-4.8/bin/aarch64-linux-android-"
+         echo "CROSS_COMPILE=$T/prebuilts/gcc/$HOSTTYPE/aarch64/aarch64-linux-android-4.9/bin/aarch64-linux-android-"
     else
          echo "CROSS_COMPILE=${ARM_EABI_TOOLCHAIN}/arm-eabi-"
     fi
@@ -236,6 +236,7 @@ function krebuild()
     local MKBOOTIMG=$T/$HOSTOUT/bin/mkbootimg
     if [[ $(_karch) = "arm64" ]]; then
         local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/$(_karch)/boot/Image
+        local KCFLAGS="KCFLAGS=-mno-android"
     else
         local ZIMAGE=$T/$INTERMEDIATES/KERNEL/arch/$(_karch)/boot/zImage
     fi
@@ -250,7 +251,7 @@ function krebuild()
         return 1
     fi
 
-    echo "make -j$NUMCPUS -l$NUMCPUS -C $SRC $* $KARCH $CROSS $KOUT"
+    echo "make -j$NUMCPUS -l$NUMCPUS -C $SRC $* $KARCH $CROSS $KCFLAGS $KOUT"
     (cd $T && make -j$NUMCPUS -l$NUMCPUS -C $SRC $* $KARCH $CROSS $KOUT)
     local ERR=$?
 
