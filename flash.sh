@@ -18,7 +18,7 @@ usage()
     pr_info   "Usage:"
     pr_info   ""
     pr_info   "flash.sh [-h] [-n] [-o <odmdata>] [-s <skuid> [forcebypass]]" "$_margin"
-    pr_info   "         [-d] [-f] [-m <modem>] [-- [optional args]]" "$_margin"
+    pr_info   "         [-d] [-r] [-f] [-m <modem>] [-- [optional args]]" "$_margin"
 
     pr_info_b "-h" "$_margin"
     pr_info   "  prints help " "$_margin"
@@ -34,6 +34,8 @@ usage()
     pr_info   "  for fused devices. uses blob.bin and bootloader_signed.bin when specified." "$_margin"
     pr_info_b "-d" "$_margin"
     pr_info   "  dry-run. exits after printing out the final flash command" "$_margin"
+    pr_info_b "-r" "$_margin"
+    pr_info   "  remembers the board selection (alternatively BOARD env variable can be set)" "$_margin"
     pr_info   ""
     pr_info__ "Note:" "$_margin"
     pr_info   "  Optional arguments after '--' are added as-is to nvflash cmdline before" "$_margin"
@@ -49,14 +51,18 @@ usage()
     pr_info   "    - Shell is non-interactive in mobile sanity testing!" "$_margin"
     pr_info   ""
     pr_info__ "Environment Vairables:" "$_margin"
-    pr_info   "PRODUCT_OUT      - target build output files (default: current directory)" "$_margin"
+    pr_info   "PRODUCT_OUT    - target build output files (default: current directory)" "$_margin"
     [[ -n "${PRODUCT_OUT}" ]] && \
-    pr_warn   "                   \"${PRODUCT_OUT}\" $_margin" || \
-    pr_err    "                   Currently Not Set!" "$_margin"
-    pr_info   "NVFLASH_BINARY   - path to nvflash executable (default: ./nvflash)" "$_margin"
+    pr_warn   "                     \"${PRODUCT_OUT}\" $_margin" || \
+    pr_err    "                 Currently Not Set!" "$_margin"
+    pr_info   "NVFLASH_BINARY - path to nvflash executable (default: ./nvflash)" "$_margin"
     [[ -n "${NVFLASH_BINARY}" ]] && \
-    pr_warn   "                   \"${NVFLASH_BINARY}\" $_margin" || \
-    pr_err    "                   Currently Not Set!" "$_margin"
+    pr_warn   "                     \"${NVFLASH_BINARY}\" $_margin" || \
+    pr_err    "                 Currently Not Set!" "$_margin"
+    pr_info   "BOARD          - Select board without a prompt. (default: None)" "$_margin"
+    [[ -n "${BOARD}" ]] && \
+    pr_warn   "                     \"${BOARD}\" $_margin" || \
+    pr_err    "                 Currently Not Set!" "$_margin"
     pr_info   ""
 }
 ###############################################################################
@@ -139,6 +145,8 @@ tnspec_platforms()
             exit 1
         fi
 
+        _cl="1;" pr_err "\"$board\" selected instead of \"auto\". Everything on the target will be removed." "TNSPEC: "
+
         specid=$(tnspec_manual $nctbin)
 
         if [ -z $specid ]; then
@@ -163,7 +171,10 @@ tnspec_platforms()
     fi
 
     # save $board
-    echo $board > $tnlast
+    [[ -n $_remember_board ]] && {
+        _cl="4;" pr_ok_bl "Saving board \"$board\" as default." "TNSPEC: "
+        echo $board > $tnlast
+    }
 
     sw_specs=$(tnspec spec list all -g sw)
     if ! _in_array $specid $sw_specs; then
@@ -316,12 +327,6 @@ _download_NCT() {
 
 # tnspec w/o spec
 _tnspec() {
-    local tnspec_bin=$PRODUCT_OUT/tnspec.py
-    # return nothing if tnspec tool or spec file is missing
-    if [ ! -x $tnspec_bin ]; then
-        pr_err "Error: tnspec.py doesn't exist or is not executable." "TNSPEC: " >&2
-        return
-    fi
     $tnspec_bin $@
 }
 
@@ -713,6 +718,14 @@ if [[ ! -d ${PRODUCT_OUT} ]]; then
     exit 1
 fi
 
+tnspec_bin=$PRODUCT_OUT/tnspec.py
+
+if [ ! -x $tnspec_bin ]; then
+    pr_err "Error: $tnspec_bin doesn't exist or is not executable." "TNSPEC: " >&2
+    exit 1
+fi
+
+
 # Detect OS, then set/verify nvflash binary accordingly.
 case $OSTYPE in
     cygwin)
@@ -747,7 +760,7 @@ blbin="bootloader.bin"
 # convert args into an array
 args_a=( "$@" )
 # Optional arguments
-while getopts "no:s:m:fdh" OPTION
+while getopts "no:s:m:fdhr" OPTION
 do
     case $OPTION in
     h)
@@ -755,6 +768,8 @@ do
         exit 0
         ;;
     d)  _dryrun=1;
+        ;;
+    r)  _remember_board=1;
         ;;
     f)  _fused=1;
         blob="--blob blob.bin"
