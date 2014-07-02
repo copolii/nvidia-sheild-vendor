@@ -248,6 +248,11 @@ _systemimage_intermediates_kmodules := \
 BUILT_SYSTEMIMAGE_KMODULES := $(_systemimage_intermediates_kmodules)/system.img
 NV_INSTALLED_SYSTEMIMAGE := $(PRODUCT_OUT)/system.img
 
+ifeq ($(TARGET_TEGRA_FAMILY),t18x)
+kernel-tests:
+	@echo "Kernel space tests are disabled for T18x at the moment!"
+
+else
 # When kernel tests are built, we also want to update the system
 # image, but in general case we do not want to build kernel tests
 # always.
@@ -272,6 +277,7 @@ build_kernel_tests: kmodules FORCE | $(NV_KERNEL_MODULES_TARGET_DIR) $(NV_KERNEL
 	for f in `find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests-kernel/linux/kernel_space_tests -name "*.sh"` ; do cp -v "$$f" $(NV_KERNEL_BIN_TARGET_DIR) ; done
 	+$(hide) $(kernel-make) M=$(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests-kernel/linux/kernel_space_tests clean
 	find $(PRIVATE_TOPDIR)/vendor/nvidia/tegra/tests-kernel/linux/kernel_space_tests -name "modules.order" -print0 | xargs -0 rm -rf
+endif
 
 # Unless we hardcode the list of kernel modules, we cannot create
 # a proper dependency from systemimage to the kernel modules.
