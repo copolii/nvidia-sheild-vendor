@@ -96,7 +96,7 @@ _tmake_config_extra  := \
 # Android does not support building secure & non-secure in same work tree
 _tmake_intermediates := $(_tmake_intermediates)_$(_tmake_config_device)_$(TARGET_BUILD_TYPE)
 _tmake_config_debug  := $(_tmake_target_debug)
-_tmake_part_umbrella := $(TEGRA_TOP)/bootloader/nvbootloader/app/build/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
+_tmake_part_umbrella := bootloader/nvbootloader/app/build/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
 
 else ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),cboot)
 # cboot is OS and board specific (= board determines chip family)
@@ -106,7 +106,7 @@ _tmake_config_extra  := \
 # Android does not support building secure & non-secure in same work tree
 _tmake_intermediates := $(_tmake_intermediates)_$(_tmake_config_device)_$(TARGET_BUILD_TYPE)
 _tmake_config_debug  := $(_tmake_target_debug)
-_tmake_part_umbrella := $(TEGRA_TOP)/bootloader/cboot/build/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
+_tmake_part_umbrella := bootloader/cboot/build/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
 
 else ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),nvtboot)
 # nvtboot is security & board specific (= board determines chip family)
@@ -116,7 +116,7 @@ _tmake_config_extra  := \
 # Android does not support building secure & non-secure in same work tree
 _tmake_intermediates := $(_tmake_intermediates)_$(_tmake_config_device)_$(TARGET_BUILD_TYPE)
 _tmake_config_debug  := $(_tmake_target_debug)
-_tmake_part_umbrella := $(TEGRA_TOP)/bootloader/nvtboot/build/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
+_tmake_part_umbrella := bootloader/nvtboot/build/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
 
 else ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),nvflash)
 # host tool code is agnostic to target configuration
@@ -124,7 +124,7 @@ _tmake_config_extra  :=
 # NOTE: build type for target bits is also controlled by HOST_BUILD_TYPE
 _tmake_intermediates := $(_tmake_intermediates)_$(HOST_BUILD_TYPE)_$(TARGET_BUILD_TYPE)
 _tmake_config_debug  := $(_tmake_host_debug)
-_tmake_part_umbrella := $(TEGRA_TOP)/bootloader/nvbootloader/nvflash/app/build/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
+_tmake_part_umbrella := bootloader/nvbootloader/nvflash/app/build/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
 
 else ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),nvgetdtb)
 # nvtboot board specific (= board determines chip family)
@@ -133,7 +133,7 @@ _tmake_config_extra  := \
 # NOTE: build type for target bits is also controlled by HOST_BUILD_TYPE
 _tmake_intermediates := $(_tmake_intermediates)_$(HOST_BUILD_TYPE)_$(TARGET_BUILD_TYPE)
 _tmake_config_debug  := $(_tmake_host_debug)
-_tmake_part_umbrella := $(TEGRA_TOP)/bootloader/nvbootloader/nvflash/nvgetdtb/build/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
+_tmake_part_umbrella := bootloader/nvbootloader/nvflash/nvgetdtb/build/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
 
 else ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),static.host)
 # host tool code is agnostic to target configuration
@@ -141,10 +141,21 @@ _tmake_config_extra  :=
 # NOTE: build type for target bits is also controlled by HOST_BUILD_TYPE
 _tmake_intermediates := $(_tmake_intermediates)_$(HOST_BUILD_TYPE)_$(TARGET_BUILD_TYPE)
 _tmake_config_debug  := $(_tmake_host_debug)
-_tmake_part_umbrella := $(TEGRA_TOP)/tmake/umbrella/parts/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
+_tmake_part_umbrella := tmake/umbrella/parts/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
 
 else
   $(error $(LOCAL_PATH): tmake part umbrella "$(LOCAL_NVIDIA_TMAKE_PART_NAME)" is not supported)
+endif
+
+
+###############################################################################
+#
+# Additional configuration for customer build mode
+#
+ifeq ($(NV_BUILD_TMAKE_CUSTOMER_BUILD),1)
+_tmake_config_extra += \
+	NV_CUSTOMER_BUILD=1 \
+	NV_RELDIR=$(TEGRA_TOP)/prebuilt/$(REFERENCE_DEVICE)/tmake
 endif
 
 
@@ -177,7 +188,7 @@ $(_tmake_part_stamp): PRIVATE_TMAKE_PART_UMBRELLA  := $(_tmake_part_umbrella)
 $(_tmake_intermediates):
 	$(hide)mkdir -p $@
 
-$(_tmake_part_stamp): $(_tmake_part_umbrella) | $(_tmake_intermediates)
+$(_tmake_part_stamp): $(TEGRA_TOP)/$(_tmake_part_umbrella) | $(_tmake_intermediates)
 	@echo Executing tmake "$(PRIVATE_TMAKE_PART_NAME)" part umbrella build
 	$(hide)rm -f $@
 	$(hide)$(MAKE) -C $(TEGRA_TOP) -f $(PRIVATE_TMAKE_PART_UMBRELLA) \
@@ -203,7 +214,7 @@ ifneq ($(filter EXECUTABLES,$(LOCAL_MODULE_CLASS)),)
 include $(NVIDIA_BASE)
 include $(BUILD_SYSTEM)/binary.mk
 
-$(LOCAL_BUILT_MODULE): $(LOCAL_PREBUILT_MODULE_FILE) $(all_libraries) | $(ACP)
+$(LOCAL_BUILT_MODULE): $(LOCAL_PREBUILT_MODULE_FILE) $(LOCAL_MODULE_MAKEFILE) $(all_libraries) | $(ACP)
 	$(transform-prebuilt-to-target)
 
 else
