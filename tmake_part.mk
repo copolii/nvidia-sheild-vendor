@@ -126,15 +126,6 @@ _tmake_intermediates := $(_tmake_intermediates)_$(HOST_BUILD_TYPE)_$(TARGET_BUIL
 _tmake_config_debug  := $(_tmake_host_debug)
 _tmake_part_umbrella := bootloader/nvbootloader/nvflash/app/build/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
 
-else ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),nvgetdtb)
-# nvtboot board specific (= board determines chip family)
-_tmake_config_extra  := \
-		NV_TARGET_BOARD=$(_tmake_config_device)
-# NOTE: build type for target bits is also controlled by HOST_BUILD_TYPE
-_tmake_intermediates := $(_tmake_intermediates)_$(HOST_BUILD_TYPE)_$(TARGET_BUILD_TYPE)
-_tmake_config_debug  := $(_tmake_host_debug)
-_tmake_part_umbrella := bootloader/nvbootloader/nvflash/nvgetdtb/build/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
-
 else ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),static.host)
 # host tool code is agnostic to target configuration
 _tmake_config_extra  :=
