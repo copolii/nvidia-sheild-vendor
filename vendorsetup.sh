@@ -464,7 +464,6 @@ function _flash()
 
     local cmdline=(
         NVFLASH_BINARY=$T/$HOST_OUT/bin/nvflash
-        NVGETDTB_BINARY=$T/$HOST_OUT/bin/nvgetdtb
         PRODUCT_OUT=$T/$PRODUCT_OUT
         HOST_OUT=$T/$HOST_OUT
         $FLASH_SH

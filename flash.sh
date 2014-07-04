@@ -607,18 +607,11 @@ _set_cmdline_default() {
     bootpack=${bootpack-""}
     [[ -n $bootpack ]] && bootpack="--bootpack $bootpack"
 
-    # Update DTB filename if not previously set. Note that nvgetdtb is never executed
+    # Update DTB filename if not previously set.
     # in mobile sanity testing (Bug 1439258)
     if [[ -z $dtbfile ]] && _shell_is_interactive; then
-        local _dtbfile=$(sudo $NVGETDTB_BINARY)
-        if [ $? -eq 0 ]; then
-            pr_info "Using $dtbfile for $product product" "nvgetdtb: "
-        else
-            pr_info "nvgetdtb couldn't retrieve the dtbfile for $product product" "nvgetdtb: "
-            _dtbfile=$(grep dtb ${PRODUCT_OUT}/$cfgfile | cut -d "=" -f 2)
-            pr_info "Using the default product dtb file $_dtbfile" "nvgetdtb: "
-        fi
-        dtbfile=$_dtbfile
+        dtbfile=$(grep dtb ${PRODUCT_OUT}/$cfgfile | cut -d "=" -f 2)
+        pr_info "Using the default product dtb file $_dtbfile"
     else
         # Default used in automated sanity testing is "unknown"
         dtbfile=${dtbfile-"unknown"}
@@ -724,7 +717,6 @@ fi
 case $OSTYPE in
     cygwin)
         NVFLASH_BINARY="nvflash.exe"
-        NVGETDTB_BINARY="nvgetdtb.exe"
 
         which $NVFLASH_BINARY 2> /dev/null >&2
         if [ $? != 0 ]; then
@@ -733,10 +725,6 @@ case $OSTYPE in
             exit 1
         fi
 
-        which $NVGETDTB_BINARY 2> /dev/null >&2
-        if [ $? != 0 ]; then
-            pr_info "$NVGETDTB_BINARY is not found in \$PATH." "flash.sh: "
-        fi
         _nosudo=1
         ;;
     linux*)
@@ -744,10 +732,6 @@ case $OSTYPE in
         if [[ ! -x ${NVFLASH_BINARY} ]]; then
             pr_err "${NVFLASH_BINARY} is not an executable file" "flash.sh: "
             usage
-            exit 1
-        fi
-        if [[ -n ${NVGETDTB_BINARY} && ! -x ${NVGETDTB_BINARY} ]]; then
-            pr_err "${NVGETDTB_BINARY} is not an executable file" "flash.sh: "
             exit 1
         fi
         ;;
