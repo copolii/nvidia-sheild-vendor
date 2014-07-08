@@ -152,10 +152,17 @@ endif
 #
 # Additional configuration for customer build mode
 #
+# NOTE: for historical reasons ODM sources are visible at a different
+#       location in customer builds than in internal builds.
+#
 ifeq ($(NV_BUILD_TMAKE_CUSTOMER_BUILD),1)
-_tmake_config_extra += \
+_tmake_config_extra  += \
 	NV_CUSTOMER_BUILD=1 \
+	NV_INTERFACE_BOOTLOADER_ODM=$(TEGRA_TOP)/odm/Makefile.odm.tmk \
 	NV_RELDIR=$(TEGRA_TOP)/prebuilt/$(REFERENCE_DEVICE)/tmake
+_tmake_sub_directory := customer
+else
+_tmake_sub_directory := nvidia
 endif
 
 
@@ -205,7 +212,7 @@ endif
 #
 # The actual Android module: map tmake build artifact to Android prebuilt
 #
-LOCAL_PREBUILT_MODULE_FILE := $(_tmake_intermediates)/nvidia/$(LOCAL_NVIDIA_TMAKE_PART_ARTIFACT)
+LOCAL_PREBUILT_MODULE_FILE := $(_tmake_intermediates)/$(_tmake_sub_directory)/$(LOCAL_NVIDIA_TMAKE_PART_ARTIFACT)
 
 $(LOCAL_PREBUILT_MODULE_FILE): $(_tmake_part_stamp)
 
@@ -236,6 +243,7 @@ _tmake_host_debug      :=
 _tmake_intermediates   :=
 _tmake_part_stamp      :=
 _tmake_part_umbrella   :=
+_tmake_sub_directory   :=
 _tmake_target_debug    :=
 
 
