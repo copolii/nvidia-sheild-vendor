@@ -35,12 +35,6 @@ ifndef NV_BUILD_WAR_1408881
 NV_BUILD_WAR_1408881 := 1
 endif
 
-#Bug 1351428: Choose which location to build systemsw sanity test
-#This needs to be removed later
-ifndef NV_BUILD_WAR_1351428
-NV_BUILD_WAR_1351428 := 1
-endif
-
 # Bug 1251947: Choose which location to build NVogtest
 # This needs to be removed later
 ifndef NV_BUILD_WAR_1251947
