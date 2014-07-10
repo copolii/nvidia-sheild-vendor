@@ -13,11 +13,18 @@
 # Convenience makefile fragment for generated header from tmake part umbrella
 #
 ###############################################################################
+#
+# Generated headers only need to be generated during internal builds.
+# These modules are always delivered as TMAKE_BINARY to the customer.
+#
+ifneq ($(NV_BUILD_TMAKE_CUSTOMER_BUILD),1)
 
 LOCAL_MODULE_CLASS := ETC
 LOCAL_MODULE_PATH  := $(TARGET_OUT_HEADERS)
 
 include $(NVIDIA_TMAKE_PART)
+
+endif # ifneq ($(NV_BUILD_TMAKE_CUSTOMER_BUILD),1)
 
 # Local Variables:
 # indent-tabs-mode: t

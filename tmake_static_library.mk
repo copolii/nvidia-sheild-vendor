@@ -14,6 +14,14 @@
 #
 ###############################################################################
 #
+# Static libraries only need to be generated during internal builds.
+# These modules are always delivered as TMAKE_BINARY to the customer.
+#
+ifneq ($(NV_BUILD_TMAKE_CUSTOMER_BUILD),1)
+
+
+###############################################################################
+#
 # Sanity checks for mandatory configuration variables
 #
 LOCAL_NVIDIA_TMAKE_STATIC_TYPE := $(strip $(LOCAL_NVIDIA_TMAKE_STATIC_TYPE))
@@ -59,6 +67,9 @@ include $(NVIDIA_TMAKE_PART)
 # variable cleanup
 #
 _tmake_static_subdir :=
+
+
+endif # ifneq ($(NV_BUILD_TMAKE_CUSTOMER_BUILD),1)
 
 # Local Variables:
 # indent-tabs-mode: t
