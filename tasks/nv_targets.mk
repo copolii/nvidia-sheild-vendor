@@ -58,6 +58,8 @@ $(foreach f,$(1), $(eval \
   _cmd += $(f) DFI 1
  else ifneq ($(filter %bootsplash_land.bmp,$(f)),)
   _cmd += $(f) RP4 1
+ else ifneq ($(filter %tos.img,$(f)),)
+  _cmd += $(f) TOS 1
  endif))\
  $(_cmd)
  $(eval _cmd :=)
@@ -70,7 +72,8 @@ _blob_deps := \
       $(wildcard $(PRODUCT_OUT)/*.bmp) \
       $(PRODUCT_OUT)/flash.bct \
       $(PRODUCT_OUT)/nvtboot.bin \
-      $(PRODUCT_OUT)/xusb_sil_rel_fw
+      $(PRODUCT_OUT)/xusb_sil_rel_fw \
+      $(PRODUCT_OUT)/tos.img
 
 # target to generate blob
 nv-blob: \
