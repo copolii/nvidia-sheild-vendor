@@ -16,10 +16,13 @@ CUDA_EABI=armv7-linux-androideabi
 CUDA_TOOLKIT_ROOT=$(ANDROID_CUDA_PATH)/targets/$(CUDA_EABI)
 LOCAL_CC := $(ANDROID_CUDA_PATH)/bin/nvcc
 TMP_NDK := $(TOP)/prebuilts/ndk/9/
+ifeq ($(PLATFORM_IS_AFTER_KITKAT),1)
+    TMP_GCC_VER:=4.8
+else
+    TMP_GCC_VER:=4.7
+endif
 
-# We override the compiler location because the current version of NVCC & friends
-# require version 4.6 of the compiler.
-TMP_GPP := $(TOP)/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.6
+TMP_GPP := $(TOP)/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-$(TMP_GCC_VER)
 
 # Override standard C flags
 _local_cuda_cflags :=
@@ -34,13 +37,11 @@ _local_cuda_cflags += -target-os-variant=Android
 #_local_cuda_cflags += -Xcompiler="-mtune=cortex-a9 -march=armv7-a -mfloat-abi=softfp -mfpu=neon"
 _local_cuda_cflags += -DARCH_ARM
 _local_cuda_cflags += -DDEBUG_MODE
-_local_cuda_cflags += -I$(TMP_NDK)/platforms/android-18/arch-arm/usr/include
+_local_cuda_cflags += -Xcompiler --sysroot=$(TMP_NDK)/platforms/android-18/arch-arm/
 _local_cuda_cflags += -I$(ANDROID_CUDA_PATH)/targets/$(CUDA_EABI)/include
 
-# We override the compiler location because the current version of NVCC & friends
-# require version 4.6 of the compiler.
-_local_cuda_cflags += -I$(TMP_NDK)sources/cxx-stl/gnu-libstdc++/4.6/include
-_local_cuda_cflags += -I$(TMP_NDK)sources/cxx-stl/gnu-libstdc++/4.6/libs/armeabi-v7a/include
+_local_cuda_cflags += -I$(TMP_NDK)sources/cxx-stl/gnu-libstdc++/$(TMP_GCC_VER)/include
+_local_cuda_cflags += -I$(TMP_NDK)sources/cxx-stl/gnu-libstdc++/$(TMP_GCC_VER)/libs/armeabi-v7a/include
 
 # Let the user override flags above using LOCAL_CFLAGS
 #_save_local_cflags := $(LOCAL_CFLAGS)
