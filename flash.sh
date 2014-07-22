@@ -71,10 +71,9 @@ usage()
 tnspec_platforms()
 {
     local product="$1"
-    local specid=''
-    local nctbin=$PRODUCT_OUT/.nvflash_nctbin
     local tnlast=$PRODUCT_OUT/.tnspec_history
-
+    specid=''
+    nctbin=$PRODUCT_OUT/nct.bin
     # Debug
     TNSPEC_OUTPUT=${TNSPEC_OUTPUT:-/dev/null}
 
@@ -148,7 +147,6 @@ tnspec_platforms()
         _cl="1;" pr_err "\"$board\" selected instead of \"auto\". Everything on the target will be removed." "TNSPEC: "
 
         specid=$(tnspec_manual $nctbin)
-
         if [ -z $specid ]; then
             pr_err "Couldn't find SW Spec ID. Spec needs to be updated." "TNSPEC: ">&2
             exit 1
@@ -166,8 +164,7 @@ tnspec_platforms()
         else
             pr_warn "$specid doesn't use NCT." "TNSPEC: "
         fi
-        # remove intermediate files created by nvflash
-        _su rm $nctbin
+        flash_app=$(tnspec spec get $specid.flash_app -g sw)
     fi
 
     # save $board
@@ -181,7 +178,6 @@ tnspec_platforms()
         pr_warn "$specid is not supported. Please file a bug." "TNSPEC: "
         exit 1
     fi
-
     # set bctfile and cfgfile based on target board
     # 'unset' forces to use default values.
 
@@ -193,9 +189,7 @@ tnspec_platforms()
         dtbfile=$(tnspec spec get $specid.dtb -g sw)
         [[ ${#dtbfile} == 0 ]] && unset dtbfile
         preboot=$(tnspec spec get $specid.preboot -g sw)
-        [[ ${#preboot} == 0 ]] && unset preboot
         bootpack=$(tnspec spec get $specid.bootpack -g sw)
-        [[ ${#bootpack} == 0 ]] && unset bootpack
         sku=$(tnspec spec get $specid.sku -g sw)
         [[ ${#sku} > 0 ]] && skuid=$sku
         odm=$(tnspec spec get $specid.odm -g sw)
@@ -621,8 +615,6 @@ _set_cmdline_default() {
         # Default used in automated sanity testing is "unknown"
         dtbfile=${dtbfile-"unknown"}
     fi
-
-    # Parse nvflash commandline
     cmdline=(
         $blob
         $minbatt
@@ -694,8 +686,67 @@ _set_cmdline_automotive() {
     )
 }
 
+_set_cmdline_tegraflash() {
+
+    pr_info "Using Tegraflash to flash cboot"
+    blbin=$(tnspec spec get $specid.bl -g sw)
+    chip=$(tnspec spec get $specid.chip -g sw)
+    applet=$(tnspec spec get $specid.applet -g sw)
+    key=$(tnspec spec get $specid.key -g sw)
+    hostbin=$(tnspec spec get $specid.hostbin -g sw)
+    out=$(tnspec spec get $specid.out -g sw)
+    cmd=$(tnspec spec get $specid.cmd -g sw)
+
+    if [ ! -z $key ]; then
+        key="--key $key"
+    fi
+    if [ ! -z $hostbin ]; then
+        hostbin="--hostbin $hostbin"
+    fi
+    if [ ! -z $out ]; then
+        out="--out $out"
+    fi
+    if [ ! -z  $cmd ]; then
+        cmd="--cmd $cmd"
+    fi
+
+    bctfile=${bctfile:-"bct_cboot.cfg"}
+    cfgfile=${cfgfile:-"flash.xml"}
+    if [ $_fuse == "1" ]; then
+        blbin="cboot_signed.bin"
+    else
+        blbin=${blbin:-"cboot.bin"}
+    fi
+    chip=${chip:-"0x21"}
+    applet=${applet:-"nvtboot_recovery.bin"}
+
+    NVFLASH_BINARY=$(dirname $NVFLASH_BINARY)/tegraflash.py
+    # Parse tegraflash commandline
+    cmdline=(
+        --bct $bctfile
+        --bl  $blbin
+        --cfg $cfgfile
+        --dtb $dtbfile
+        --chip $chip
+        --applet $applet
+        --nct $nctbin
+        $key
+        $hostbin
+        $out
+        $cmd
+        )
+    # If -n is set, don't use sudo when calling nvflash
+    if [[ -n $_nosudo ]]; then
+        cmdline=($NVFLASH_BINARY ${cmdline[@]})
+    else
+        cmdline=(sudo $NVFLASH_BINARY ${cmdline[@]})
+    fi
+}
+
 _set_cmdline() {
-    if [ -z $automotive ]; then
+    if [ "${flash_app}" == "tegraflash" ]; then
+        _set_cmdline_tegraflash
+    elif [ -z $automotive ]; then
         _set_cmdline_default
     else
         # For Automotive boards.
