@@ -669,6 +669,11 @@ _set_cmdline_automotive() {
         burnflash_cmd="$burnflash_cmd -d ${dtbfile}"
     fi
 
+    odmdata=${_odmdata-${odmdata}}
+    if [ -n "${odmdata}" ]; then
+        burnflash_cmd="$burnflash_cmd -o ${odmdata}"
+    fi
+
     if [[ $_modem ]]; then
         if [[ $_modem -lt 0x1F ]]; then
             # Set odmdata in bootburn.sh
