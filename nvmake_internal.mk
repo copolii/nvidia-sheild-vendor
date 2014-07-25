@@ -83,6 +83,7 @@ $(linked_module): NVIDIA_NVMAKE_COMMON_BUILD_PARAMS := \
     TARGET_GLOBAL_CFLAGS="$($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_GLOBAL_CFLAGS)" \
     $(NVUB_SUPPORTS_FLAG_LIST) \
     $(NVIDIA_NVMAKE_VERBOSE) \
+    $(NVIDIA_NVMAKE_GUARDWORD) \
     $(LOCAL_NVIDIA_NVMAKE_ARGS)
 
 # The Aarch64 uses ld instead of gold as a linker. ld doesn't support gc-sections

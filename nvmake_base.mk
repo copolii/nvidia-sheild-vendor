@@ -44,6 +44,13 @@ else
   NVIDIA_NVMAKE_VERBOSE := -s
 endif
 
+# Enable guardword for release builds and external profile
+ifneq ($(NV_INTERNAL_PROFILE),1)
+ifeq ($(NVIDIA_NVMAKE_BUILD_TYPE),release)
+NVIDIA_NVMAKE_GUARDWORD := NV_GUARDWORD=1
+endif
+endif
+
 # extra definitions to pass to nvmake
 NVIDIA_NVMAKE_EXTRADEFS :=
 ifeq ($(NVUB_UNIFIED_BRANCHING_ENABLED),1)
