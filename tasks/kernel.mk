@@ -193,7 +193,8 @@ endif
 ifeq ($(NV_GENERIC_SOC),1)
 	@echo "Generic SoC kernel"
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ \
-		--disable TEGRA_NVMAP
+		--disable TEGRA_NVMAP \
+		--disable TEGRA_GK20A
 endif
 
 
