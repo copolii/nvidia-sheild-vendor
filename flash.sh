@@ -194,7 +194,6 @@ tnspec_platforms()
         [[ ${#sku} > 0 ]] && skuid=$sku
         odm=$(tnspec spec get $specid.odm -g sw)
         [[ ${#odm} > 0 ]] && odmdata=$odm
-        automotive=$(tnspec spec get $specid.automotive -g sw)
         _minbatt=$(tnspec spec get $specid.minbatt -g sw)
         _nodisp=$(tnspec spec get $specid.no_disp -g sw)
     fi
@@ -746,11 +745,11 @@ _set_cmdline_tegraflash() {
 _set_cmdline() {
     if [ "${flash_app}" == "tegraflash" ]; then
         _set_cmdline_tegraflash
-    elif [ -z $automotive ]; then
-        _set_cmdline_default
-    else
+    elif [ "${flash_app}" == "bootburn" ]; then
         # For Automotive boards.
         _set_cmdline_automotive
+    else
+        _set_cmdline_default
     fi
 }
 
