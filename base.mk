@@ -120,25 +120,51 @@ ifneq ($(LOCAL_MODULE),)
 NVIDIA_TARGETS := $(LOCAL_MODULE)
 
 # See if we need to add the secondary module name to the list
-ifneq ($(LOCAL_MODULE_CLASS),EXECUTABLES)
-  ifneq ($(TARGET_2ND_ARCH),)
-    ifneq ($(LOCAL_NO_2ND_ARCH_MODULE_SUFFIX),true)
-      # Reset, since we may only use the secondary version
-      NVIDIA_TARGETS :=
-      include $(BUILD_SYSTEM)/multilib.mk
-      include $(BUILD_SYSTEM)/module_arch_supported.mk
-      ifeq ($(my_module_arch_supported),true)
-        NVIDIA_TARGETS += $(LOCAL_MODULE)
+ifeq ($(LOCAL_IS_HOST_MODULE),true)
+# HOST_MODULES
+    # support STATIC_LIBRARIES only
+    ifeq ($(LOCAL_MODULE_CLASS), STATIC_LIBRARIES)
+      ifneq ($(HOST_2ND_ARCH),)
+        ifneq ($(LOCAL_NO_2ND_ARCH_MODULE_SUFFIX),true)
+          # Reset, since we may only use the secondary version
+          NVIDIA_TARGETS :=
+          include $(BUILD_SYSTEM)/multilib.mk
+          include $(BUILD_SYSTEM)/module_arch_supported.mk
+          ifeq ($(my_module_arch_supported),true)
+            NVIDIA_TARGETS += $(LOCAL_MODULE)
+          endif
+          LOCAL_2ND_ARCH_VAR_PREFIX := $(HOST_2ND_ARCH_VAR_PREFIX)
+          include $(BUILD_SYSTEM)/module_arch_supported.mk
+          LOCAL_2ND_ARCH_VAR_PREFIX :=
+          ifeq ($(my_module_arch_supported),true)
+            NVIDIA_TARGETS := $(LOCAL_MODULE)$(HOST_2ND_ARCH_MODULE_SUFFIX)
+          endif
+          my_module_arch_supported :=
+        endif
       endif
-      LOCAL_2ND_ARCH_VAR_PREFIX := $(TARGET_2ND_ARCH_VAR_PREFIX)
-      include $(BUILD_SYSTEM)/module_arch_supported.mk
-      LOCAL_2ND_ARCH_VAR_PREFIX :=
-      ifeq ($(my_module_arch_supported),true)
-        NVIDIA_TARGETS += $(LOCAL_MODULE)$(TARGET_2ND_ARCH_MODULE_SUFFIX)
-      endif
-      my_module_arch_supported :=
     endif
-  endif
+else
+# TARGET_MODULES
+    ifneq ($(LOCAL_MODULE_CLASS),EXECUTABLES)
+      ifneq ($(TARGET_2ND_ARCH),)
+        ifneq ($(LOCAL_NO_2ND_ARCH_MODULE_SUFFIX),true)
+          # Reset, since we may only use the secondary version
+          NVIDIA_TARGETS :=
+          include $(BUILD_SYSTEM)/multilib.mk
+          include $(BUILD_SYSTEM)/module_arch_supported.mk
+          ifeq ($(my_module_arch_supported),true)
+            NVIDIA_TARGETS += $(LOCAL_MODULE)
+          endif
+          LOCAL_2ND_ARCH_VAR_PREFIX := $(TARGET_2ND_ARCH_VAR_PREFIX)
+          include $(BUILD_SYSTEM)/module_arch_supported.mk
+          LOCAL_2ND_ARCH_VAR_PREFIX :=
+          ifeq ($(my_module_arch_supported),true)
+            NVIDIA_TARGETS += $(LOCAL_MODULE)$(TARGET_2ND_ARCH_MODULE_SUFFIX)
+          endif
+          my_module_arch_supported :=
+        endif
+      endif
+    endif
 endif
 
 else ifneq ($(LOCAL_PACKAGE_NAME),)
