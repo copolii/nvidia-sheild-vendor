@@ -465,6 +465,7 @@ function _flash()
 
     local cmdline=(
         NVFLASH_BINARY=$T/$HOST_OUT/bin/nvflash
+        TEGRAFLASH_BINARY=$T/$HOST_OUT/bin/tegraflash.py
         PRODUCT_OUT=$T/$PRODUCT_OUT
         HOST_OUT=$T/$HOST_OUT
         $FLASH_SH

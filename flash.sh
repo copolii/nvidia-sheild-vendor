@@ -357,6 +357,14 @@ t132() {
     tnspec_platforms "Loki/TegraNote/T132"
 }
 
+t210() {
+    if [[ -z $board ]] && ! _shell_is_interactive; then
+        board=t210
+    fi
+
+    tnspec_platforms "T210"
+}
+
 ardbeg() {
     # 'shield_ers' seems to be assumed in automation testing.
     # if $board is empty and shell is not interactive, set 'shield_ers' to $board
@@ -690,6 +698,7 @@ _set_cmdline_tegraflash() {
     pr_info "Using Tegraflash to flash cboot"
     blbin=$(tnspec spec get $specid.bl -g sw)
     chip=$(tnspec spec get $specid.chip -g sw)
+    odmdata=$(tnspec spec get $specid.odm -g sw)
     applet=$(tnspec spec get $specid.applet -g sw)
     key=$(tnspec spec get $specid.key -g sw)
     hostbin=$(tnspec spec get $specid.hostbin -g sw)
@@ -708,10 +717,10 @@ _set_cmdline_tegraflash() {
     if [ ! -z  $cmd ]; then
         cmd="--cmd $cmd"
     fi
-
+    odmdata=${_odmdata-${odmdata-"0x9c000"}}
     bctfile=${bctfile:-"bct_cboot.cfg"}
     cfgfile=${cfgfile:-"flash.xml"}
-    if [ $_fuse == "1" ]; then
+    if [ "$_fuse" == "1" ]; then
         blbin="cboot_signed.bin"
     else
         blbin=${blbin:-"cboot.bin"}
@@ -719,12 +728,17 @@ _set_cmdline_tegraflash() {
     chip=${chip:-"0x21"}
     applet=${applet:-"nvtboot_recovery.bin"}
 
-    NVFLASH_BINARY=$(dirname $NVFLASH_BINARY)/tegraflash.py
+    if [[ ! -z $dtbfile ]] ; then
+        sed -i "s/.*.dtb.*/            <filename> ${dtbfile} <\/filename>/" $PRODUCT_OUT/$cfgfile
+        pr_warn "Updating dtb partition in $cfgfile. Note this will actually change the on-disk copy of partition table in $PRODUCT_OUT"
+    fi
+
     # Parse tegraflash commandline
     cmdline=(
         --bct $bctfile
         --bl  $blbin
         --cfg $cfgfile
+        --odmdata $odmdata
         --dtb $dtbfile
         --chip $chip
         --applet $applet
@@ -736,14 +750,14 @@ _set_cmdline_tegraflash() {
         )
     # If -n is set, don't use sudo when calling nvflash
     if [[ -n $_nosudo ]]; then
-        cmdline=($NVFLASH_BINARY ${cmdline[@]})
+        cmdline=($TEGRAFLASH_BINARY ${cmdline[@]})
     else
-        cmdline=(sudo $NVFLASH_BINARY ${cmdline[@]})
+        cmdline=(sudo $TEGRAFLASH_BINARY ${cmdline[@]})
     fi
 }
 
 _set_cmdline() {
-    if [ "${flash_app}" == "tegraflash" ]; then
+    if [ "$flash_app" == "tegraflash" ]; then
         _set_cmdline_tegraflash
     elif [ "${flash_app}" == "bootburn" ]; then
         # For Automotive boards.
@@ -797,9 +811,9 @@ case $OSTYPE in
         ;;
     linux*)
         NVFLASH_BINARY=${NVFLASH_BINARY:-./nvflash}
-        if [[ ! -x ${NVFLASH_BINARY} ]]; then
-            pr_err "${NVFLASH_BINARY} is not an executable file" "flash.sh: "
-            usage
+        TEGRAFLASH_BINARY=${TEGRAFLASH_BINARY:-./tegraflash.py}
+        if [[ ! -x $NVFLASH_BINARY && ! -x $TEGRAFLASH_BINARY ]]; then
+            pr_err "Could not find the flash application"
             exit 1
         fi
         ;;
@@ -867,14 +881,18 @@ pr_info_b "=====================================================================
 pr_info__ "PRODUCT_OUT"
 echo "$PRODUCT_OUT"
 pr_info ""
-pr_info__ "NVFLASH COMMAND"
+if [ "$flash_app" == "tegraflash" ]; then
+    pr_info__ "TEGRAFLASH COMMAND"
+else
+    pr_info__ "NVFLASH COMMAND"
+fi
 echo "${cmdline[*]}"
 pr_info_b "====================================================================="
 
 # exit if dryrun is set
 [[ -n $_dryrun ]] && exit 0
 
-pr_ok "Flashing..." "nvflash: "
+pr_ok "Flashing..." "flash.sh: "
 # Execute command
 (cd $PRODUCT_OUT && eval ${cmdline[@]})
 exit $?
