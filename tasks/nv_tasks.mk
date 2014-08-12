@@ -28,7 +28,7 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
 # Override properties in build.prop
 #
 # *** Use of TARGET_DEVICE here is intentional ***
-ifneq ($(filter ardbeg loki, $(TARGET_DEVICE)),)
+ifneq ($(filter ardbeg loki t210, $(TARGET_DEVICE)),)
 # *** Use of TARGET_DEVICE here is intentional ***
 ifneq ($(wildcard vendor/nvidia/$(TARGET_DEVICE)/skus/sku-properties.xml),)
 # List of TARGET_PRODUCTs for which we will make changes in build.prop
@@ -46,7 +46,15 @@ _skus := \
 	fosterdiag \
 	lokidiag_b \
 	lokidiag_p \
-	lokidiag_p_lte
+	lokidiag_p_lte \
+	loki_e_lte \
+	loki_e_base \
+	foster_e \
+	foster_e_hdd \
+	loki_e_lte_diag \
+	loki_e_base_diag \
+	foster_e_diag \
+	foster_e_hdd_diag
 ifneq ($(filter $(_skus), $(TARGET_PRODUCT)),)
 # SKU manifest containing properties and values to changes
 # *** Use of TARGET_DEVICE here is intentional ***
