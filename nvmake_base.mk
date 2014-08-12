@@ -47,7 +47,12 @@ endif
 # Enable guardword for release builds and external profile
 ifneq ($(NV_INTERNAL_PROFILE),1)
 ifeq ($(NVIDIA_NVMAKE_BUILD_TYPE),release)
+# Disable guardword checks in the gcov code coverage build - gcov
+# build adds some symbols that don't pass this check thus breaking the
+# gcov build.
+ifeq ($(NVIDIA_COVERAGE_ENABLED),)
 NVIDIA_NVMAKE_GUARDWORD := NV_GUARDWORD=1
+endif
 endif
 endif
 
