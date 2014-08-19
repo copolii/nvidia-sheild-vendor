@@ -38,7 +38,7 @@ endif
 
 TARGET_KERNEL_VCM_CONFIG ?= tegra_vcm30t124_android_defconfig
 
-TARGET_KERNEL_VCM_DT_NAME := tegra124-ardbeg-vcm30-t124
+TARGET_KERNEL_VCM_DT_NAME := tegra124-ardbeg-p1859
 
 # Always use absolute path for NV_KERNEL_VCM_MODULES_TARGET_DIR and
 # NV_KERNEL_VCM_BIN_TARGET_DIR
