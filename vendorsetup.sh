@@ -59,6 +59,13 @@ function _ktoolchain()
     fi
 }
 
+function _default_kpath()
+{
+    T=$(gettop)
+    local kpath=$(get_build_var KERNEL_PATH)
+    kpath=${kpath:-$T/kernel}
+    echo "$kpath"
+}
 function ksetup()
 {
     T=$(gettop)
@@ -67,7 +74,7 @@ function ksetup()
         return 1
     fi
 
-    local SRC=${KERNEL_PATH:-"$T/kernel"}
+    local SRC=${KERNEL_PATH:-$(_default_kpath)}
     if [ $# -lt 1 ] ; then
         echo "Usage: ksetup <defconfig> <path>"
         return 1
@@ -126,7 +133,7 @@ function kconfig()
         return 1
     fi
 
-    local SRC=${KERNEL_PATH:-"$T/kernel"}
+    local SRC=${KERNEL_PATH:-$(_default_kpath)}
     if [ -d "$1" ] ; then
         SRC="$1"
         shift 1
@@ -157,7 +164,7 @@ function ksavedefconfig()
         return 1
     fi
 
-    local SRC=${KERNEL_PATH:-"$T/kernel"}
+    local SRC=${KERNEL_PATH:-$(_default_kpath)}
     if [ $# -lt 1 ] ; then
         echo "Usage: ksavedefconfig <defconfig> [kernelpath]"
         return 1
@@ -215,7 +222,7 @@ function krebuild()
         return 1
     fi
 
-    local SRC=${KERNEL_PATH:-"$T/kernel"}
+    local SRC=${KERNEL_PATH:-$(_default_kpath)}
     if [ -d "$1" ] ; then
         SRC="$1"
         shift 1
@@ -283,7 +290,7 @@ function builddtb()
 {
     local TARGET_KERNEL_DT_NAME=$(get_build_var TARGET_KERNEL_DT_NAME)
     local KERNEL_DT_NAME=${TARGET_KERNEL_DT_NAME%%-*}
-    local SRC=${KERNEL_PATH:-"$T/kernel"}
+    local SRC=${KERNEL_PATH:-$(_default_kpath)}
 
     if [ ! -d "$SRC" ] ; then
         echo "$SRC not found."
