@@ -1,5 +1,12 @@
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 
+include $(BUILD_SYSTEM)/multilib.mk
+
+ifndef my_module_multilib
+# libraries default to building for both architectures
+my_module_multilib := both
+endif
+
 include $(NVIDIA_BASE)
 include $(NVIDIA_WARNINGS)
 include $(NVIDIA_COVERAGE)
@@ -68,7 +75,6 @@ endif
 
 # restore some of the variables for potential further use in caller
 LOCAL_BUILT_MODULE := $(NVIDIA_CHECK_MODULE_LINK)
-
 # Clear used variables
 NVIDIA_CHECK_MODULE_LINK :=
 my_module_arch_supported :=

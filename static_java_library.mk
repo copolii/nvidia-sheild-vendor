@@ -1,5 +1,7 @@
 LOCAL_MODULE_CLASS := JAVA_LIBRARIES
 
+include $(BUILD_SYSTEM)/multilib.mk
+
 include $(NVIDIA_BASE)
 include $(BUILD_STATIC_JAVA_LIBRARY)
 
