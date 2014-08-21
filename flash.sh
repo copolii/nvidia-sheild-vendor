@@ -687,7 +687,6 @@ _set_cmdline_automotive() {
         -a
         -r ram0
         -Z zlib
-        -e
         $burnflash_cmd
         ${_args[@]}
     )
