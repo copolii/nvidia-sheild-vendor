@@ -200,7 +200,7 @@ endif
 
 ifeq ($(TARGET_ARCH_KERNEL),arm64)
     BOOT_WRAPPER_DIR := $(TEGRA_TOP)/core-private/system/boot-wrapper-aarch64
-    BOOT_WRAPPER_FDT_SRC := $(KERNEL_PATH)/arch/$(TARGET_ARCH_KERNEL)/boot/dts/$(TARGET_KERNEL_DT_NAME).dts
+    BOOT_WRAPPER_FDT_SRC := $(KERNEL_PATH)/arch/$(TARGET_ARCH_KERNEL)/boot/dts/$(SIM_KERNEL_DT_NAME).dts
     BOOT_WRAPPER_CMD := $(MAKE) -C $(BOOT_WRAPPER_DIR) FDT_SRC=$(BOOT_WRAPPER_FDT_SRC);
 else
     BOOT_WRAPPER_CMD :=
