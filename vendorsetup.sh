@@ -599,6 +599,57 @@ function tntest()
     $T/vendor/nvidia/tegra/core/tools/tntest/tntest.sh $@
 }
 
+function kupdate()
+{
+    T=$(gettop)
+    local flbin=$T/out/host/linux-x86/bin/tegraflash.py
+    [ -x $flbin ] || {
+        echo "$flbin doesn't exist or is not executable." >&2
+        return 1
+    }
+    [ -d "$OUT" ] || {
+        echo "\$OUT must be set." >&2
+        return 1
+    }
+
+    local specid
+    local tnlast=$OUT/.tnspec_history
+    if [ -n "$TNSPECID" ]; then
+        specid="$TNSPECID"
+    elif [ -f $tnlast ]; then
+        [ "$(cat $tnlast)" == "auto" ] && {
+            echo "\"flash -r\" was used, but \"auto\" was chosen. You need to choose a non-auto option." >&2
+            return 1
+        }
+        specid="$(cat $tnlast)"
+    else
+        echo "\$TNSPECID must be set OR \"flash -r\" option must be used to flash the device first" >&2
+        local _tmp=$(tnspec spec list -g sw | head -n 1)
+        echo "e.g. > TNSPECID=${_tmp%% *} kupdate" >&2
+        echo "OR if \"flash -r\" was used previously with a non-auto option." >&2
+        echo "e.g. > kupdate" >&2
+        echo "" >&2
+        echo "Possible values for \$TNSPECID" >&2
+        tnspec spec list -g sw >&2
+        return 1
+    fi
+    local dtb=$(tnspec spec get $specid.dtb -g sw)
+    local blbin=$(tnspec spec get $specid.bl -g sw)
+    local chip=$(tnspec spec get $specid.chip -g sw)
+    local applet=$(tnspec spec get $specid.applet -g sw)
+    [ -z "$dtb" ] && {
+        echo "[$specid] dtb was not found." >&2
+        return 1
+    }
+    blbin=${blbin:-cboot.bin}
+    chip=${chip:-0x21}
+    applet=${applet:-nvtboot_recovery.bin}
+
+    local cmd="$flbin --bl $OUT/$blbin --dtb $OUT/$dtb --chip $chip --applet $OUT/$applet --cmd \"write LNX $OUT/boot.img; write DTB $OUT/$dtb\""
+    echo "$cmd"
+    (eval sudo $cmd)
+}
+
 # Remove TEGRA_ROOT, no longer required and should never be used.
 
 if [ -n "$TEGRA_ROOT" ]; then
