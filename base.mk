@@ -222,7 +222,8 @@ ALL_NVIDIA_TESTS += $(NVIDIA_TARGETS)
 ifeq ($(LOCAL_MODULE_CLASS),EXECUTABLES)
 LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/bin
 else ifeq ($(LOCAL_MODULE_CLASS),SHARED_LIBRARIES)
-LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/lib
+LOCAL_MODULE_PATH_32 := $(PRODUCT_OUT)/nvidia_tests/system/lib
+LOCAL_MODULE_PATH_64 := $(PRODUCT_OUT)/nvidia_tests/system/lib64
 else ifeq ($(LOCAL_MODULE_CLASS),JAVA_LIBRARIES)
 LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/framework
 else ifneq ($(LOCAL_MODULE_PATH),)
