@@ -713,9 +713,10 @@ _set_cmdline_tegraflash() {
     if [ ! -z $out ]; then
         out="--out $out"
     fi
-    if [ ! -z  $cmd ]; then
-        cmd="--cmd $cmd"
+    if [[ -n $cmd ]]; then
+        cmd="--cmd \"$cmd\""
     fi
+
     odmdata=${_odmdata-${odmdata-"0x9c000"}}
     bctfile=${bctfile:-"bct_cboot.cfg"}
     cfgfile=${cfgfile:-"flash.xml"}
