@@ -770,14 +770,19 @@ _set_cmdline() {
 # Main code
 ###############################################################################
 
+# FIXME: we shouldn't rely on the path name to choose the main flash handler
 if [[ -z $PRODUCT_OUT ]]; then
     PRODUCT_OUT=.
     product=tnspec_generic
 else
-    # Fetch target board name. Internal builds (*_int) and generic builds (*_gen)
-    # share a board with the external builds.
-    # *_64 are the same board with a 64-bit userspace. They should flash the same.
     product=$(echo ${PRODUCT_OUT%/} | sed -e 's#.*\/\(.*\)#\1#' -e 's#_\(int\|gen\|64\)$##')
+    case $product in
+        shieldtablet)
+            product=ardbeg
+            ;;
+        *)
+            ;;
+    esac
 fi
 
 if [[ ! -d ${PRODUCT_OUT} ]]; then

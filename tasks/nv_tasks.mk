@@ -28,7 +28,7 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
 # Override properties in build.prop
 #
 # *** Use of TARGET_DEVICE here is intentional ***
-ifneq ($(filter ardbeg loki t210, $(TARGET_DEVICE)),)
+ifneq ($(filter shieldtablet ardbeg loki t210, $(TARGET_DEVICE)),)
 # *** Use of TARGET_DEVICE here is intentional ***
 ifneq ($(wildcard vendor/nvidia/$(TARGET_DEVICE)/skus/sku-properties.xml),)
 # List of TARGET_PRODUCTs for which we will make changes in build.prop
