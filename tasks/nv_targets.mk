@@ -37,6 +37,12 @@ $(foreach f,$(1), $(eval \
   _cmd += $(f) RMB 1
  else ifneq ($(filter %nvtboot.bin,$(f)),)
   _cmd += $(f) NVC 1
+ else ifneq ($(filter %bootloader.bin,$(f)),)
+  _cmd += $(f) EBT 1
+  _cmd += $(f) RBL 1
+ else ifneq ($(filter %cboot.bin,$(f)),)
+  _cmd += $(f) EBT 1
+  _cmd += $(f) RBL 1
  else ifneq ($(filter %.dtb,$(f)),)
   _cmd += $(f) DTB 1
  else ifneq ($(filter %.bct,$(f)),)
@@ -91,6 +97,8 @@ _blob_deps := \
       $(wildcard $(PRODUCT_OUT)/*.bmp) \
       $(PRODUCT_OUT)/flash.bct \
       $(PRODUCT_OUT)/nvtboot.bin \
+      $(PRODUCT_OUT)/bootloader.bin \
+      $(PRODUCT_OUT)/cboot.bin \
       $(wildcard $(PRODUCT_OUT)/mts_*) \
       $(PRODUCT_OUT)/xusb_sil_rel_fw \
       $(PRODUCT_OUT)/tos.img \
@@ -101,11 +109,8 @@ nv-blob: \
       $(HOST_OUT_EXECUTABLES)/nvblob \
       $(HOST_OUT_EXECUTABLES)/nvsignblob \
       $(TOP)/device/nvidia/common/security/signkey.pk8 \
-      $(PRODUCT_OUT)/bootloader.bin \
       $(call _dynamic_blob_dependencies, $(_blob_deps))
 	$(hide) python $(filter %nvblob,$^) \
-		$(filter %bootloader.bin,$^) EBT 1 \
-		$(filter %bootloader.bin,$^) RBL 1 \
 		 $(call _blob_command_line, $^)
 
 #
