@@ -170,6 +170,8 @@ endif
 
 $(dotconfig): $(KERNEL_DEFCONFIG_PATH) | $(NV_KERNEL_INTERMEDIATES_DIR)
 	@echo "Kernel config " $(TARGET_KERNEL_CONFIG)
+	# record defconfig name for build modularization
+	$(hide) echo $(TARGET_KERNEL_CONFIG) >$(PRODUCT_OUT)/kernel-configuration-name.txt
 	+$(hide) $(kernel-make) DEFCONFIG_PATH=$(DEFCONFIG_PATH) $(TARGET_KERNEL_CONFIG)
 ifeq ($(SECURE_OS_BUILD),tlk)
 	@echo "TLK SecureOS enabled kernel"
