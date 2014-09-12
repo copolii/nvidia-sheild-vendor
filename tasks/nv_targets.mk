@@ -116,7 +116,7 @@ nv-blob: \
 #
 # Generate ramdisk images for simulation
 #
-sim-image: nvidia-tests
+sim-image:
 	device/nvidia/common/copy_simtools.sh
 	device/nvidia/common/generate_full_filesystem.sh $(TARGET_DEVICE)
 	@echo "Generating sdmmc image w/ full filesystem ..."
