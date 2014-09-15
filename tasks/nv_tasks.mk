@@ -29,8 +29,14 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
 #
 # *** Use of TARGET_DEVICE here is intentional ***
 ifneq ($(filter shieldtablet ardbeg loki t210, $(TARGET_DEVICE)),)
+ifeq ($(NV_SKU_MANIFEST),)
 # *** Use of TARGET_DEVICE here is intentional ***
-ifneq ($(wildcard vendor/nvidia/$(TARGET_DEVICE)/skus/sku-properties.xml),)
+# SKU manifest containing properties and values to change
+NV_SKU_MANIFEST := vendor/nvidia/$(TARGET_DEVICE)/skus/sku-properties.xml
+endif
+# Tool which changes the value of properties in build.prop
+NV_PROP_MANGLE_TOOL := vendor/nvidia/build/tasks/process_build_props.py
+ifneq ($(wildcard $(NV_SKU_MANIFEST)),)
 # List of TARGET_PRODUCTs for which we will make changes in build.prop
 _skus := \
 	wx_na_wf \
@@ -56,11 +62,6 @@ _skus := \
 	foster_e_diag \
 	foster_e_hdd_diag
 ifneq ($(filter $(_skus), $(TARGET_PRODUCT)),)
-# SKU manifest containing properties and values to changes
-# *** Use of TARGET_DEVICE here is intentional ***
-NV_SKU_MANIFEST := vendor/nvidia/$(TARGET_DEVICE)/skus/sku-properties.xml
-# Tool which changes the value of properties in build.prop
-NV_PROP_MANGLE_TOOL := vendor/nvidia/build/tasks/process_build_props.py
 
 droidcore: update-build-properties
 .PHONY: update-build-properties
