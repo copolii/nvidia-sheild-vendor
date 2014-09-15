@@ -92,6 +92,7 @@ endef
 
 # These are additional files for which we generate blobs only if they exists
 _blob_deps := \
+      $(HOST_OUT_EXECUTABLES)/nvsignblob \
       $(PRODUCT_OUT)/microboot.bin \
       $(wildcard $(PRODUCT_OUT)/$(TARGET_KERNEL_DT_NAME)*.dtb) \
       $(wildcard $(PRODUCT_OUT)/*.bmp) \
@@ -107,7 +108,6 @@ _blob_deps := \
 # target to generate blob
 nv-blob: \
       $(HOST_OUT_EXECUTABLES)/nvblob \
-      $(HOST_OUT_EXECUTABLES)/nvsignblob \
       $(TOP)/device/nvidia/common/security/signkey.pk8 \
       $(call _dynamic_blob_dependencies, $(_blob_deps))
 	$(hide) python $(filter %nvblob,$^) \
