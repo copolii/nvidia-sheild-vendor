@@ -131,10 +131,21 @@ _tmake_part_umbrella := warmboot/build/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
 else ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),nvflash)
 # host tool code is agnostic to target configuration
 _tmake_config_extra  :=
+# Bug 1514566: Tegra secure tools are being moved to own module
+# TEMPORARY - needs to be removed later!
+_tmake_config_extra  += NV_BUILD_WAR_1514566=$(NV_BUILD_WAR_1514566)
 # NOTE: build type for target bits is also controlled by HOST_BUILD_TYPE
 _tmake_intermediates := $(_tmake_intermediates)_$(HOST_BUILD_TYPE)_$(TARGET_BUILD_TYPE)
 _tmake_config_debug  := $(_tmake_host_debug)
 _tmake_part_umbrella := bootloader/nvbootloader/nvflash/app/build/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
+
+else ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),nvsecuretool)
+# host tool code is agnostic to target configuration
+_tmake_config_extra  :=
+# NOTE: build type for target bits is also controlled by HOST_BUILD_TYPE
+_tmake_intermediates := $(_tmake_intermediates)_$(HOST_BUILD_TYPE)_$(TARGET_BUILD_TYPE)
+_tmake_config_debug  := $(_tmake_host_debug)
+_tmake_part_umbrella := bootloader/nvbootloader/nvsecuretool/build/Makefile.$(LOCAL_NVIDIA_TMAKE_PART_NAME)
 
 else ifeq ($(LOCAL_NVIDIA_TMAKE_PART_NAME),tegraflash)
 # host tool code is agnostic to target configuration

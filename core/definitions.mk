@@ -41,6 +41,12 @@ ifndef NV_BUILD_WAR_1251947
 NV_BUILD_WAR_1251947 := apps-graphics
 endif
 
+# Bug 1514566: Tegra secure tools are being moved to own module
+# TEMPORARY - needs to be removed later!
+ifndef NV_BUILD_WAR_1514566
+NV_BUILD_WAR_1514566 := 1
+endif
+
 ifndef NV_GPUDRV_SOURCE
 NV_GPUDRV_SOURCE := $(TEGRA_TOP)/gpu/drv
 endif
