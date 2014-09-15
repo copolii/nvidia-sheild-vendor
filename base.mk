@@ -138,7 +138,7 @@ endif
               ifeq ($(my_module_arch_supported),true)
                 NVIDIA_TARGETS += $(LOCAL_MODULE)
               endif
-              ifeq ($(my_module_multilib),both)
+              ifneq (,$(filter 32 both,$(my_module_multilib)))
                   LOCAL_2ND_ARCH_VAR_PREFIX := $($(module_prefix)2ND_ARCH_VAR_PREFIX)
                   include $(BUILD_SYSTEM)/module_arch_supported.mk
                   LOCAL_2ND_ARCH_VAR_PREFIX :=
@@ -156,7 +156,6 @@ endif
             endif
           endif
       endif
-
 else ifneq ($(LOCAL_PACKAGE_NAME),)
 NVIDIA_TARGETS := $(LOCAL_PACKAGE_NAME)
 else
