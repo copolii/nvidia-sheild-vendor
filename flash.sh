@@ -846,7 +846,7 @@ do
     r)  _remember_board=1;
         ;;
     f)  _fused=1;
-        blob="--blob blob.bin"
+        blob="--blob $(_os_path $PRODUCT_OUT/blob.bin)"
         blbin="bootloader_signed.bin"
         ;;
     m) _modem=${OPTARG};
