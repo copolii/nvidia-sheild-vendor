@@ -219,10 +219,19 @@ ifneq ($(filter nvidia-tests-automation,$(MAKECMDGOALS)),)
 # If we're explicitly building nvidia-tests-automation, redirect the tests.
 ALL_NVIDIA_TESTS += $(NVIDIA_TARGETS)
 ifeq ($(LOCAL_MODULE_CLASS),EXECUTABLES)
-LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/bin
+ifeq ($(LOCAL_PROPRIETARY_MODULE),true)
+    LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/vendor/bin
+else
+    LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/bin
+endif
 else ifeq ($(LOCAL_MODULE_CLASS),SHARED_LIBRARIES)
-LOCAL_MODULE_PATH_32 := $(PRODUCT_OUT)/nvidia_tests/system/lib
-LOCAL_MODULE_PATH_64 := $(PRODUCT_OUT)/nvidia_tests/system/lib64
+ifeq ($(LOCAL_PROPRIETARY_MODULE),true)
+    LOCAL_MODULE_PATH_32 := $(PRODUCT_OUT)/nvidia_tests/system/vendor/lib
+    LOCAL_MODULE_PATH_64 := $(PRODUCT_OUT)/nvidia_tests/system/vendor/lib64
+else
+    LOCAL_MODULE_PATH_32 := $(PRODUCT_OUT)/nvidia_tests/system/lib
+    LOCAL_MODULE_PATH_64 := $(PRODUCT_OUT)/nvidia_tests/system/lib64
+endif
 else ifeq ($(LOCAL_MODULE_CLASS),JAVA_LIBRARIES)
 LOCAL_MODULE_PATH := $(PRODUCT_OUT)/nvidia_tests/system/framework
 else ifneq ($(LOCAL_MODULE_PATH),)
