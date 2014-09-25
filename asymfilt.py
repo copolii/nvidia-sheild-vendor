@@ -23,17 +23,13 @@ android_product_out = os.environ['ANDROID_PRODUCT_OUT']
 symbols_dir = os.path.join(android_product_out, 'symbols')
 
 class Mode:
-    none = 0
-    default = 1
-    tombstone = 2
+    default = 0
+    nvos = 1
 
 def stdout_of_cmd(*args):
     return subprocess.Popen(args,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE).communicate()[0]
-
-#def adb(*args):
-#    return stdout_of_cmd('adb', *args)
 
 class IntervalMap:
     def __init__(self):
@@ -57,11 +53,7 @@ def add_map(im, line):
             start = int(line[0:8], 16)
             end = int(line[9:17], 16)
             module = line[49:]
-            # hack hack hack, I don't know why I need this...
-            # executables don't get loaded the same way as shared objects.
-            # also, I'm not taking into account the offset field,
-            # that's bound to screw something up
-            im[start:end] = (module, start if line.endswith('.so') else 0)
+            im[start:end] = (module, start)
     except:
        pass
 
@@ -119,39 +111,39 @@ def android_lookup(line, header, info, rexp):
 def main():
 
     ####################################################
-    # regexp that detects ADB mode
-    # I/DEBUG   (  774): pid: 1576, tid: 1590  >>> com.android.browser <<<
+    # regexp that detects ADB headers
+    # D/libEGL  ( 1806): loaded /vendor/lib/egl/libEGL_tegra.so
     # <--ADB HEADER-G1-><----------------- INFO G3----------------------->
     # Pid will be in group 2
-    rexp_adb = re.compile('(./.*\(\s*(\d+)\):)\s?(.*)')
+    rexp_adb = re.compile('(./.*\(\s*(\d+)\):\s?)(.*)')
+
+    ####################################################
+    # regexp that detects NvOs headers and similar tags
+    # (for callstacks printed by the NvOs resource tracker).
+    #          [NVOS] Leaked 2 resources!
+    # GROUPS:  <- 1 -><------- 2 -------->
+    rexp_tag = re.compile('(\\[\w*?\\]\s?)(.*)') #\[w*?\]
 
     ####################################################
     # regexps with _start and _end define where interesting
-    # stuff begins and ends. Applied to INFO part
-
-    ## Application mode
-    #  pid: 1576, tid: 1590  >>> com.android.browser <<<
-    rexp_tomb_start = re.compile('pid.*tid.*')
-    # code around lr:
-    rexp_tomb_end   = re.compile('code around lr:')
-    #           #01  pc 0014a784  /system/lib/libwebcore.so (__libc_init+50)
-    # GROUPS:   -- 1 --><- 2 -->  <---------- 3 ----------> <------ 4 ----->
-    rexp_tomb = re.compile('(\s+ #\d+ \s* \w\w )([\w]+)\s+(/[^ ]*)(?: \(.+\))?$')
-
-    # Android callstack mode
-    rexp_android = re.compile('([^#]*#\d+ \s* \w\w )([\w]+)\s+(/.*)$')
+    # stuff begins and ends. Applied to INFO part.
 
     ## Default mode
-    rexp_default_start = re.compile('Callstack:')
-    # rexp_default = implemented in different manner
-    rexp_default_end = re.compile('^$')
+    # Android callstack
+    #           #01  pc 0014a784  /system/lib/libwebcore.so (__libc_init+50)
+    # GROUPS:  <-- 1 --><- 2 -->  <---------- 3 ----------> <------ 4 ----->
+    rexp_android = re.compile('([^#]*#\d+\s+\w\w\s+)([\w]+)\s+(/[^ ]*)(?: \(.+\))?$')
+
+    ## NvOs callstack mode
+    rexp_nvos_start = re.compile('Callstack:')
+    rexp_nvos_end = re.compile('^$')
 
     if not os.path.exists(symbols_dir):
         print '$ANDROID_PRODUCT_OUT/symbols does not exist ('+ symbols_dir + ')'
         return
 
     pstate = {}
-    mode = Mode.none
+    mode = Mode.default
 
     while 1:
 
@@ -160,49 +152,42 @@ def main():
             break
         line = line.rstrip()
 
-        # Detect whether we have input from ADB or elsewhere
+        # Detect whether we have a header from ADB
         adbmatch = rexp_adb.match(line)
-
         if adbmatch:
             header, pid, info = adbmatch.groups()
         else:
             header, pid, info = '', None, line
 
+        # If we detect a [] tag, move it to the header.
+        tagmatch = rexp_tag.match(info)
+        if tagmatch:
+            header += tagmatch.group(1)
+            info = tagmatch.group(2)
+
         ### Simple state machine
 
-        if header.startswith('D/CallStack('):
-            line = android_lookup(line, header, info, rexp_android)
-
         ########################
-        elif mode == Mode.none:
-
-            logging.debug(info)
-
-            # Try searching for keywords that start modes
-            if rexp_tomb_start.match(info):
-                mode = Mode.tombstone
-
-            elif rexp_default_start.match(info):
-                mode = Mode.default
-                im = None
-
-        ############################
-        elif mode == Mode.tombstone:
-            logging.debug( 'Tombstone mode ' + info )
-
-            # Check if we should stop
-            if rexp_tomb_end.match(info):
-                mode = Mode.none
-
+        if mode == Mode.default:
+            # Detect if we're on an Android callstack line
+            if rexp_android.match(info):
+                logging.debug( 'Android callstack mode - ' + info)
+                line = android_lookup(line, header, info, rexp_android)
             else:
-                line = android_lookup(line, header, info, rexp_tomb)
+                logging.debug( 'Default mode - ' + info)
+
+                # Try searching for keywords that start the NvOs mode
+                if rexp_nvos_start.match(info):
+                    mode = Mode.nvos
+                    im = None
 
         ##########################
-        elif mode == Mode.default:
+        elif mode == Mode.nvos:
+            logging.debug( 'NvOs callstack mode - ' + info )
 
             # If we reach the empty line after stack dump.
-            if rexp_default_end.match(info):
-                mode = Mode.none
+            if rexp_nvos_end.match(info):
+                mode = Mode.default
                 continue
 
             try:
@@ -230,9 +215,9 @@ def main():
                         if addr > start:
                             addr = addr - 1
                         lookup = addr2line(symbols_dir, module, addr - start)
-                        line = header + ' ' + lookup
+                        line = header + lookup
                     except:
-                        im = None
+                        line = header + hex(addr) + " (no module found)"
 
                 pstate[pid] = (im, pm)
             except:
