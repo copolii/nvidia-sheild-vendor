@@ -90,6 +90,7 @@ NVIDIA_TMAKE_PART_STATIC_EXECUTABLE := $(NVIDIA_BUILD_ROOT)/tmake_part_static_ex
 NVIDIA_TMAKE_STATIC_LIBRARY         := $(NVIDIA_BUILD_ROOT)/tmake_static_library.mk
 NVIDIA_UBM_DEFAULTS        := $(NVIDIA_BUILD_ROOT)/ubm_defaults.mk
 NVIDIA_UBM_ENABLE          := $(NVIDIA_BUILD_ROOT)/ubm_enable.mk
+NVIDIA_TEST_FILES          := $(NVIDIA_BUILD_ROOT)/test_files.mk
 
 # compiler
 
@@ -253,31 +254,25 @@ define nv-tntest
 $(eval $(call tntest,$(1),$(NVIDIA_TNTEST_TESTSUITES)/$(2),$(3),,fail))
 endef
 
-###############################################################################
-# For dynamic makefile module creation
-###############################################################################
-
-# nv-add-file copies a given file to $OUT by creating a makefile module on the
-# fly
-# $(1) - File name to add
-# $(2) - output path (excluding $OUT)
-# $(3) - module tag
-# $(4) - class name
-define nv-add-file
-	include $$(NVIDIA_DEFAULTS)
-	LOCAL_MODULE := $(1)
-	LOCAL_MODULE_TAGS := $(3)
-	LOCAL_MODULE_CLASS := $(4)
-	LOCAL_MODULE_PATH := $(PRODUCT_OUT)/$(2)
-	LOCAL_SRC_FILES := $(1)
-	include $$(NVIDIA_PREBUILT)
-endef
-
+##############
+# DEPRECATED #
+##############
+# Use NVIIDA_TEST_FILES directly instead
+#
 # nv-add-file copies a given list of file to $OUT by creating a makefile module
 # on the fly
 # $(1) - Path under $OUT where this should be added
 # $(2) - list of files to add
-# $(3) - Module class. Used to avoid conflict with other modules
+define nv-add-files-to-test-internal
+include $(NVIDIA_DEFAULTS)
+LOCAL_MODULE := $(firstword $(2))_$(lastword $(2))
+LOCAL_IS_HOST_MODULE := true
+LOCAL_MODULE_RELATIVE_PATH := \
+  $(or $(patsubst nvidia_tests/host/%,%,$(filter nvidia_tests/host/%,$(1))), \
+       $(error $(1): Must begin with nvidia-tests/host))
+LOCAL_SRC_FILES := $(foreach f,$(2),$(f):$(f))
+include $(NVIDIA_TEST_FILES)
+endef
 define nv-add-files-to-test
-	$(foreach f,$(2),$(eval $(call nv-add-file,$f,$(1),nvidia_tests,$(3))))
+$(eval $(call nv-add-files-to-test-internal,$(patsubst nvidia_tests/host,nvidia_tests/host/.,$(1)),$(2)))
 endef
