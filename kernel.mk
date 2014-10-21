@@ -200,11 +200,6 @@ ifeq ($(NVIDIA_KERNEL_COVERAGE_ENABLED),1)
 endif
 
 ifeq ($(TARGET_PRODUCT), flaxen)
-	@echo "Fairfax Disable MMC Sanitize"
-	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable SEC_SANITIZE_IGNORE
-endif
-
-ifeq ($(TARGET_PRODUCT), flaxen)
 	@echo "Enable Fairfax HDMI TDMS parameters"
 	$(hide) $(KERNEL_PATH)/scripts/config --file $@ --enable FAIRFAX_HDMI_PARAM
 endif
