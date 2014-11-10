@@ -20,6 +20,7 @@
 $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
 	@echo "Package Dev OTA: $@"
 	$(hide) $(TOP)/build/tools/releasetools/ota_from_target_files -n -v \
+	   --block \
 	   -p $(HOST_OUT) \
 	   -k $(KEY_CERT_PAIR) \
 	   $(BUILT_TARGET_FILES_PACKAGE) $@
