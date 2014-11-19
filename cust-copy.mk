@@ -3,5 +3,5 @@ LOCAL_PATH := $(call my-dir)
 ifeq ($(patsubst tegra%,tegra,$(TARGET_BOARD_PLATFORM)),tegra)
 # enable customer build mode in tmake
 NV_BUILD_TMAKE_CUSTOMER_BUILD := 1
-include $(LOCAL_PATH)/prebuilt/$(REFERENCE_DEVICE)/generated_built.mk
+include $(LOCAL_PATH)/prebuilt/$(TARGET_DEVICE)/generated_built.mk
 endif
